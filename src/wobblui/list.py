@@ -83,6 +83,40 @@ class List(Widget):
     def __init__(self):
         super().__init__(is_container=False)
         self._entries = []
+        self._selected_index = 0
+        self._hover_index = -1
+
+    @property
+    def hover_index(self):
+        return self._hover_index
+
+    @hover_index.setter
+    def hover_index(self, v):
+        if self._hover_index != v:
+            self._hover_index = v
+            self.needs_redraw = True
+
+    @property
+    def selected_index(self):
+        return self._selected_index
+
+    @selected_index.setter
+    def selected_index(self, v):
+        if self._selected_index != v:
+            self._selected_index = v
+            self.needs_redraw = True
+
+    def do_redraw(self):
+        cx = 0
+        cy = 0
+        entry_id = -1
+        for entry in self._entries:
+            entry_id += 1
+            entry.draw(cx, cy, draw_selected=(
+                entry_id == self._selected_index and
+                entry_id != self._hover_index),
+                draw_hover=(entry_id == self._hover_index))
+            cy += entry.height
 
     def get_natural_width(self):
         w = 0
