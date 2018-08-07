@@ -89,10 +89,12 @@ class RichTextFragment(RichTextObj):
         return h
 
     def has_same_formatting_as(self, obj):
+        if not isinstance(obj, RichTextFragment):
+            return False
         if obj.font_family != self.font_family or \
                 obj.bold != self.bold or \
                 obj.italic != self.italic or \
-                round(obj.px_size * 10.0) != round(self.pix_size * 10.0):
+                round(obj.px_size * 10.0) != round(self.px_size * 10.0):
             return False
         return True
 
@@ -345,7 +347,7 @@ class RichText(RichTextObj):
                     self.fragments[i]):
                 simple_fragments.append(self.fragments[i])
             else:
-                simple_fragments[-1].text += self.fragments[i]
+                simple_fragments[-1].text += self.fragments[i].text
             i += 1
         self.fragments = simple_fragments
 

@@ -107,6 +107,12 @@ class WidgetBase(object):
                 self.__class__.get_focused_widget(self) is None:
             self.focus()
 
+    def __del__(self):
+        if self.sdl_texture != None:
+            sdl.SDL_DestroyTexture(self.sdl_texture)
+            self.sdl_texture = None
+        return
+
     def renderer_update(self):
         if self.sdl_texture != None:
             sdl.SDL_DestroyTexture(self.sdl_texture)
