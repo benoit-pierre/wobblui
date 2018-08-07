@@ -48,8 +48,8 @@ class WidgetBase(object):
             if self_value is None:
                 return
             dpi_scale = self_value.style.dpi_scale
-            tex_x = max(1, round(self_value.width * dpi_scale))
-            tex_y = max(1, round(self_value.height * dpi_scale))
+            tex_x = max(1, round(self_value.width))
+            tex_y = max(1, round(self_value.height))
             if self_value.sdl_texture is None or \
                     self_value.sdl_texture_width != tex_x or \
                     self_value.sdl_texture_height != tex_y:
@@ -112,7 +112,19 @@ class WidgetBase(object):
         return self.get_style()
 
     def get_style(self):
-        raise NotImplementedError("this widget has no style")
+        return None
+
+    def recursive_needs_redraw(self):
+        self.needs_redraw = True
+        for child in self.children:
+            child.recursive_needs_redraw()
+
+    @property
+    def dpi_scale(self):
+        s = self.style
+        if s != None:
+            return s.dpi_scale
+        return 1.0
 
     def get_natural_width(self):
         return self.width
@@ -138,8 +150,8 @@ class WidgetBase(object):
         tg = sdl.SDL_Rect()
         tg.x = x
         tg.y = y
-        tg.w = max(1, round(self.width * self.style.dpi_scale))
-        tg.h = max(1, round(self.height * self.style.dpi_scale))
+        tg.w = max(1, round(self.width))
+        tg.h = max(1, round(self.height))
         src = sdl.SDL_Rect()
         src.x = 0
         src.y = 0
@@ -158,7 +170,7 @@ class WidgetBase(object):
             self.needs_redraw = False
             self.redraw()
             return True
-        return False
+        return (self.needs_redraw is True)
 
     def do_redraw(self):
         pass
@@ -166,12 +178,16 @@ class WidgetBase(object):
     def set_max_width(self, w):
         if w != None:
             w = max(0, int(w))
+        if self._max_width == w:
+            return
         self._max_width = w
         self.resized()
 
     def set_max_height(self, w):
         if w != None:
             w = max(0, int(w))
+        if self._max_height == w:
+            return
         self._max_height = w
         self.resized()
 
@@ -189,15 +205,18 @@ class WidgetBase(object):
 
     @width.setter
     def width(self, v):
-        self.size_change(v, self.height)
+        if self._width != v:
+            self.size_change(v, self.height)
 
     @height.setter
     def height(self, h):
-        self.size_change(self.width, h)
+        if self._height != h:
+            self.size_change(self.width, h)
 
     def size_change(self, w, h):
         self._width = w
         self._height = h
+        self.needs_redraw = True
         self.resized()
 
     @staticmethod
@@ -290,6 +309,8 @@ class WidgetBase(object):
                 "not a container, can't add children")
         self._children.append(item)
         item.internal_override_parent(self)
+        self.needs_redraw = True
+        self.resized()
 
     def internal_override_parent(self, parent):
         self._parent = parent
@@ -300,6 +321,9 @@ class WidgetBase(object):
 
     @property
     def children(self):
-        return copy.copy(self._children)
+        return copy.copy(self.get_children())
+
+    def get_children(self):
+        return self._children
 
 

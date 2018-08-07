@@ -69,6 +69,7 @@ class AppStyleBright(AppStyle):
     def __init__(self):
         super().__init__()
         self.set("widget_bg", "#ccc")
+        self.set("window_bg", "#efeeed")
         self.set("button_bg", "#bbb")
         self.set("widget_disabled_bg", "#aaa")
         self.set("inner_widget_bg", "#ddd")
@@ -85,7 +86,9 @@ class AppStyleDark(AppStyle):
     def __init__(self):
         super().__init__()
         self.set("widget_bg", "#333")
+        self.set("window_bg", "#222")
         self.set("button_bg", "#444")
+        self.set("toolbar_bg", "#666")
         self.set("widget_disabled_bg", "#333")
         self.set("inner_widget_bg", "#111")
         self.set("widget_text", "#ccc")

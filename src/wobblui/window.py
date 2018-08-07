@@ -4,6 +4,7 @@ import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import weakref
 
+from wobblui.color import Color
 from wobblui.event import Event
 from wobblui.widget_base import WidgetBase
 from wobblui.style import AppStyleDark
@@ -74,6 +75,11 @@ class Window(WidgetBase):
     def get_style(self):
         return self._style
 
+    def set_style(self, style):
+        self._style = style
+        self.recursive_needs_redraw()
+        self.redraw()
+
     @property
     def sdl_window_id(self):
         if self._sdl_window is None:
@@ -98,9 +104,18 @@ class Window(WidgetBase):
     def do_redraw(self):
         self.draw_children()
 
+    def _internal_on_resized(self):
+        for child in self.children:
+            child.width = self.width
+            child.height = self.height
+
     def _internal_on_post_redraw(self):
         sdl.SDL_SetRenderTarget(self.renderer, None)
-        sdl.SDL_SetRenderDrawColor(self.renderer, 255, 245, 250, 255)
+        c = Color.white
+        if self.style != None:
+            c = Color(self.style.get("window_bg"))
+        sdl.SDL_SetRenderDrawColor(self.renderer, c.red,
+            c.blue, c.green, 255)
         sdl.SDL_RenderClear(self.renderer)
         if self.sdl_texture != None:
             self.draw(0, 0)

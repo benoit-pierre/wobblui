@@ -32,6 +32,10 @@ class Color(object, metaclass=BaseColors):
             else:
                 raise ValueError("unrecognized color " +
                     "value: " + str(from_value))
+        elif isinstance(from_value, tuple) and len(from_value) == 3:
+            self.red = max(0, min(255, round(from_value[0])))
+            self.green = max(0, min(255, round(from_value[1])))
+            self.blue = max(0, min(255, round(from_value[2])))
         elif isinstance(from_value, Color):
             self.red = from_value.red
             self.green = from_value.green

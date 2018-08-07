@@ -30,6 +30,7 @@ class RichTextFragment(RichTextObj):
         self.italic = italic
         self.px_size = px_size
         self.align = None
+        self.draw_scale = 1.0
 
     def __repr__(self):
         t = "<RichTextFragment '" +\
@@ -38,9 +39,11 @@ class RichTextFragment(RichTextObj):
             " y: " + str(self.y) + ">"
         return t
 
-    def draw(self, renderer, x, y, color=None, draw_scale=1.0):
+    def draw(self, renderer, x, y, color=None, draw_scale=None):
         if color is None:
             color = Color.black
+        if draw_scale is None:
+            draw_scale = self.draw_scale
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=round(self.px_size * draw_scale))
@@ -72,14 +75,16 @@ class RichTextFragment(RichTextObj):
         text_part = self.text[:index]
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
-            px_size=self.px_size)
+            px_size=self.px_size,
+            draw_scale=self.draw_scale)
         (w, h) = font.render_size(text_part)
         return w
 
     def get_height(self):
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
-            px_size=self.px_size)
+            px_size=self.px_size,
+            draw_scale=self.draw_scale)
         (w, h) = font.render_size(self.text)
         return h
 
@@ -124,14 +129,23 @@ class RichTextLinebreak(RichTextObj):
 
 class RichText(RichTextObj):
     def __init__(self, text="", font_family="Tex Gyre Heros",
-            px_size=12):
+            px_size=12, draw_scale=1.0):
         super().__init__()
         self.default_font_family = font_family
         self.default_px_size = px_size
+        self.draw_scale = 1.0
         self.fragments = []
         if len(text) > 0:
             self.fragments.append(RichTextFragment(
                 text, font_family, False, False, px_size))
+
+    def copy(self):
+        new_text = copy.copy(self)
+        new_fragments = []
+        for fragment in self.fragments:
+            new_fragments.append(fragment.copy())
+        new_text.fragments = new_fragments
+        return new_text
 
     def layout(self, max_width=None, align_if_none=None):
         layouted_elements = []
@@ -161,6 +175,7 @@ class RichText(RichTextObj):
             else:
                 current_y += max(1, font_manager().get_font(
                     self.default_font_family,
+                    draw_scale=self.draw_scale,
                     px_size=self.default_px_size).\
                     render_size(" ")[1])
             layout_h = max(layout_h, current_y)
@@ -209,6 +224,7 @@ class RichText(RichTextObj):
                 layouted_elements[-1].y = current_y
                 add_line_break()
                 continue
+            next_element.draw_scale = self.draw_scale
 
             # Skip empty fragments:
             part_amount = len(next_element.parts)
@@ -221,7 +237,8 @@ class RichText(RichTextObj):
             next_width = None
             while part_amount > 0:
                 letters = len("".join(next_element.parts[:part_amount]))
-                next_width = next_element.get_width_up_to_length(letters)
+                next_width = next_element.\
+                    get_width_up_to_length(letters)
                 if max_width is None or \
                         current_x + next_width <= max_width:
                     break
