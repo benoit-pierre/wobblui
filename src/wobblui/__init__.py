@@ -34,33 +34,40 @@ def event_loop():
                     window.unfocus()
                 for w_ref in all_windows:
                     w = w_ref()
-                    if w is None:
+                    if w is None or w.is_closed:
                         continue
-                    w.closed()
+                    w.destroyed()
                 return
             elif event.type == sdl.SDL_WINDOWEVENT:
                 if event.window.event == \
                         sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
                     w = get_window_by_sdl_id(event.window.windowID)
-                    if w != None and not w.focused:
+                    if w != None and not w.focused and not w.is_closed:
                         w.focus()
                         w.redraw()
                 elif event.window.event == \
                         sdl.SDL_WINDOWEVENT_RESIZED:
                     w = get_window_by_sdl_id(event.window.windowID)
-                    if w != None:
+                    if w != None and not w.is_closed:
                         w.update_to_real_sdlw_size()
                 elif event.window.event == \
                         sdl.SDL_WINDOWEVENT_FOCUS_LOST:
                     w = get_window_by_sdl_id(event.window.windowID)
-                    if w != None and w.focused:
+                    if w != None and w.focused and not w.is_closed:
                         w.unfocus()
-                if (event.window.event ==
+                elif event.window.event == \
+                        sdl.SDL_WINDOWEVENT_CLOSE:
+                    w = get_window_by_sdl_id(event.window.windowID)
+                    if w != None:
+                        if w.focused:
+                            w.unfocus()
+                        w.handle_sdlw_close()
+                elif (event.window.event ==
                         sdl.SDL_WINDOWEVENT_HIDDEN or
                         event.window.event ==
                         sdl.SDL_WINDOWEVENT_MINIMIZED):
                     w = get_window_by_sdl_id(event.window.windowID)
-                    if w != None and not w.hidden:
+                    if w != None and not w.hidden and not w.is_closed:
                         w.set_hidden(True)
                 elif (event.window.event ==
                         sdl.SDL_WINDOWEVENT_RESTORED or
@@ -69,7 +76,7 @@ def event_loop():
                         event.window.event ==
                         sdl.SDL_WINDOWEVENT_MAXIMIZED):
                     w = get_window_by_sdl_id(event.window.windowID)
-                    if w != None and w.hidden:
+                    if w != None and w.hidden and not w.is_closed:
                         w.set_hidden(False)
 
 

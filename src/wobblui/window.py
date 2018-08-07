@@ -50,7 +50,8 @@ class Window(WidgetBase):
         self.hiding = Event("hiding", owner=self)
         self.shown = Event("shown", owner=self)
         self.closing = Event("closing", owner=self)
-        self.closed = Event("closed", owner=self)
+        self.destroyed = Event("destroyed", owner=self)
+        self.is_closed = False
         self._sdl_window = sdl.SDL_CreateWindow(
             title.encode("utf-8", "replace"),
             sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
@@ -61,6 +62,21 @@ class Window(WidgetBase):
         self._unclosable = False
         self.update_to_real_sdlw_size()
         all_windows.append(weakref.ref(self))
+
+    def handle_sdlw_close(self):
+        self.is_closed = True
+        if self._renderer != None:
+            self._renderer = None
+            for child in self.children:
+                child.renderer_update()
+            sdl.SDL_DestroyRenderer(self._renderer)
+        self._renderer = None
+        sdl.SDL_DestroyWindow(self._sdl_window)
+        self._sdl_window = None
+        if not self._unclosable:
+            del(self._children)
+            self._children = []
+            self.destroyed()
 
     def update_to_real_sdlw_size(self):
         w = ctypes.c_int32()
