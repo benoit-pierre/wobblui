@@ -30,18 +30,43 @@ class Topbar(Widget):
 
     def do_redraw(self):
         self.relayout()
+        border_size = max(1, round(
+            2.0 * self.dpi_scale))
         c = Color((100, 100, 100))
         if self.style != None:
             c = Color(self.style.get("topbar_bg"))
         sdl.SDL_SetRenderDrawColor(self.renderer,
             255, 255, 255, 255)
         sdl.SDL_RenderClear(self.renderer)
+
+        # Draw topbar background:
+        topbar_actual_height = max(round(self.padding * 2),
+            self.topbar_height)
         draw_rectangle(self.renderer, 0, 0,
-            self._width, max(round(self.padding * 2),
-            self.topbar_height),
+            self._width, topbar_actual_height,
             color=c)
+
+        # Draw topbar items:
         for child in self.topbar_children:
             child.draw(child.x, child.y)
+
+        # Draw border:
+        c = Color((100, 100, 100))
+        if self.style != None:
+            c = Color(self.style.get("border"))
+        draw_rectangle(self.renderer, 0, topbar_actual_height,
+            self._width, border_size,
+            color=c)
+
+        # Draw background of below-topbar area:
+        c = Color((255, 255, 255))
+        if self.style != None:
+            c = Color(self.style.get("window_bg"))
+        draw_rectangle(self.renderer,
+            0, self.topbar_height + border_size,
+            self._width,
+            self._height - topbar_actual_height - border_size,
+            color=c)
 
     def relayout(self):
         topbar_height = round((5 + self.padding * 2) * self.dpi_scale)
