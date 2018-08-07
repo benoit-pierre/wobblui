@@ -46,8 +46,30 @@ def event_loop():
                         w.focus()
                         w.redraw()
                 elif event.window.event == \
-                        sdl.SDL_WINDOWEVENT_FOCUS_LOST:
+                        sdl.SDL_WINDOWEVENT_RESIZED:
                     w = get_window_by_sdl_id(event.window.windowID)
                     if w != None:
+                        w.update_to_real_sdlw_size()
+                elif event.window.event == \
+                        sdl.SDL_WINDOWEVENT_FOCUS_LOST:
+                    w = get_window_by_sdl_id(event.window.windowID)
+                    if w != None and w.focused:
                         w.unfocus()
+                if (event.window.event ==
+                        sdl.SDL_WINDOWEVENT_HIDDEN or
+                        event.window.event ==
+                        sdl.SDL_WINDOWEVENT_MINIMIZED):
+                    w = get_window_by_sdl_id(event.window.windowID)
+                    if w != None and not w.hidden:
+                        w.set_hidden(True)
+                elif (event.window.event ==
+                        sdl.SDL_WINDOWEVENT_RESTORED or
+                        event.window.event ==
+                        sdl.SDL_WINDOWEVENT_EXPOSED or
+                        event.window.event ==
+                        sdl.SDL_WINDOWEVENT_MAXIMIZED):
+                    w = get_window_by_sdl_id(event.window.windowID)
+                    if w != None and w.hidden:
+                        w.set_hidden(False)
+
 

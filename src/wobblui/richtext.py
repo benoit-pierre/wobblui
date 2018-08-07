@@ -1,5 +1,6 @@
 
 import copy
+import ctypes
 import html
 import sdl2 as sdl
 
@@ -14,6 +15,11 @@ class RichTextObj(object):
         self.width = None
         self.height = None
 
+    def __repr__(self):
+        t = "<RichTextObj x:" + str(self.x) +\
+            " y: " + str(self.y) + ">"
+        return t
+
 class RichTextFragment(RichTextObj):
     def __init__(self, text, font_family, bold, italic,
             px_size):
@@ -25,6 +31,13 @@ class RichTextFragment(RichTextObj):
         self.px_size = px_size
         self.align = None
 
+    def __repr__(self):
+        t = "<RichTextFragment '" +\
+            str(self.text).replace("'", "'\"'\"'") +\
+            "' x:" + str(self.x) +\
+            " y: " + str(self.y) + ">"
+        return t
+
     def draw(self, renderer, x, y, color=None, draw_scale=1.0):
         if color is None:
             color = Color.black
@@ -33,17 +46,21 @@ class RichTextFragment(RichTextObj):
             px_size=round(self.px_size * draw_scale))
         tex = font.render_text_as_sdl_texture(renderer,
             self.text, color=color)
+        w = ctypes.c_int32()
+        h = ctypes.c_int32()
+        sdl.SDL_QueryTexture(tex, None, None,
+            ctypes.byref(w), ctypes.byref(h))
         tg = sdl.SDL_Rect()
         tg.x = x
         tg.y = y
-        tg.w = 0
-        tg.h = 0
-        sdl.SDL_SetRenderDrawColor(self.renderer,
+        tg.w = w.value
+        tg.h = h.value
+        sdl.SDL_SetRenderDrawColor(renderer,
             round(color.red), round(color.green),
             round(color.blue), 255)
-        sdl.SDL_RenderCopy(self.renderer,
-            self.sdl_texture, None, tg)
-        SDL_RenderCopy(renderer, tex, None, tg)
+        sdl.SDL_RenderCopy(renderer,
+            tex, None, tg)
+        sdl.SDL_DestroyTexture(tex)
 
     def copy(self):
         return copy.copy(self)
@@ -83,6 +100,7 @@ class RichTextFragment(RichTextObj):
             t = "<i>" + t + "</i>"
         return t
 
+    @property
     def parts(self):
         last_i = 0
         split_chars = set([",", ".", ":",
@@ -92,11 +110,11 @@ class RichTextFragment(RichTextObj):
         while i < len(self.text):
             c = self.text[i]
             if c in split_chars:
-                result.append(self.text[lasti + 1:i])
-                lasti = i 
+                result.append(self.text[last_i + 1:i])
+                last_i = i
             i += 1
-        if lasti + 1 < i:
-            result.append(self.text[lasti + 1:])
+        if last_i + 1 < i:
+            result.append(self.text[last_i + 1:])
         return result
 
 class RichTextLinebreak(RichTextObj):
@@ -130,7 +148,8 @@ class RichText(RichTextObj):
         def add_line_break():
             nonlocal current_x, current_y, \
                 current_line_elements,\
-                max_height_seen_in_line
+                max_height_seen_in_line,\
+                layout_w, layout_h
             if current_line_elements > 0:
                 clen = len(layouted_elements)
                 layout_line_indexes.append((
@@ -151,7 +170,7 @@ class RichText(RichTextObj):
         # Helper function to shift elements in a specific line to
         # adapt to different alignments:
         def adjust_line_alignment(start_index, end_index):
-            nonlocal current_line_elements
+            nonlocal current_line_elements, layout_w, layouted_elements
             line_alignment = None
             elements_width = 0
             k = start_index
@@ -165,6 +184,7 @@ class RichText(RichTextObj):
             if line_alignment == "left" or line_alignment == None:
                 return
             align_to_width = max_width or layout_w
+            layout_w = align_to_width
             shift_space = max(0, align_to_width - elements_width)
             if line_alignment == "center" or line_alignment == "right":
                 shift_width = shift_space
@@ -220,6 +240,7 @@ class RichText(RichTextObj):
             if part_amount == 0:
                 add_line_break()
                 continue
+            old_max_height_seen_in_line = None
             if partial:
                 split_before = next_element.copy()
                 left_over_fragment = next_element.copy()
@@ -233,6 +254,7 @@ class RichText(RichTextObj):
                     max_height_seen_in_line = split_before.get_height()
                 max_height_seen_in_line = max(
                     max_height_seen_in_line, split_before.get_height())
+                old_max_height_seen_in_line = max_height_seen_in_line
                 current_line_elements += 1
                 layout_w = max(layout_w, current_x)
                 layouted_elements.append(split_before)
@@ -241,20 +263,19 @@ class RichText(RichTextObj):
                 added = next_element.copy()
                 added.x = current_x
                 added.y = current_y
-                added.width = added.get_height()
+                added.width = added.get_width()
                 added.height = added.get_height()
                 if max_height_seen_in_line is None:
                     max_height_seen_in_line = added.get_height()
                 max_height_seen_in_line = max(
                     max_height_seen_in_line, added.get_height())
+                old_max_height_seen_in_line = max_height_seen_in_line
                 current_x += added.width
                 current_line_elements += 1
                 layout_w = max(layout_w, current_x)
-                layouted_elements.append(split_before)
-                if i < len(self.fragments) - 1:
-                    add_line_break()
+                layouted_elements.append(added)
                 i += 1
-            layout_h = max(layout_h, current_y + max_height_seen_in_line)
+            layout_h = max(layout_h, current_y + old_max_height_seen_in_line)
         # Record last line pair if not empty:
         if current_line_elements > 0:
             clen = len(layouted_elements)
@@ -339,7 +360,7 @@ class RichText(RichTextObj):
 
         def visit_item(item):
             nonlocal new_fragments, in_bold, in_italic, \
-                line_empty
+                line_empty, at_block_start
             if item.node_type == "element" and \
                     item.name.lower() == "b":
                 in_bold += 1
@@ -358,10 +379,12 @@ class RichText(RichTextObj):
                 font = self.default_font_family
                 bold = (in_bold > 0)
                 italic = (in_italic > 0)
+                text = item.content
                 if at_block_start:
-                    while text.startswith("\n") or text.startswith("\r"):
+                    while text.startswith("\n") or \
+                            text.startswith("\r"):
                         text = text[1:]
-                text = item.content.replace("\n", " ").\
+                text = text.replace("\n", " ").\
                     replace("\r", " ")
                 while text.find("  ") >= 0:
                     text = text.replace("  ", " ")
@@ -384,7 +407,7 @@ class RichText(RichTextObj):
                     add_line_break()
                 at_block_start = True
                 line_empty = False
-        htmlparser.depth_first_walker(html, visit_item,
+        htmlparse.depth_first_walker(html, visit_item,
             visit_out_callback=leave_item)
         self.fragments = new_fragments
         self.simplify()

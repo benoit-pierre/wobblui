@@ -40,6 +40,10 @@ class Color(object, metaclass=BaseColors):
             raise ValueError("unrecognized color " +
                 "value: " + str(from_value))
 
+    def __repr__(self):
+        return "<Color " + str((
+            self.red, self.green, self.blue)) + ">"
+
     @property
     def html(self):
         def tohex(v):

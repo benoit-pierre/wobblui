@@ -1,4 +1,5 @@
 
+import ctypes
 import functools
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
@@ -31,10 +32,14 @@ class Font(object):
         if len(text) == 0:
             return (0, 0)
         font = self.get_sdl_font()
-        width = ctypes.cint32()
-        height = ctypes.cint32()
-        if sdlttf.TTF_SizeText(font, text, ctypes.byvalue(
-                width), ctypes.byvalue(height)) != 0:
+        width = ctypes.c_int32()
+        height = ctypes.c_int32()
+        try:
+            text = text.encode("utf-8", "replace")
+        except AttributeError:
+            pass
+        if sdlttf.TTF_SizeText(font, text, ctypes.byref(
+                width), ctypes.byref(height)) != 0:
             raise RuntimeError("TTF_SizeText failed")
         return (int(width.value), int(height.value))
 

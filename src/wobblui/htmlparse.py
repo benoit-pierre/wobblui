@@ -478,18 +478,20 @@ def depth_first_walker(html, callback, visit_out_callback=None):
                 # parent of which we've now visited all children:
                 nestings = nestings[:-1]
                 if visit_out_callback != None and len(nestings) > 0:
-                    result = visit_out_callback(nestings[-1][0])
+                    result = visit_out_callback(nestings[-1][0]\
+                        [nestings[-1][1]])
                     if result is False:
-                        return nestings[-1][0]
+                        return nestings[-1][0][nestings[-1][1]]
                 # While we continue to have no siblings left on the path
                 # upwards, continue to call visit out and ascend:
                 while len(nestings) > 0 and \
                         not len(nestings[-1][0]) > nestings[-1][1] + 1:
                     nestings = nestings[:-1]
                     if visit_out_callback != None and len(nestings) > 0:
-                        result = visit_out_callback(nestings[-1][0])
+                        result = visit_out_callback(nestings[-1][0]\
+                            [nestings[-1][1]])
                         if result is False:
-                            return nestings[-1][0]
+                            return nestings[-1][0][nestings[-1][1]]
                 # If no layers are left, stop:
                 if len(nestings) == 0:
                     current_element = None

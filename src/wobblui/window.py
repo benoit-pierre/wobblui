@@ -1,4 +1,5 @@
 
+import ctypes
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import weakref
@@ -45,16 +46,30 @@ class Window(WidgetBase):
         self._hidden = False
         self._width = width
         self._height = height
+        self.hiding = Event("hiding", owner=self)
+        self.shown = Event("shown", owner=self)
         self.closing = Event("closing", owner=self)
         self.closed = Event("closed", owner=self)
         self._sdl_window = sdl.SDL_CreateWindow(
             title.encode("utf-8", "replace"),
             sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
-            width, height, sdl.SDL_WINDOW_SHOWN)
+            width, height, sdl.SDL_WINDOW_SHOWN |
+            sdl.SDL_WINDOW_RESIZABLE)
         self._renderer = \
             sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
         self._unclosable = False
+        self.update_to_real_sdlw_size()
         all_windows.append(weakref.ref(self))
+
+    def update_to_real_sdlw_size(self):
+        w = ctypes.c_int32()
+        h = ctypes.c_int32()
+        sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
+            ctypes.byref(h))
+        self._width = w.value
+        self._height = h.value
+        self.resized()
+        self.needs_redraw = True 
 
     def get_style(self):
         return self._style
@@ -69,12 +84,23 @@ class Window(WidgetBase):
     def hidden(self):
         return self._hidden
 
+    def set_hidden(self, new_status):
+        new_status = (new_status is True)
+        if new_status != self._hidden:
+            self._hidden = new_status
+            if self.focused and self.hidden:
+                self.unfocus()
+            if self.hidden:
+                self.hiding()
+            else:
+                self.shown()
+
     def do_redraw(self):
         self.draw_children()
 
     def _internal_on_post_redraw(self):
         sdl.SDL_SetRenderTarget(self.renderer, None)
-        sdl.SDL_SetRenderDrawColor(self.renderer, 155, 145, 150, 255)
+        sdl.SDL_SetRenderDrawColor(self.renderer, 255, 245, 250, 255)
         sdl.SDL_RenderClear(self.renderer)
         if self.sdl_texture != None:
             self.draw(0, 0)

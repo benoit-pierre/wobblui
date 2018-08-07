@@ -54,7 +54,9 @@ class WidgetBase(object):
                     self_value.sdl_texture_width != tex_x or \
                     self_value.sdl_texture_height != tex_y:
                 if self_value.renderer is None or \
-                        self_value.width <= 0 or self_value.height <= 0:
+                        tex_x <= 0 or tex_y <= 0:
+                    if self_value.renderer is None:
+                        self.needs_redraw = True
                     return
                 if self_value.sdl_texture != None:
                     sdl.SDL_DestroyTexture(self_value.sdl_texture)
@@ -81,7 +83,8 @@ class WidgetBase(object):
             sdl.SDL_RenderClear(self_value.renderer)
             sdl.SDL_SetRenderDrawColor(self_value.renderer,
                 255, 255, 255, 255)
-            self_value.do_redraw()
+            if hasattr(self_value, "do_redraw"):
+                self_value.do_redraw()
             sdl.SDL_RenderPresent(self_value.renderer)
             sdl.SDL_SetRenderTarget(self_value.renderer, old_target)
             self_value.post_redraw()
@@ -119,6 +122,7 @@ class WidgetBase(object):
 
     def draw_children(self):
         for child in self.children:
+            child.redraw_if_necessary()
             sdl.SDL_SetRenderDrawColor(self.renderer,
                 255, 255, 255, 255)
             child.draw(child.x, child.y)
@@ -148,10 +152,13 @@ class WidgetBase(object):
 
     def redraw_if_necessary(self):
         for child in self.children:
-            child.redraw_if_necessary()
+            if child.redraw_if_necessary():
+                self.needs_redraw = True
         if self.needs_redraw:
-            self.redraw()
             self.needs_redraw = False
+            self.redraw()
+            return True
+        return False
 
     def do_redraw(self):
         pass
@@ -282,6 +289,10 @@ class WidgetBase(object):
             raise RuntimeError("this widget is " +
                 "not a container, can't add children")
         self._children.append(item)
+        item.internal_override_parent(self)
+
+    def internal_override_parent(self, parent):
+        self._parent = parent
 
     @property
     def parent(self):

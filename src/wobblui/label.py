@@ -1,4 +1,6 @@
 
+import sdl2 as sdl
+
 from wobblui.color import Color
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
@@ -10,9 +12,14 @@ class Label(Widget):
         px_size = self.style.get("widget_text_size") 
         self.text_obj = RichText(font_family=font_family,
             px_size=px_size)
-        self.text_obj.set_text(text)
-        self.color = Color.black
         self._current_align = "left"
+        if text.find("<") >= 0 and (text.find("/>") > 0 or
+                text.find("/ >") > 0 or
+                (text.find("</") > 0 and text.find(">") > 0)):
+            self.html = text
+        else:
+            self.text = text
+        self.color = Color.black
         self._layout_max_width = None
 
     def update_window(self):
@@ -26,7 +33,7 @@ class Label(Widget):
         if self._current_align == alignment:
             return
         self._current_align = alignment
-        self.update_layout
+        self.update_layout()
 
     def do_redraw(self):
         for fragment in self.text_obj.fragments:
