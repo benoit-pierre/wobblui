@@ -28,10 +28,13 @@ class Topbar(Widget):
         self.relayout()
         self.needs_redraw = True
 
+    @property
+    def border_size(self):
+        return max(1, round(
+            2.0 * self.dpi_scale))
+
     def do_redraw(self):
         self.relayout()
-        border_size = max(1, round(
-            2.0 * self.dpi_scale))
         c = Color((100, 100, 100))
         if self.style != None:
             c = Color(self.style.get("topbar_bg"))
@@ -55,7 +58,7 @@ class Topbar(Widget):
         if self.style != None:
             c = Color(self.style.get("border"))
         draw_rectangle(self.renderer, 0, topbar_actual_height,
-            self._width, border_size,
+            self._width, self.border_size,
             color=c)
 
         # Draw background of below-topbar area:
@@ -63,9 +66,9 @@ class Topbar(Widget):
         if self.style != None:
             c = Color(self.style.get("window_bg"))
         draw_rectangle(self.renderer,
-            0, self.topbar_height + border_size,
+            0, self.topbar_height + self.border_size,
             self._width,
-            self._height - topbar_actual_height - border_size,
+            self._height - topbar_actual_height - self.border_size,
             color=c)
 
         # Draw below-topbar items:
@@ -92,6 +95,11 @@ class Topbar(Widget):
                 child.height + self.padding * 2 * self.dpi_scale),
                 topbar_height)
             current_x += math.ceil(child.width)
+        for child in self._children:
+            child.x = 0
+            child.y = topbar_height + self.border_size
+            child.width = self.width
+            child.height = self.height - child.y
         self.topbar_height = topbar_height
         if self._height < topbar_height:
             self._height = topbar_height

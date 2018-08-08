@@ -20,6 +20,7 @@ class ListEntry(object):
             px_size=px_size,
             draw_scale=style.dpi_scale)
         self.text_obj.set_html(html)
+        self.text = self.text_obj.text
         self._max_width = None
         self.need_size_update = True
         self.dpi_scale = 1.0
@@ -92,12 +93,19 @@ class ListEntry(object):
         mw = self.max_width
         if mw != None:
             mw -= padding * 2
+        is_empty = False
+        if self.text_obj.text == "":
+            is_empty = True
+            self.text_obj.text = " "
         (self.text_width, self.text_height) = self.text_obj.layout(
             max_width=mw)
         self._width = round(self.text_width + padding)
         if self.max_width != None and self.max_width < self._width:
             self._width = self.max_width
         self._height = round(self.text_height + padding)
+        if is_empty:
+            self.text_width = 0
+            self.text_obj.text = ""
 
 class List(Widget):
     def __init__(self):
@@ -136,15 +144,16 @@ class List(Widget):
         for entry in self._entries:
             entry_id += 1
             if entry.width > self.width and (entry.max_width is None
-                    or entry.max_wdith != self.width):
+                    or entry.max_width != self.width):
                 entry.max_width = self.width
             elif entry.width < self.width and (entry.max_width != self.width):
                 entry.max_width = self.width
-            entry.draw(self.renderer, cx, cy, draw_selected=(
-                entry_id == self._selected_index and
-                entry_id != self._hover_index),
-                width=self.width,
-                draw_hover=(entry_id == self._hover_index))
+            if entry_id == 1 or True:
+                entry.draw(self.renderer, cx, cy, draw_selected=(
+                    entry_id == self._selected_index and
+                    entry_id != self._hover_index),
+                    width=self.width,
+                    draw_hover=(entry_id == self._hover_index))
             cy += round(entry.height)
 
     def get_natural_width(self):

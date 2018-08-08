@@ -52,19 +52,27 @@ class Window(WidgetBase):
         self.closing = Event("closing", owner=self)
         self.destroyed = Event("destroyed", owner=self)
         self.is_closed = False
+        self._title = title
+        self.next_reopen_width = width
+        self.next_reopen_height = height
+        self.internal_app_reopen()
+        all_windows.append(weakref.ref(self))
+
+    def internal_app_reopen(self):
         self._sdl_window = sdl.SDL_CreateWindow(
-            title.encode("utf-8", "replace"),
+            self._title.encode("utf-8", "replace"),
             sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
-            width, height, sdl.SDL_WINDOW_SHOWN |
+            self.next_reopen_width,
+            self.next_reopen_height, sdl.SDL_WINDOW_SHOWN |
             sdl.SDL_WINDOW_RESIZABLE)
         self._renderer = \
             sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
         self._unclosable = False
         self.update_to_real_sdlw_size()
-        all_windows.append(weakref.ref(self))
 
     def handle_sdlw_close(self):
-        self.is_closed = True
+        self.next_reopen_width = self._width
+        self.next_reopen_height = self._height
         if self._renderer != None:
             self._renderer = None
             for child in self.children:
@@ -74,6 +82,7 @@ class Window(WidgetBase):
         sdl.SDL_DestroyWindow(self._sdl_window)
         self._sdl_window = None
         if not self._unclosable:
+            self.is_closed = True
             del(self._children)
             self._children = []
             self.destroyed()

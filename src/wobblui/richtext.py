@@ -114,16 +114,20 @@ class RichTextFragment(RichTextObj):
         split_after_chars = set([",", ".", ":",
             "!", "'", "\"", "-", "=", "?"])
         result = []
-        i = -1
+        i = 0
         while i < len(self.text):
             c = self.text[i]
             if c in split_after_chars or (i + 1 < len(self.text)
                     and self.text[i + 1] in split_before_chars):
-                result.append(self.text[last_i + 1:i])
-                last_i = i
+                part = self.text[last_i + 1:i]
+                if len(part) > 0:
+                    result.append(part)
+                    last_i = i
             i += 1
         if last_i + 1 < i:
-            result.append(self.text[last_i + 1:])
+            part = self.text[last_i + 1:]
+            if len(part) > 0:
+                result.append(part)
         return result
 
 class RichTextLinebreak(RichTextObj):
@@ -181,7 +185,7 @@ class RichText(RichTextObj):
                 assert(clen > 0)
                 forward_start = 0
                 if isinstance(
-                        layouted_elements[current_line_elements - clen],
+                        layouted_elements[clen - current_line_elements],
                         RichTextLinebreak):
                     forward_start = 1
                 substract_ending = 0
@@ -272,11 +276,11 @@ class RichText(RichTextObj):
                     break
                 partial = True
                 if part_amount == 1 and current_line_elements == 0:
-                    letters = len(next_element.parts[0])
+                    letters = max(1, len(next_element.parts[0]))
                     next_width = next_element.get_width_up_to_length(
                         letters)
                     while letters > 1 and \
-                            curent_x + next_width > max_width:
+                            current_x + next_width > max_width:
                         letters -= 1
                         next_width = next_element.get_width_up_to_length(
                             letters)
@@ -287,7 +291,8 @@ class RichText(RichTextObj):
                 # Don't increase i, we need to add the element next line.
                 continue
             old_max_height_seen_in_line = None
-            if partial:
+            if partial and letters < len(next_element.text):
+                assert(letters > 0)
                 split_before = next_element.copy()
                 left_over_fragment = next_element.copy()
                 split_before.text = split_before.text[:letters]

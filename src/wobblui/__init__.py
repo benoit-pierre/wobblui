@@ -78,5 +78,11 @@ def event_loop():
                     w = get_window_by_sdl_id(event.window.windowID)
                     if w != None and w.hidden and not w.is_closed:
                         w.set_hidden(False)
-
+            elif (event.type == sdl.SDL_APP_DIDENTERBACKGROUND):
+                print("APP BACKGROUND EVENT.")
+            elif (event.type == sdl.SDL_APP_WILLENTERFOREGROUND):
+                print("APP RESUME EVENT")
+                for w in all_windows:
+                    if not w.is_closed and w.sdl_window is None:
+                        w.internal_app_reopen()
 
