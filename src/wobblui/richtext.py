@@ -109,14 +109,16 @@ class RichTextFragment(RichTextObj):
 
     @property
     def parts(self):
-        last_i = 0
-        split_chars = set([",", ".", ":",
+        last_i = -1
+        split_before_chars = set([" ", "\n", "\r"])
+        split_after_chars = set([",", ".", ":",
             "!", "'", "\"", "-", "=", "?"])
         result = []
         i = -1
         while i < len(self.text):
             c = self.text[i]
-            if c in split_chars:
+            if c in split_after_chars or (i + 1 < len(self.text)
+                    and self.text[i + 1] in split_before_chars):
                 result.append(self.text[last_i + 1:i])
                 last_i = i
             i += 1
@@ -126,6 +128,7 @@ class RichTextFragment(RichTextObj):
 
 class RichTextLinebreak(RichTextObj):
     def __init__(self):
+        super().__init__()
         self.text = "\n"
         self.html = "<br/>"
 
@@ -168,8 +171,18 @@ class RichText(RichTextObj):
                 layout_w, layout_h
             if current_line_elements > 0:
                 clen = len(layouted_elements)
+                assert(clen > 0)
+                forward_start = 0
+                if isinstance(
+                        layouted_elements[current_line_elements - clen],
+                        RichTextLinebreak):
+                    forward_start = 1
+                substract_ending = 0
+                if isinstance(layouted_elements[-1], RichTextLinebreak):
+                    substract_ending = 1
                 layout_line_indexes.append((
-                    clen - current_line_elements, clen))
+                    clen - current_line_elements + forward_start,
+                    clen - substract_ending))
             line_alignment = None
             current_x = 0
             if max_height_seen_in_line != None:
@@ -192,9 +205,10 @@ class RichText(RichTextObj):
             elements_width = 0
             k = start_index
             while k < end_index:
-                if layouted_elements[k].align != None:
+                if hasattr(layouted_elements[k], "align") and \
+                        layouted_elements[k].align != None:
                     line_alignment = layouted_elements[k].align
-                layouted_elements[k].width
+                elements_width += layouted_elements[k].width
                 k += 1
             if line_alignment is None:
                 line_alignment = align_if_none
@@ -221,16 +235,21 @@ class RichText(RichTextObj):
                 next_element = left_over_fragment
                 left_over_fragment = None
             if isinstance(next_element, RichTextLinebreak):
-                layouted_elements.append(RichTextLinebreak)
+                layouted_elements.append(RichTextLinebreak())
                 layouted_elements[-1].x = current_x
                 layouted_elements[-1].y = current_y
+                current_line_elements += 1
                 add_line_break()
+                i += 1
                 continue
             next_element.draw_scale = self.draw_scale
 
             # Skip empty fragments:
             part_amount = len(next_element.parts)
             if part_amount == 0:
+                assert(next_element.text == "")
+                current_line_elements += 1
+                i += 1
                 continue
 
             # See how much we can fit into the line:
@@ -258,6 +277,7 @@ class RichText(RichTextObj):
                 part_amount -= 1
             if part_amount == 0:
                 add_line_break()
+                # Don't increase i, we need to add the element next line.
                 continue
             old_max_height_seen_in_line = None
             if partial:
@@ -278,6 +298,8 @@ class RichText(RichTextObj):
                 layout_w = max(layout_w, current_x)
                 layouted_elements.append(split_before)
                 add_line_break()
+                # Don't increase i, will be increased after processing partial
+                # element in next loop
             else:
                 added = next_element.copy()
                 added.x = current_x
@@ -298,8 +320,13 @@ class RichText(RichTextObj):
         # Record last line pair if not empty:
         if current_line_elements > 0:
             clen = len(layouted_elements)
+            forward_start = 0
+            if isinstance(
+                    layouted_elements[clen - current_line_elements],
+                    RichTextLinebreak):
+                forward_start = 1
             layout_line_indexes.append((
-                clen - current_line_elements, clen))
+                clen - current_line_elements + forward_start, clen))
 
         # Adjust line elements:
         for (start, end) in layout_line_indexes:
