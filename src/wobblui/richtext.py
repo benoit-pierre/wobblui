@@ -144,6 +144,13 @@ class RichText(RichTextObj):
             self.fragments.append(RichTextFragment(
                 text, font_family, False, False, px_size))
 
+    def draw(self, renderer, x, y, color=None, draw_scale=None):
+        for fragment in self.fragments:
+            if isinstance(fragment, RichTextLinebreak):
+                continue
+            fragment.draw(renderer, fragment.x + x, fragment.y + y,
+                color=color, draw_scale=draw_scale)
+
     def copy(self):
         new_text = copy.copy(self)
         new_fragments = []

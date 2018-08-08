@@ -1,6 +1,8 @@
 
 import html
 
+from wobblui.color import Color
+from wobblui.gfx import draw_rectangle
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
@@ -20,13 +22,31 @@ class ListEntry(object):
         self.text_obj.set_html(html)
         self._max_width = None
         self.need_size_update = True
-        self.dpi = 1.0
+        self.dpi_scale = 1.0
         if style != None:
-            self.dpi = style.dpi_scale
+            self.dpi_scale = style.dpi_scale
 
-    def draw(self, x, y, draw_selected=False, draw_hover=False,
+    def draw(self, renderer, x, y, draw_selected=False,
+            draw_hover=False, width=None,
             draw_keyboard_focus=False):
-        pass
+        c = Color((200, 200, 200))
+        if self.style != None:
+            c = Color(self.style.get("inner_widget_bg"))
+            if draw_selected:
+                c = Color(self.style.get("selected_bg"))
+        if width is None:
+            width = self.width
+        draw_rectangle(renderer, x, y,
+            width, self.height, c)
+        c = Color((0, 0, 0))
+        if self.style != None:
+            c = Color(self.style.get("widget_text"))
+            if draw_selected:
+                c = Color(self.style.get("selected_text"))
+        self.text_obj.draw(renderer,
+            round(5.0 * self.dpi_scale) + x,
+            round(5.0 * self.dpi_scale) + y,
+            color=c)
 
     def copy(self):
         li = ListEntry(self.html, self.style)
@@ -68,16 +88,16 @@ class ListEntry(object):
         if not self.need_size_update:
             return
         self.need_size_update = False
-        padding = max(0, 5.0 * self.dpi)
+        padding = max(0, 5.0 * self.dpi_scale)
         mw = self.max_width
         if mw != None:
-            mx -= padding * 2
+            mw -= padding * 2
         (self.text_width, self.text_height) = self.text_obj.layout(
             max_width=mw)
-        self._width = self.text_width + padding * 2
-        if self.max_width != None:
-            self.width = self.max_width
-        self._height = self.text_height + padding * 2
+        self._width = round(self.text_width + padding)
+        if self.max_width != None and self.max_width < self._width:
+            self._width = self.max_width
+        self._height = round(self.text_height + padding)
 
 class List(Widget):
     def __init__(self):
@@ -107,16 +127,25 @@ class List(Widget):
             self.needs_redraw = True
 
     def do_redraw(self):
+        c = Color.white
+        draw_rectangle(self.renderer, 0, 0,
+            self.width, self.height, c) 
         cx = 0
         cy = 0
         entry_id = -1
         for entry in self._entries:
             entry_id += 1
-            entry.draw(cx, cy, draw_selected=(
+            if entry.width > self.width and (entry.max_width is None
+                    or entry.max_wdith != self.width):
+                entry.max_width = self.width
+            elif entry.width < self.width and (entry.max_width != self.width):
+                entry.max_width = self.width
+            entry.draw(self.renderer, cx, cy, draw_selected=(
                 entry_id == self._selected_index and
                 entry_id != self._hover_index),
+                width=self.width,
                 draw_hover=(entry_id == self._hover_index))
-            cy += entry.height
+            cy += round(entry.height)
 
     def get_natural_width(self):
         w = 0

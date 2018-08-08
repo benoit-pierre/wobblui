@@ -68,6 +68,10 @@ class Topbar(Widget):
             self._height - topbar_actual_height - border_size,
             color=c)
 
+        # Draw below-topbar items:
+        for child in self._children:
+            child.draw(child.x, child.y)
+
     def relayout(self):
         topbar_height = round((5 + self.padding * 2) * self.dpi_scale)
         current_x = round(self.padding * self.dpi_scale)
