@@ -8,6 +8,30 @@ class BaseColors(type):
     def black(self):
         return Color("#000")
 
+    @property
+    def red(self):
+        return Color("#f00")
+
+    @property
+    def green(self):
+        return Color("#0f0")
+
+    @property
+    def blue(self):
+        return Color("#00f")
+
+    @property
+    def yellow(self):
+        return Color("#fe0")
+
+    @property
+    def orange(self):
+        return Color("#f70")
+
+    @property
+    def gray(self):
+        return Color("#444")
+
 class Color(object, metaclass=BaseColors):
     def __init__(self, from_value=None):
         self.red = 255
