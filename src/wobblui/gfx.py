@@ -1,4 +1,5 @@
 
+import math
 import sdl2 as sdl
 
 from wobblui.color import Color
@@ -16,6 +17,53 @@ def draw_rectangle(renderer, x, y, w, h, color=None):
         round(color.red), round(color.green),
         round(color.blue), 255)
     sdl.SDL_RenderFillRect(renderer, rect)
+
+def draw_dashed_line(renderer, x1, y1, x2, y2, color=None,
+        dash_length=7.0, thickness=3.0):
+    if color is None:
+        color = Color.black
+    if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
+        raise NotImplementedError("lines that aren't straight vertical or " +
+            "horizontal aren't implemented yet")
+    vertical = True
+    start_v = y1
+    end_v = y2
+    if abs(y1 - y2) < abs(x1 - x2):
+        vertical = False
+        start_v = x1
+        end_v = x2
+    if end_v < start_v:
+        v = end_v
+        end_v = start_v
+        start_v = v
+
+    # Draw dashed line:
+    curr_v = start_v
+    while curr_v < end_v:
+        if dash_length != None:
+            next_dash_length = math.floor(
+                min(dash_length, end_v - curr_v))
+        else:
+            next_dash_length = math.floor(curr_v - end_v)
+        x = round(x1 - thickness / 2.0)
+        y = round(y2 - thickness / 2.0)
+        w = round(thickness)
+        h = round(thickness)
+        if vertical:
+            y = round(curr_v)
+            h = next_dash_length
+        else:
+            x = round(curr_v)
+            w = next_dash_length
+        draw_rectangle(renderer, x, y, w, h, color=color)
+        if dash_length != None:
+            curr_v += dash_length * 2.0
+        else:
+            curr_v = end_v + 1.0
+
+def draw_line(renderer, x1, y1, x2, y2, color=None, thickness=3.0):
+    draw_dashed_line(renderer, x1, y1, x2, y2, color=color,
+        dash_length=None, thickness=thickness)
 
 def draw_font(renderer, text, x, y,
         px_size=12, bold=False, italic=False,
