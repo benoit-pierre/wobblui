@@ -11,8 +11,10 @@ def draw_rectangle(renderer, x, y, w, h, color=None):
     rect = sdl.SDL_Rect()
     rect.x = max(0, round(x))
     rect.y = max(0, round(y))
-    rect.w = round(abs(w))
-    rect.h = round(abs(h))
+    rect.w = round(abs(w) + min(0, x))
+    rect.h = round(abs(h) + min(0, y))
+    if rect.w <= 0 or rect.h <= 0:
+        return
     sdl.SDL_SetRenderDrawColor(renderer,
         round(color.red), round(color.green),
         round(color.blue), 255)
