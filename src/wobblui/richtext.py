@@ -46,7 +46,8 @@ class RichTextFragment(RichTextObj):
             draw_scale = self.draw_scale
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
-            px_size=round(self.px_size * draw_scale))
+            px_size=self.px_size,
+            draw_scale=self.draw_scale)
         tex = font.render_text_as_sdl_texture(renderer,
             self.text, color=color)
         w = ctypes.c_int32()
@@ -54,8 +55,8 @@ class RichTextFragment(RichTextObj):
         sdl.SDL_QueryTexture(tex, None, None,
             ctypes.byref(w), ctypes.byref(h))
         tg = sdl.SDL_Rect()
-        tg.x = x
-        tg.y = y
+        tg.x = round(x)
+        tg.y = round(y)
         tg.w = w.value
         tg.h = h.value
         sdl.SDL_SetRenderDrawColor(renderer,
@@ -142,7 +143,7 @@ class RichText(RichTextObj):
         super().__init__()
         self.default_font_family = font_family
         self.default_px_size = px_size
-        self.draw_scale = 1.0
+        self.draw_scale = draw_scale
         self.fragments = []
         if len(text) > 0:
             self.fragments.append(RichTextFragment(
@@ -301,6 +302,7 @@ class RichText(RichTextObj):
                 split_before.x = current_x
                 split_before.y = current_y
                 split_before.width = next_width
+                layout_w = max(layout_w, current_x + next_width)
                 split_before.height = split_before.get_height()
                 if max_height_seen_in_line is None:
                     max_height_seen_in_line = split_before.get_height()
