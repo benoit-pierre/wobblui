@@ -167,7 +167,7 @@ class List(Widget):
 
         # Draw keyboard focus line if we have the focus:
         if self.focused or True:
-            focus_border_thickness = 2.0
+            focus_border_thickness = 1.0
             c = Color.red
             if c != None:
                 c = Color(self.style.get("focus_border"))
