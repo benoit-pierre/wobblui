@@ -2,6 +2,7 @@
 import math
 import sdl2 as sdl
 
+from wobblui.box import HBox
 from wobblui.color import Color
 from wobblui.gfx import draw_rectangle
 from wobblui.widget import Widget
@@ -16,14 +17,14 @@ class Topbar(Widget):
         if self.padding <= 0:
             self.child_padding = 0
         self.topbar_height = 0
-        self.topbar_children = []
+        self.topbar_box = HBox()
         self.relayout()
 
     def get_children(self):
-        return self._children + self.topbar_children
+        return self._children + self.topbar_box.children
 
-    def add_to_top(self, child):
-        self.topbar_children.append(child)
+    def add_to_top(self, child, expand=True):
+        self.topbar_box.add(child, expand=expand)
         child.internal_override_parent(self)
         self.relayout()
         self.needs_redraw = True
@@ -50,7 +51,7 @@ class Topbar(Widget):
             color=c)
 
         # Draw topbar items:
-        for child in self.topbar_children:
+        for child in self.topbar_box.children:
             child.draw(child.x, child.y)
 
         # Draw border:
@@ -80,7 +81,7 @@ class Topbar(Widget):
         current_x = round(self.padding * self.dpi_scale)
         first_child = True
         current_y = round(self.padding * self.dpi_scale)
-        for child in self.topbar_children:
+        for child in self.topbar_box.children:
             child.x = current_x
             if first_child:
                 first_child = False
