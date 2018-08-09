@@ -144,7 +144,6 @@ class List(Widget):
             self.needs_redraw = True
 
     def on_keydown(self, key, physical_key):
-        print("KEY: " + str(key))
         if key == "down":
             self._selected_index += 1
             if self._selected_index >= len(self._entries):
@@ -163,6 +162,12 @@ class List(Widget):
                 self._entries[self._selected_index].y_offset,
                 self.scroll_y_offset)
             self.needs_redraw = True
+
+    def on_mousewheel(self, mouse_id, x, y):
+        self.scroll_y_offset = max(0,
+            self.scroll_y_offset -
+            round(y * 60.0 * self.dpi_scale))
+        self.needs_redraw = True
 
     def on_mousemove(self, mouse_id, x, y):
         pass

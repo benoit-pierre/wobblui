@@ -119,6 +119,25 @@ def handle_event(event):
             w.mouseup(int(event.button.which),
                 int(event.button.button),
                 float(event.button.x), float(event.button.y))
+    elif event.type == sdl.SDL_MOUSEWHEEL:
+        sdl_touch_mouseid = -1
+        if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
+            sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
+        if event.wheel.which == sdl_touch_mouseid:
+            # We handle this separately.
+            return
+        x = int(event.wheel.x)
+        y = int(event.wheel.y)
+        if event.wheel.direction == sdl.SDL_MOUSEWHEEL_FLIPPED:
+            x = -x
+            y = -y
+        w = get_window_by_sdl_id(event.button.windowID)
+        if w is None or w.is_closed:
+            return
+        if w.hidden:
+            w.set_hidden(False)
+        w.mousewheel(int(event.wheel.which),
+            float(x), float(y))
     elif event.type == sdl.SDL_MOUSEMOTION:
         sdl_touch_mouseid = -1
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):

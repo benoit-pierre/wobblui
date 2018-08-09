@@ -107,6 +107,7 @@ class WidgetBase(object):
         self._is_focused = False
         self.mousemove = Event("mousemove", owner=self)
         self.mousedown = Event("mousedown", owner=self)
+        self.mousewheel = Event("mousewheel", owner=self)
         self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
         self.mouseup = Event("mouseup", owner=self)
@@ -138,11 +139,18 @@ class WidgetBase(object):
         self._post_mouse_event_handling("mousemove", [mouse_id, x, y],
             internal_data=internal_data)
 
+    def _internal_on_mousewheel(self, mouse_id, x, y, internal_data=None):
+        self._post_mouse_event_handling("mousewheel",
+            [mouse_id, x, y],
+            internal_data=internal_data)
+
     def _post_mouse_event_handling(self, event_name,
             event_args, internal_data=None):
         # If we arrived here, the internal event wasn't prevented from
         # firing / propagate. Inform all children that are inside the
         # mouse bounds:
+        wx = None
+        wy = None
         x = None
         y = None
         mouse_id = event_args[0]
@@ -152,6 +160,19 @@ class WidgetBase(object):
         elif event_name == "mousemove":
             x = event_args[1]
             y = event_args[2]
+        elif event_name == "mousewheel":
+            wx = event_args[1]
+            wy = event_args[2]
+            if (not hasattr(self, "parent_window") or
+                    self.parent_window == None) and \
+                    not hasattr(self, "get_mouse_pos"):
+                # Wheel with no parent window. bail out, that's useless
+                return
+            if hasattr(self, "get_mouse_pos"):
+                (x, y) = self.get_mouse_pos(event_args[0])
+            else:
+                (x, y) = self.parent_window.get_mouse_pos(event_args[0])
+
         coords_are_abs = False
         if internal_data != None:
             coords_are_abs = True
@@ -172,6 +193,10 @@ class WidgetBase(object):
             if rel_x >= child.x and rel_y >= child.y and \
                     rel_x < child.x + child.width and \
                     rel_y < child.y + child.height:
+                # Track some side effects, to make sure e.g. mouse move
+                # events get followed up by one last outside-of-widget
+                # event when mouse leaves, or that mouse down changes
+                # the keyboard focus:
                 if event_name == "mousemove":
                     child.last_mouse_move_was_inside = True
                 elif event_name == "mousedown":
@@ -196,20 +221,21 @@ class WidgetBase(object):
                         internal_data=internal_data)
                     child.last_mouse_down_presses.discard(
                         (event_args[0], event_args[1]))
+                # Trigger actual event on the child widget:
                 if event_name == "mousemove":
-                    if not getattr(child, event_name)(mouse_id,
+                    if not child.mousemove(mouse_id,
                             rel_x - child.x, rel_y - child.y,
                             internal_data=internal_data):
-                        # Propagation was stopped. Signal that we took
-                        # care of this event to our caller:
+                        return True
+                elif event_name == "mousewheel":
+                    if not child.mousewheel(mouse_id, wx,  wy,
+                            internal_data=internal_data):
                         return True
                 else:
                     if not getattr(child, event_name)(mouse_id,
                             event_args[1],
                             rel_x - child.x, rel_y - child.y,
                             internal_data=internal_data):
-                        # Propagation was stopped. Signal that we took
-                        # care of this event to our caller:
                         return True
             else:
                 if child.last_mouse_move_was_inside:

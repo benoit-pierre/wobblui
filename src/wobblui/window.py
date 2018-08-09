@@ -36,6 +36,7 @@ class Window(WidgetBase):
             style=None):
         if style is None:
             style = AppStyleDark()
+        self.mouse_position_cache = dict()
         self._sdl_window = None
         self._style = style
         super().__init__(is_container=True, can_get_focus=True)
@@ -120,6 +121,18 @@ class Window(WidgetBase):
                 # Keep it around to be reopened.
                 print("ANDROID RENDERER DUMPED. WAITING FOR RESUME.")
                 return
+
+    def get_mouse_pos(self, mouse_id):
+        if not mouse_id in self.mouse_position_cache:
+            return (0, 0)
+        return self.mouse_position_cache[mouse_id]
+
+    #@property
+    #def parent_window(self):
+    #    return self
+
+    def _internal_on_mousemove(self, mouse_id, x, y, internal_data=None):
+        self.mouse_position_cache[mouse_id] = (x, y)
 
     def _internal_on_keydown(self, key, physical_key, internal_data=None):
         focused_widget = WidgetBase.get_focused_widget_by_window(self)
