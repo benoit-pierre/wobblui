@@ -15,6 +15,54 @@ def redraw_windows():
             continue
         w.redraw_if_necessary()
 
+def sdl_vkey_map(key):
+    if key >= sdl.SDLK_0 and key <= sdl.SDLK_9:
+        return chr(ord("0") + (key - sdl.SDLK_0))
+    if key >= sdl.SDLK_a and key <= sdl.SDLK_z:
+        return chr(ord("a") + (key - sdl.SDLK_a))
+    if key == sdl.SDLK_DOWN:
+        return "down"
+    if key == sdl.SDLK_UP:
+        return "up"
+    if key == sdl.SDLK_LEFT:
+        return "left"
+    if key == sdl.SDLK_RIGHT:
+        return "right"
+    if key == sdl.SDLK_ESCAPE:
+        return "escape"
+    if key == sdl.SDLK_RETURN or \
+            key == sdl.SDLK_RETURN2:
+        return "return"
+    if key == sdl.SDLK_BACKSPACE:
+        return "backspace"
+    if key == sdl.SDLK_SPACE:
+        return "space"
+    return str("scancode-" + str(key))
+
+def sdl_key_map(key):
+    if key >= sdl.SDL_SCANCODE_0 and key <= sdl.SDL_SCANCODE_9:
+        return chr(ord("0") + (key - sdl.SDL_SCANCODE_0))
+    if key >= sdl.SDL_SCANCODE_A and key <= sdl.SDL_SCANCODE_Z:
+        return chr(ord("a") + (key - sdl.SDL_SCANCODE_A))
+    if key == sdl.SDL_SCANCODE_DOWN:
+        return "down"
+    if key == sdl.SDL_SCANCODE_UP:
+        return "up"
+    if key == sdl.SDL_SCANCODE_LEFT:
+        return "left"
+    if key == sdl.SDL_SCANCODE_RIGHT:
+        return "right"
+    if key == sdl.SDL_SCANCODE_ESCAPE:
+        return "escape"
+    if key == sdl.SDL_SCANCODE_RETURN or \
+            key == sdl.SDL_SCANCODE_RETURN2:
+        return "return"
+    if key == sdl.SDL_SCANCODE_BACKSPACE:
+        return "backspace"
+    if key == sdl.SDL_SCANCODE_SPACE:
+        return "space"
+    return str("scancode-" + str(key))
+
 def event_loop():
     event_loop_ms = 20
     while True:
@@ -85,6 +133,15 @@ def handle_event(event):
             w.set_hidden(False)
         w.mousemove(int(event.motion.which),
             float(event.motion.x), float(event.motion.y))
+    elif event.type == sdl.SDL_KEYDOWN:
+        virtual_key = sdl_vkey_map(event.key.keysym.sym)
+        physical_key = sdl_key_map(event.key.keysym.scancode)
+        w = get_window_by_sdl_id(event.motion.windowID)
+        if w is None or w.is_closed:
+            return
+        if w.hidden:
+            w.set_hidden(False)
+        w.keydown(virtual_key, physical_key)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
                 sdl.SDL_WINDOWEVENT_FOCUS_GAINED:

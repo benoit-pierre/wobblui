@@ -143,6 +143,27 @@ class List(Widget):
             self._selected_index = v
             self.needs_redraw = True
 
+    def on_keydown(self, key, physical_key):
+        print("KEY: " + str(key))
+        if key == "down":
+            self._selected_index += 1
+            if self._selected_index >= len(self._entries):
+                self._selected_index = len(self._entries) - 1
+            self.scroll_y_offset = max(
+                self._entries[self._selected_index].y_offset +
+                self._entries[self._selected_index].height -
+                self.height,
+                self.scroll_y_offset)
+            self.needs_redraw = True
+        elif key == "up":
+            self._selected_index -= 1
+            if self._selected_index < 0:
+                self._selected_index = 0
+            self.scroll_y_offset = min(
+                self._entries[self._selected_index].y_offset,
+                self.scroll_y_offset)
+            self.needs_redraw = True
+
     def on_mousemove(self, mouse_id, x, y):
         pass
 

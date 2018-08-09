@@ -121,9 +121,13 @@ class Window(WidgetBase):
                 print("ANDROID RENDERER DUMPED. WAITING FOR RESUME.")
                 return
 
+    def _internal_on_keydown(self, key, physical_key, internal_data=None):
+        focused_widget = WidgetBase.get_focused_widget_by_window(self)
+        focused_widget.keydown(key, physical_key)
+
     def focus_update(self):
         if len(self.children) > 0 and \
-                WidgetBase.get_focused_widget(self.children[0]) is None:
+                WidgetBase.get_focused_widget_by_window(self) is None:
             sorted_candidates = self.__class__.focus_candidates(
                 self.children)
             sorted_candidates[0].focus()

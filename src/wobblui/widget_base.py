@@ -10,6 +10,7 @@ import weakref
 from wobblui.event import DummyEvent, Event
 
 last_wid = -1
+last_add = -1
 all_widgets = list()
 
 def tab_sort(a, b):
@@ -19,16 +20,23 @@ def tab_sort(a, b):
         return -1
     if a.focus_index != b.focus_index:
         return (a.focus_index - b.focus_index)
-    return (a.id - b.id)
+    return (a.added_order - b.added_order)
 
 class WidgetBase(object):
     def __init__(self, is_container=False,
             can_get_focus=False):
-        global all_widgets, last_wid
+        global all_widgets
         self._focusable = can_get_focus
         self.padding = 8
         self.needs_redraw = True
+
+        global last_wid
         self.id = last_wid + 1
+        last_wid += 1
+        global last_add
+        self.added_order = last_add + 1
+        last_add += 1
+
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
         self.x = 0
@@ -37,7 +45,6 @@ class WidgetBase(object):
         self._height = 64
         self._max_width = None
         self._max_height = None
-        last_wid += 1
         self.is_container = is_container
         self._children = []
         self._parent = None
@@ -100,6 +107,7 @@ class WidgetBase(object):
         self._is_focused = False
         self.mousemove = Event("mousemove", owner=self)
         self.mousedown = Event("mousedown", owner=self)
+        self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
         self.mouseup = Event("mouseup", owner=self)
         self.resized = Event("resized", owner=self,
@@ -175,7 +183,7 @@ class WidgetBase(object):
                             child.focus()
                         else:
                             p = child.parent
-                            while parent != None and not p.focusable:
+                            while p != None and not p.focusable:
                                 p = p.parent
                             if p != None:
                                 p.focus()
@@ -386,6 +394,17 @@ class WidgetBase(object):
                 continue
             return w
         return None
+
+    @staticmethod
+    def get_focused_widget_by_window(window):
+        global all_widgets
+        for w_ref in all_widgets:
+            w = w_ref()
+            if w is None or not w.focused \
+                    or not hasattr(w, "parent_window") \
+                    or w.parent_window != window:
+                continue
+            return w
 
     @property
     def focusable(self):
