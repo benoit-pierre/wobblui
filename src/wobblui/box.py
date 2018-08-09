@@ -1,4 +1,6 @@
 
+import math
+
 from wobblui.widget import Widget
 
 class BoxSpacer(Widget):
@@ -11,6 +13,7 @@ class Box(Widget):
         self.horizontal = (horizontal is True)
         self.expand_info = dict()
         self.padding = 5.0
+        self.layout()
 
     def layout(self):
         expand_widget_count = 0
@@ -24,11 +27,15 @@ class Box(Widget):
             if self.expand_info[child_id]:
                 expand_widget_count += 1
             if self.horizontal:
-                child_space += child.get_natural_width() + item_padding
+                child_size = child.get_natural_width() + item_padding
+                child_space += child_size
+                child.width = child_size
             else:
-                child_space += child.\
+                child_size = child.\
                     get_natural_height(max_width=self.width) +\
                     item_padding
+                child_space += child_size
+                child.height = child_size
         remaining_space = self.height - child_space
         if self.horizontal:
             remaining_space = self.width - child_space
@@ -41,29 +48,32 @@ class Box(Widget):
         cy = 0
         for child in self._children:
             child_id += 1
-            item_padding = round(self.padding * self.dpi_scale)
-            if child_id == len(self._children) - 1:
-                item_padding = 0
-            assigned_w = child.width + item_padding
-            assigned_h = child.height + item_padding
+            assigned_w = child.width
+            assigned_h = child.height
             space_for_this_item = space_per_item
             if expand_widget_count <= 1:
                 # Make sure to use up all remaining space:
-                if horizontal:
+                if self.horizontal:
                     space_for_this_item = (remaining_space - cx)
                 else:
                     space_for_this_item = (remaining_space - cy)
             expand_widget_count -= 1
-            if self.expand_info[child_id] and horizontal:
+            if self.expand_info[child_id] and self.horizontal:
                 assigned_w += space_for_this_item
-            elif self.expand_info[child_id] and not horizontal:
+            elif self.expand_info[child_id] and not self.horizontal:
                 assigned_h += space_for_this_item
             child.x = cx
             child.y = cy
             child.width = assigned_w
             child.height = assigned_h
-            cx += assigned_w
-            cy += assigned_h
+            item_padding = round(self.padding * self.dpi_scale)
+            if child_id == len(self._children) - 1:
+                item_padding = 0
+            if self.horizontal:
+                cx += assigned_w + item_padding
+            else:
+                cy += assigned_h + item_padding
+        self.needs_redraw = True
 
     def get_natural_width(self):
         if self.horizontal:
@@ -111,10 +121,12 @@ class Box(Widget):
             item.width = self.width
             item.height = item.get_natural_height(given_width=self.width)
         self.expand_info[len(self._children) - 1] = expand
+        self.layout()
 
     def add_spacer(self):
         super().add(BoxSpacer())
         self.expand_info[len(self._children) - 1] = expand
+        self.layout()
 
 class VBox(Box):
     def __init__(self):

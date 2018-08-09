@@ -1,6 +1,6 @@
 
 import os
-import sdl2.image as sdlimage
+import sdl2.sdlimage as sdlimage
 import tempfile
 
 from wobblui.widget import Widget
@@ -13,12 +13,11 @@ def image_to_sdl_surface(pil_image):
         flags = sdlimage.IMG_INIT_JPG|sdlimage.IMG_INIT_PNG
         sdlimage.IMG_Init(flags)
     sdl_image = None
-    contents = file_path_or_object.read()
-    (fd, path) = tempfile.mkstmep(prefix="wobblui-image-")
+    (fd, path) = tempfile.mkstemp(prefix="wobblui-image-")
     try:
         os.close(fd)
-        pil_image.save(file_path_or_object, format="PNG")
-        sdl_image = sdlimage.IMG_Load(path)
+        pil_image.save(path, format="PNG")
+        sdl_image = sdlimage.IMG_Load(path.encode("utf-8", "replace"))
     finally:
         os.remove(path)
     if sdl_image is None:

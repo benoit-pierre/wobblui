@@ -1,5 +1,7 @@
 
 import html
+import math
+import os
 import PIL.Image
 import sdl2 as sdl
 
@@ -21,7 +23,7 @@ class Button(Widget):
 
     def set_image(self, pil_image_or_path, scale=1.0):
         if not hasattr(pil_image_or_path, "save"):
-            pil_image_or_path = PIL.Image(pil_image_or_path)
+            pil_image_or_path = PIL.Image.open(pil_image_or_path)
         self.contained_image = pil_image_or_path
         self.contained_image_scale = scale
         self.contained_image_srf = image_to_sdl_surface(pil_image_or_path)
@@ -43,7 +45,7 @@ class Button(Widget):
     def __del__(self):
         if hasattr(self, "contained_image_srf"):
             if self.contained_image_srf != None:
-                sdl.SDL_DestroySurface(self.contained_image_srf)
+                sdl.SDL_FreeSurface(self.contained_image_srf)
             self.contained_image_srf = None
 
     def do_redraw(self):
@@ -52,19 +54,19 @@ class Button(Widget):
         offset_x = round(self.border_size)
         if self.contained_image != None:
             tex = sdl.SDL_CreateTextureFromSurface(self.renderer,
-                do_redraw(self):)
+                self.contained_image_srf)
             tg = sdl.SDL_Rect()
             tg.x = offset_x
             tg.y = 0
             tg.w = math.ceil(self.contained_image.size[0] *
-                self.contained_image_scale * self.display_dpi)
+                self.contained_image_scale * self.dpi_scale)
             tg.h = math.ceil(self.contained_image.size[1] *
-                self.contained_image_scale * self.display_dpi)
-            sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
-            sdl.SDL_RenderCopy(renderer, tex, None, tg)
+                self.contained_image_scale * self.dpi_scale)
+            sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
+            sdl.SDL_RenderCopy(self.renderer, tex, None, tg)
             sdl.SDL_DestroyTexture(tex)
             offset_x += tg.w + round(self.border_size * 0.7)
-        if self.contained_rich_text_obj != None
+        if self.contained_richtext_obj != None:
             c = Color.white
             if self.style != None:
                 c = Color(self.style.get("widget_text"))
@@ -76,7 +78,7 @@ class Button(Widget):
         my_w = 0
         if self.contained_image != None:
             my_w += round(self.contained_image.size[0] *\
-                self.contained_image_scale * self.display_dpi)
+                self.contained_image_scale * self.dpi_scale)
         if self.contained_image != None and \
                 self.contained_richtext_obj != None:
             # Add in-between spacing:
@@ -84,4 +86,10 @@ class Button(Widget):
         if self.contained_richtext_obj != None:
             my_w += round(self.text_layout_width)
         return my_w
+
+class HamburgerButton(Button):
+    def __init__(self):
+        super().__init__(with_border=False)
+        self.set_image(os.path.join(os.path.dirname(__file__),
+            "img", "sandwich.png"), scale=0.3)
 
