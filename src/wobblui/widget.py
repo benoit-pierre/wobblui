@@ -4,8 +4,9 @@ from wobblui.widget_base import all_widgets, tab_sort, WidgetBase
 from wobblui.window import Window
 
 class Widget(WidgetBase):
-    def __init__(self, is_container=False):
-        super().__init__(is_container=is_container)
+    def __init__(self, is_container=False, can_get_focus=False):
+        super().__init__(is_container=is_container,
+            can_get_focus=can_get_focus)
 
     def update_window(self):
         self.needs_redraw = True
@@ -34,18 +35,7 @@ class Widget(WidgetBase):
         self._advance_focus(False)
 
     def _advance_focus(self, forward):
-        candidates = []
-        for w_ref in all_widgets:
-            w = w_ref()
-            if w is None or not self.shares_focus_group(w):
-                continue
-            candidates.append(w)
-        if not self in candidates:
-            candidates.append(self)
-        sorted_candidates = sorted(candidates,
-            key=functools.cmp_to_key(tab_sort))
-        if len(sorted_candidates) <= 1:
-            return
+        sorted_candidates = self.__class__.focus_candidates(self)
         i = 0
         while i < len(sorted_candidates):
             if sorted_candidates[i] == self:

@@ -38,8 +38,7 @@ class Window(WidgetBase):
             style = AppStyleDark()
         self._sdl_window = None
         self._style = style
-        super().__init__(is_container=True, can_get_focus=True,
-            autofocus=False)
+        super().__init__(is_container=True, can_get_focus=True)
         global all_windows, SDL_initialized
         if not SDL_initialized:
             SDL_initialized = True
@@ -121,6 +120,16 @@ class Window(WidgetBase):
                 # Keep it around to be reopened.
                 print("ANDROID RENDERER DUMPED. WAITING FOR RESUME.")
                 return
+
+    def focus_update(self):
+        if len(self.children) > 0 and \
+                WidgetBase.get_focused_widget(self.children[0]) is None:
+            sorted_candidates = self.__class__.focus_candidates(
+                self.children)
+            sorted_candidates[0].focus()
+
+    def _internal_on_focus(self, internal_data=None):
+        self.focus_update()
 
     def update_to_real_sdlw_size(self):
         if self._sdl_window is None:

@@ -118,7 +118,7 @@ class ListEntry(object):
 
 class List(Widget):
     def __init__(self):
-        super().__init__(is_container=False)
+        super().__init__(is_container=False, can_get_focus=True)
         self._entries = []
         self._selected_index = -1
         self.scroll_y_offset = 0
@@ -210,7 +210,7 @@ class List(Widget):
             break
 
         # Draw keyboard focus line if we have the focus:
-        if self.focused or True:
+        if self.focused:
             focus_border_thickness = 1.0
             c = Color.red
             if c != None:
@@ -252,7 +252,6 @@ class List(Widget):
         if max_scroll_down > 0:
             scroll_percent = max(0.0, min(1.0,
                 self.scroll_y_offset / float(max_scroll_down)))
-            print("SCROLL PERCENT: " + str(scroll_percent))
             self.scrollbar_height = round(20.0 * self.dpi_scale)
             self.scrollbar_y = round((self.height -
                 self.scrollbar_height) * scroll_percent)

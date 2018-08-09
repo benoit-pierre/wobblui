@@ -23,8 +23,9 @@ def tab_sort(a, b):
 
 class WidgetBase(object):
     def __init__(self, is_container=False,
-            can_get_focus=False, autofocus=True):
+            can_get_focus=False):
         global all_widgets, last_wid
+        self._focusable = can_get_focus
         self.padding = 8
         self.needs_redraw = True
         self.id = last_wid + 1
@@ -108,15 +109,10 @@ class WidgetBase(object):
                 allow_preventing_widget_callback_by_user_callbacks=False)
             self.unfocus = Event("unfocus", owner=self,
                 allow_preventing_widget_callback_by_user_callbacks=False)
-            self._focusable = True
         else:
             self.focus = DummyEvent("focus", owner=self)
             self.unfocus = DummyEvent("unfocus", owner=self)
-            self._focusable = False
         all_widgets.append(weakref.ref(self))
-        if autofocus and \
-                self.__class__.get_focused_widget(self) is None:
-            self.focus()
 
     def _internal_on_mousedown(self, mouse_id, button, x, y,
             internal_data=None):
@@ -224,7 +220,8 @@ class WidgetBase(object):
         # Done!
 
     def __del__(self):
-        if self.sdl_texture != None:
+        if hasattr(self, "sdl_texture") and \
+                self.sdl_texture != None:
             sdl.SDL_DestroyTexture(self.sdl_texture)
             self.sdl_texture = None
         return
@@ -343,6 +340,35 @@ class WidgetBase(object):
         if self._height != h:
             self.size_change(self.width, h)
 
+    @staticmethod
+    def focus_candidates(group_widget):
+        assert(group_widget != None)
+        group_widgets = group_widget
+        if type(group_widgets) != list:
+            group_widgets = [group_widgets]
+        candidates = []
+        for w_ref in all_widgets:
+            w = w_ref()
+            if w is None or not w.focusable:
+                continue
+            is_in_group = False
+            for group_widget in group_widgets:
+                if w.shares_focus_group(group_widget) and \
+                        group_widget.shares_focus_group(w):
+                    is_in_group = True
+                    break
+            if not is_in_group:
+                continue
+            assert(w != None)
+            candidates.append(w)
+        for group_widget in group_widgets:
+            if not group_widget in candidates and \
+                    group_widget.focusable:
+                candidates.append(group_widget)
+        sorted_candidates = sorted(candidates,
+            key=functools.cmp_to_key(tab_sort))
+        return sorted_candidates
+
     def size_change(self, w, h):
         self._width = w
         self._height = h
@@ -361,6 +387,7 @@ class WidgetBase(object):
             return w
         return None
 
+    @property
     def focusable(self):
         return self._focusable
 
