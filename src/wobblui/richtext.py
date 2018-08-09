@@ -119,7 +119,7 @@ class RichTextFragment(RichTextObj):
             c = self.text[i]
             if c in split_after_chars or (i + 1 < len(self.text)
                     and self.text[i + 1] in split_before_chars):
-                part = self.text[last_i + 1:i]
+                part = self.text[last_i + 1:i + 1]
                 if len(part) > 0:
                     result.append(part)
                     last_i = i
@@ -164,6 +164,7 @@ class RichText(RichTextObj):
         return new_text
 
     def layout(self, max_width=None, align_if_none=None):
+        self.simplify()
         layouted_elements = []
         layout_line_indexes = []
         current_line_elements = 0
