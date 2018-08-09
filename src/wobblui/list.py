@@ -70,7 +70,7 @@ class ListEntry(object):
 
     @style.setter
     def style(self, v):
-        if self._stle != v:
+        if self._style != v:
             self.need_size_update = True
             self._style = v
 
@@ -142,6 +142,8 @@ class List(Widget):
 
     def do_redraw(self):
         c = Color.white
+        if self.style != None:
+            c = Color(self.style.get("inner_widget_bg"))
         draw_rectangle(self.renderer, 0, 0,
             self.width, self.height, c) 
         cx = 0
@@ -149,6 +151,7 @@ class List(Widget):
         entry_id = -1
         for entry in self._entries:
             entry_id += 1
+            entry.style = self.style
             if entry.width > self.width and (entry.max_width is None
                     or entry.max_width != self.width):
                 entry.max_width = self.width
