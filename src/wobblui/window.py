@@ -91,10 +91,12 @@ class Window(WidgetBase):
 
         close_window = False
         if sdl.SDL_GetPlatform().decode("utf-8",
-                "replace").lower() == "android":
+                "replace").lower() != "android":
+            print("REGULAR WIN CLOSE")
             if self.closing():
                 close_window = True
         else:
+            print("ANDROID WIN HIDE")
             if self.focused:
                 self.unfocus()
             self.set_hidden(True)
@@ -107,6 +109,7 @@ class Window(WidgetBase):
                     child.renderer_update()
                 sdl.SDL_DestroyRenderer(self._renderer)
             self._renderer = None
+            #if close_window:
             sdl.SDL_DestroyWindow(self._sdl_window)
             self._sdl_window = None
             if close_window:
@@ -116,6 +119,7 @@ class Window(WidgetBase):
                 self.destroyed()
             else:
                 # Keep it around to be reopened.
+                print("ANDROID RENDERER DUMPED. WAITING FOR RESUME.")
                 return
 
     def update_to_real_sdlw_size(self):

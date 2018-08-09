@@ -19,7 +19,6 @@ def event_loop():
     event_loop_ms = 20
     while True:
         events = sdl_ext.get_events()
-        redraw_windows()
         if len(events) == 0:
             if event_loop_ms < 400:
                 event_loop_ms = min(
@@ -38,6 +37,7 @@ def event_loop():
                 print("*** ERROR IN EVENT HANDLER ***",
                     file=sys.stderr, flush=True)
                 print(str(traceback.format_exc()))
+        redraw_windows()
 
 def handle_event(event):
     if event.type == sdl.SDL_QUIT:
@@ -50,6 +50,27 @@ def handle_event(event):
                 continue
             w.destroyed()
         return
+    elif event.type == sdl.SDL_MOUSEBUTTONDOWN or \
+            event.type == sdl.SDL_MOUSEBUTTONUP:
+        sdl_touch_mouseid = -1
+        if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
+            sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
+        if event.button.which == sdl_touch_mouseid:
+            # We handle this separately.
+            return
+        w = get_window_by_sdl_id(event.button.windowID)
+        if w is None or w.is_closed:
+            return
+        if w.hidden:
+            w.set_hidden(False)
+        if event.type == sdl.SDL_MOUSEBUTTONDOWN:
+            w.mousedown(int(event.button.which),
+                int(event.button.button),
+                float(event.button.x), float(event.button.y))
+        else:
+            w.mouseup(int(event.button.which),
+                int(event.button.button),
+                float(event.button.x), float(event.button.y))
     elif event.type == sdl.SDL_MOUSEMOTION:
         sdl_touch_mouseid = -1
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
@@ -57,7 +78,7 @@ def handle_event(event):
         if event.motion.which == sdl_touch_mouseid:
             # We handle this separately.
             return
-        w = get_window_by_sdl_id(event.window.windowID)
+        w = get_window_by_sdl_id(event.motion.windowID)
         if w is None or w.is_closed:
             return
         if w.hidden:
@@ -113,6 +134,15 @@ def handle_event(event):
                 w.set_hidden(False)
     elif (event.type == sdl.SDL_APP_DIDENTERBACKGROUND):
         print("APP BACKGROUND EVENT.")
+        if sdl.SDL_GetPlatform().decode("utf-8", "replace").\
+                lower() == "android":
+            print("ANDROID IN BACKGROUND. DUMP ALL WINDOW RENDERERS.")
+            for w_ref in all_windows:
+                w = w_ref()
+                if w != None:
+                    if w.focused:
+                        w.unfocus()
+                    w.handle_sdlw_close()
     elif (event.type == sdl.SDL_APP_WILLENTERFOREGROUND):
         print("APP RESUME EVENT")
         for w_ref in all_windows:

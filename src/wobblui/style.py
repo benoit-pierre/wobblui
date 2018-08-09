@@ -1,7 +1,17 @@
 
+import sdl2 as sdl
+
 class AppStyle(object):
     def __init__(self):
-        self.dpi_scale = 1.0
+        self._dpi_scale = 1.0
+        self.is_android = (sdl.SDL_GetPlatform().decode(
+            "utf-8", "replace").lower() == "android")
+
+    @property
+    def dpi_scale(self):
+        if self.is_android:
+            return (self._dpi_scale * 1.5)
+        return self._dpi_scale
 
     def set(self, name, value):
         if not hasattr(self, "values"):

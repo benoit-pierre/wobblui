@@ -28,6 +28,8 @@ class WidgetBase(object):
         self.padding = 8
         self.needs_redraw = True
         self.id = last_wid + 1
+        self.last_mouse_move_was_inside = False
+        self.last_mouse_down_presses = set()
         self.x = 0
         self.y = 0
         self._width = 64
@@ -96,6 +98,9 @@ class WidgetBase(object):
         self.focus_index = None
         self._is_focused = False
         self.mousemove = Event("mousemove", owner=self)
+        self.mousedown = Event("mousedown", owner=self)
+        self.click = Event("click", owner=self)
+        self.mouseup = Event("mouseup", owner=self)
         self.resized = Event("resized", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         if can_get_focus:
@@ -113,15 +118,47 @@ class WidgetBase(object):
                 self.__class__.get_focused_widget(self) is None:
             self.focus()
 
+    def _internal_on_mousedown(self, mouse_id, button, x, y,
+            internal_data=None):
+        self._post_mouse_event_handling("mousedown",
+            [mouse_id, button, x, y],
+            internal_data=internal_data)
+
+    def _internal_on_mouseup(self, mouse_id, button, x, y,
+            internal_data=None):
+        self._post_mouse_event_handling("mouseup",
+            [mouse_id, button, x, y],
+            internal_data=internal_data)
+
     def _internal_on_mousemove(self, mouse_id, x, y, internal_data=None):
+        self._post_mouse_event_handling("mousemove", [mouse_id, x, y],
+            internal_data=internal_data)
+
+    def _post_mouse_event_handling(self, event_name,
+            event_args, internal_data=None):
         # If we arrived here, the internal event wasn't prevented from
         # firing / propagate. Inform all children that are inside the
         # mouse bounds:
+        x = None
+        y = None
+        mouse_id = event_args[0]
+        if event_name == "mousedown" or event_name == "mouseup":
+            x = event_args[2]
+            y = event_args[3]
+        elif event_name == "mousemove":
+            x = event_args[1]
+            y = event_args[2]
         coords_are_abs = False
         if internal_data != None:
             coords_are_abs = True
             x = internal_data[0]
             y = internal_data[1]
+        inside_parent = False
+        if (coords_are_abs and x >= self.x and y >= self.y and
+                x < self.x + self.width and y < self.y + self.width) or \
+                (not coords_are_abs and x >= 0 and y >= 0 and
+                    x < self.width and y < self.width):
+            inside_parent = True
         for child in self.children:
             rel_x = x
             rel_y = y
@@ -131,12 +168,59 @@ class WidgetBase(object):
             if rel_x >= child.x and rel_y >= child.y and \
                     rel_x < child.x + child.width and \
                     rel_y < child.y + child.height:
-                if not child.mousemove(mouse_id,
+                if event_name == "mousemove":
+                    child.last_mouse_move_was_inside = True
+                elif event_name == "mousedown":
+                    child.last_mouse_down_presses.add((event_args[0],
+                        event_args[1]))
+                    # Try to focus this if it's the most inner clicked:
+                    if inside_parent is False:
+                        if child.focusable:
+                            child.focus()
+                        else:
+                            p = child.parent
+                            while parent != None and not p.focusable:
+                                p = p.parent
+                            if p != None:
+                                p.focus()
+                elif event_name == "mouseup" and \
+                        (event_args[0], event_args[1]) in \
+                        child.last_mouse_down_presses:
+                    # Special click event:
+                    child.click(mouse_id, rel_x - child.x,
+                        rel_y - child.y,
+                        internal_data=internal_data)
+                    child.last_mouse_down_presses.discard(
+                        (event_args[0], event_args[1]))
+                if event_name == "mousemove":
+                    if not getattr(child, event_name)(mouse_id,
+                            rel_x - child.x, rel_y - child.y,
+                            internal_data=internal_data):
+                        # Propagation was stopped. Signal that we took
+                        # care of this event to our caller:
+                        return True
+                else:
+                    if not getattr(child, event_name)(mouse_id,
+                            event_args[1],
+                            rel_x - child.x, rel_y - child.y,
+                            internal_data=internal_data):
+                        # Propagation was stopped. Signal that we took
+                        # care of this event to our caller:
+                        return True
+            else:
+                if child.last_mouse_move_was_inside:
+                    child.last_mouse_move_was_inside = False
+                    child.mousemove(mouse_id,
                         rel_x - child.x, rel_y - child.y,
-                        internal_data=internal_data):
-                    # Propagation was stopped. Signal that we took
-                    # care of this event to our caller:
-                    return True
+                        internal_data=internal_data)
+                if event_name == "mouseup" and \
+                        (event_args[0], event_args[1]) in \
+                        child.last_mouse_down_presses:
+                    child.last_mouse_down_presses.discard(
+                        (event_args[0], event_args[1]))
+                    child.mouseup(mouse_id, event_args[1],
+                        rel_x - child.x, rel_y - child.y,
+                        internal_data=internal_data)
         # Done!
 
     def __del__(self):

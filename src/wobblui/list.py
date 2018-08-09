@@ -10,6 +10,7 @@ class ListEntry(object):
     def __init__(self, html, style):
         self.html = html
         self._style = style
+        self.y_offset = 0
         font_family = "Tex Gyre Heros"
         if style != None:
             font_family = style.get("widget_font_family")
@@ -33,7 +34,9 @@ class ListEntry(object):
         c = Color((200, 200, 200))
         if self.style != None:
             c = Color(self.style.get("inner_widget_bg"))
-            if draw_selected:
+            if draw_hover:
+                c = Color(self.style.get("hover_bg"))
+            elif draw_selected:
                 c = Color(self.style.get("selected_bg"))
         if width is None:
             width = self.width
@@ -42,7 +45,7 @@ class ListEntry(object):
         c = Color((0, 0, 0))
         if self.style != None:
             c = Color(self.style.get("widget_text"))
-            if draw_selected:
+            if draw_hover or draw_selected:
                 c = Color(self.style.get("selected_text"))
         self.text_obj.draw(renderer,
             round(5.0 * self.dpi_scale) + x,
@@ -118,7 +121,7 @@ class List(Widget):
         super().__init__(is_container=False)
         self._entries = []
         self._selected_index = -1
-        self._hover_index = -1
+        self.scroll_y_offset = 0
 
     @property
     def hover_index(self):
@@ -143,30 +146,68 @@ class List(Widget):
     def on_mousemove(self, mouse_id, x, y):
         pass
 
-    def do_redraw(self):
-        c = Color.white
-        if self.style != None:
-            c = Color(self.style.get("inner_widget_bg"))
-        draw_rectangle(self.renderer, 0, 0,
-            self.width, self.height, c) 
-        cx = 0
-        cy = 0
+    def on_mousedown(self, mouse_id, button, x, y):
+        click_index = self.coords_to_entry(x, y)
+        if click_index >= 0 and \
+                click_index != self._selected_index:
+            self._selected_index = click_index
+            self.needs_redraw = True
+
+    def coords_to_entry(self, x, y):
+        if x < 0 or x >= self.width:
+            return -1
+        if y < 0 or y >= self.height:
+            return -1
+
         entry_id = -1
         for entry in self._entries:
             entry_id += 1
-            entry.style = self.style
-            if entry.width > self.width and (entry.max_width is None
-                    or entry.max_width != self.width):
-                entry.max_width = self.width
-            elif entry.width < self.width and (entry.max_width != self.width):
-                entry.max_width = self.width
-            if entry_id == 1 or True:
-                entry.draw(self.renderer, cx, cy, draw_selected=(
-                    entry_id == self._selected_index and
-                    entry_id != self._hover_index),
+            if entry.y_offset < y + self.scroll_y_offset and \
+                    entry.y_offset + entry.height >\
+                    y + self.scroll_y_offset:
+                return entry_id
+        return -1
+
+    def do_redraw(self):
+        content_height = 0
+        max_scroll_down = 0
+        while True:
+            # Draw background:
+            c = Color.white
+            if self.style != None:
+                c = Color(self.style.get("inner_widget_bg"))
+            draw_rectangle(self.renderer, 0, 0,
+                self.width, self.height, c)
+
+            # Draw items:
+            cx = 0
+            cy = 0
+            entry_id = -1
+            for entry in self._entries:
+                entry_id += 1
+                entry.style = self.style
+                if entry.width > self.width and (entry.max_width is None
+                        or entry.max_width != self.width):
+                    entry.max_width = self.width
+                elif entry.width < self.width and \
+                        (entry.max_width != self.width):
+                    entry.max_width = self.width
+                entry.y_offset = cy
+                entry.draw(self.renderer, cx, cy - self.scroll_y_offset,
+                    draw_selected=(
+                    entry_id == self._selected_index),
                     width=self.width,
-                    draw_hover=(entry_id == self._hover_index))
-            cy += round(entry.height)
+                    draw_hover=False)
+                cy += round(entry.height)
+                content_height = max(content_height, cy)
+
+            # Make sure scroll down offset is not too far:
+            max_scroll_down = max(0, content_height - self.height)
+            if max_scroll_down < self.scroll_y_offset != 0:
+                # Oops, scrolled down too far. Fix it and redraw:
+                self.scroll_y_offset = max_scroll_down
+                continue
+            break
 
         # Draw keyboard focus line if we have the focus:
         if self.focused or True:
@@ -205,6 +246,35 @@ class List(Widget):
                 self.height - 0.5 * focus_border_thickness * self.dpi_scale,
                 dash_length=(7.0 * self.dpi_scale),
                 thickness=(focus_border_thickness * self.dpi_scale),
+                color=c)
+
+        # Draw scroll bar:
+        if max_scroll_down > 0:
+            scroll_percent = max(0.0, min(1.0,
+                self.scroll_y_offset / float(max_scroll_down)))
+            print("SCROLL PERCENT: " + str(scroll_percent))
+            self.scrollbar_height = round(20.0 * self.dpi_scale)
+            self.scrollbar_y = round((self.height -
+                self.scrollbar_height) * scroll_percent)
+            self.scrollbar_width = round(8.0 * self.dpi_scale)
+            self.scrollbar_x = self.width - self.scrollbar_width
+            c = Color.white
+            if self.style != None:
+                c = Color(self.style.get("border"))
+            draw_rectangle(self.renderer,
+                self.scrollbar_x,
+                self.scrollbar_y,
+                self.scrollbar_width, self.scrollbar_height,
+                color=c)
+            c = Color.black
+            if self.style != None:
+                c = Color(self.style.get("selected_bg"))
+            border_width = max(1, round(1 * self.dpi_scale))
+            draw_rectangle(self.renderer,
+                self.scrollbar_x + 1 * border_width,
+                self.scrollbar_y + 1 * border_width,
+                self.scrollbar_width - 2 * border_width,
+                self.scrollbar_height - 2 * border_width,
                 color=c)
 
     def get_natural_width(self):
