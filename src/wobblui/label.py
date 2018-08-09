@@ -52,7 +52,7 @@ class Label(Widget):
                 color=self.color,
                 draw_scale=self.dpi_scale)
 
-    def _internal_on_resized(self):
+    def _internal_on_resized(self, internal_data=None):
         old_w = self._width
         if self._max_width != self._layout_max_width:
             self.update_layout()

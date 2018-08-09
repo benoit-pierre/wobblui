@@ -1,8 +1,11 @@
 
 class Event(object):
     def __init__(self, name, owner=None,
-            special_post_event_func=None):
+            special_post_event_func=None,
+            allow_preventing_widget_callback_by_user_callbacks=True):
         self.name = name
+        self.widget_must_get_event = \
+            (not allow_preventing_widget_callback_by_user_callbacks)
         self.funcs = list()
         self.on_object = owner
         self._disabled = False
@@ -31,26 +34,43 @@ class Event(object):
                 new_funcs.append(f)
         self.funcs = new_funcs
 
-    def __call__(self):
+    def native_widget_callback(self, *args,
+            internal_data=None):
+        if self.on_object != None and \
+                hasattr(self.on_object,
+                "_internal_on_" + str(self.name)):
+            result = getattr(self.on_object,
+                "_internal_on_" + str(self.name))(*args,
+                internal_data=internal_data)
+            if result is True:
+                return True
+        if self.on_object != None and \
+                hasattr(self.on_object, "on_" + str(self.name)):
+            result = getattr(self.on_object,
+                "on_" + str(self.name))(*args)
+            if result is True:
+                return True
+        return False
+
+    def __call__(self, *args, internal_data=None):
         print("EVENT TRIGGER: " + str(self.name) +
             " ON " + str(self.on_object))
         if self._disabled:
             return
         try:
-            if self.on_object != None and \
-                    hasattr(self.on_object,
-                    "_internal_on_" + str(self.name)):
-                result = getattr(self.on_object,
-                    "_internal_on_" + str(self.name))()
-            if self.on_object != None and \
-                    hasattr(self.on_object, "on_" + str(self.name)):
-                result = getattr(self.on_object, "on_" + str(self.name))()
-                if result is True:
-                    return
+            if self.widget_must_get_event:
+                if self.native_widget_callback(*args,
+                        internal_data=internal_data):
+                    return False
             for f in self.funcs:
-                result = f()
+                result = f(*args)
                 if result is True:
-                    return
+                    return False
+            if not self.widget_must_get_event:
+                if self.native_widget_callback(*args,
+                        internal_data=internal_data):
+                    return False
+            return True
         finally:
             if self.special_post_event_func != None:
                 self.special_post_event_func()

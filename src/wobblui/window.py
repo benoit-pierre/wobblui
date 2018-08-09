@@ -36,6 +36,7 @@ class Window(WidgetBase):
             style=None):
         if style is None:
             style = AppStyleDark()
+        self._sdl_window = None
         self._style = style
         super().__init__(is_container=True, can_get_focus=True,
             autofocus=False)
@@ -59,35 +60,67 @@ class Window(WidgetBase):
         all_windows.append(weakref.ref(self))
 
     def internal_app_reopen(self):
-        self._sdl_window = sdl.SDL_CreateWindow(
-            self._title.encode("utf-8", "replace"),
-            sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
-            self.next_reopen_width,
-            self.next_reopen_height, sdl.SDL_WINDOW_SHOWN |
-            sdl.SDL_WINDOW_RESIZABLE)
-        self._renderer = \
-            sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
-        self._unclosable = False
+        if self.is_closed:
+            return
+        unhide = False
+        if self._sdl_window is None:
+            self._sdl_window = sdl.SDL_CreateWindow(
+                self._title.encode("utf-8", "replace"),
+                sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
+                self.next_reopen_width,
+                self.next_reopen_height, sdl.SDL_WINDOW_SHOWN |
+                sdl.SDL_WINDOW_RESIZABLE)
+            unhide = True
+            if self._renderer != None:
+                sdl.SDL_DestroyRenderer(self._renderer)
+                self.renderer = None
+        if self._renderer is None:
+            self._renderer = \
+                sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
+            self.needs_redraw = True
         self.update_to_real_sdlw_size()
+        for child in self.children:
+            child.renderer_update()
+        if unhide:
+            self.set_hidden(False)
+        self.redraw_if_necessary()
 
     def handle_sdlw_close(self):
         self.next_reopen_width = self._width
         self.next_reopen_height = self._height
-        if self._renderer != None:
+
+        close_window = False
+        if sdl.SDL_GetPlatform().decode("utf-8",
+                "replace").lower() == "android":
+            if self.closing():
+                close_window = True
+        else:
+            if self.focused:
+                self.unfocus()
+            self.set_hidden(True)
+
+        if close_window or sdl.SDL_GetPlatform().decode("utf-8",
+                "replace").lower() == "android":
+            if self._renderer != None:
+                self._renderer = None
+                for child in self.children:
+                    child.renderer_update()
+                sdl.SDL_DestroyRenderer(self._renderer)
             self._renderer = None
-            for child in self.children:
-                child.renderer_update()
-            sdl.SDL_DestroyRenderer(self._renderer)
-        self._renderer = None
-        sdl.SDL_DestroyWindow(self._sdl_window)
-        self._sdl_window = None
-        if not self._unclosable:
-            self.is_closed = True
-            del(self._children)
-            self._children = []
-            self.destroyed()
+            sdl.SDL_DestroyWindow(self._sdl_window)
+            self._sdl_window = None
+            if close_window:
+                self.is_closed = True
+                del(self._children)
+                self._children = []
+                self.destroyed()
+            else:
+                # Keep it around to be reopened.
+                return
 
     def update_to_real_sdlw_size(self):
+        if self._sdl_window is None:
+            return
         w = ctypes.c_int32()
         h = ctypes.c_int32()
         sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
@@ -139,14 +172,16 @@ class Window(WidgetBase):
         return return_value
 
     def do_redraw(self):
+        if self._sdl_window is None or self.renderer is None:
+            return
         self.draw_children()
 
-    def _internal_on_resized(self):
+    def _internal_on_resized(self, internal_data=None):
         for child in self.children:
             child.width = self.width
             child.height = self.height
 
-    def _internal_on_post_redraw(self):
+    def _internal_on_post_redraw(self, internal_data=None):
         sdl.SDL_SetRenderTarget(self.renderer, None)
         c = Color.white
         if self.style != None:
@@ -157,13 +192,6 @@ class Window(WidgetBase):
         if self.sdl_texture != None:
             self.draw(0, 0)
         sdl.SDL_RenderPresent(self.renderer)
-
-    @property
-    def unclosable(self):
-        return self._unclosable
-
-    def set_unclosable(self):
-        self._unclosable = True
 
     def shares_focus_group(self, other_obj):
         if not isinstance(other_obj, Window):

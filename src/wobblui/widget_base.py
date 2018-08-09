@@ -91,13 +91,18 @@ class WidgetBase(object):
             self_value.post_redraw()
         self.redraw = Event("redraw", owner=self,
             special_post_event_func=do_redraw)
-        self.post_redraw = Event("post_redraw", owner=self)
+        self.post_redraw = Event("post_redraw", owner=self,
+            allow_preventing_widget_callback_by_user_callbacks=False)
         self.focus_index = None
         self._is_focused = False
-        self.resized = Event("resized", owner=self)
+        self.mousemove = Event("mousemove", owner=self)
+        self.resized = Event("resized", owner=self,
+            allow_preventing_widget_callback_by_user_callbacks=False)
         if can_get_focus:
-            self.focus = Event("focus", owner=self)
-            self.unfocus = Event("unfocus", owner=self)
+            self.focus = Event("focus", owner=self,
+                allow_preventing_widget_callback_by_user_callbacks=False)
+            self.unfocus = Event("unfocus", owner=self,
+                allow_preventing_widget_callback_by_user_callbacks=False)
             self._focusable = True
         else:
             self.focus = DummyEvent("focus", owner=self)
@@ -107,6 +112,32 @@ class WidgetBase(object):
         if autofocus and \
                 self.__class__.get_focused_widget(self) is None:
             self.focus()
+
+    def _internal_on_mousemove(self, mouse_id, x, y, internal_data=None):
+        # If we arrived here, the internal event wasn't prevented from
+        # firing / propagate. Inform all children that are inside the
+        # mouse bounds:
+        coords_are_abs = False
+        if internal_data != None:
+            coords_are_abs = True
+            x = internal_data[0]
+            y = internal_data[1]
+        for child in self.children:
+            rel_x = x
+            rel_y = y
+            if coords_are_abs:
+                rel_x = x - self.x
+                rel_y = y - self.y
+            if rel_x >= child.x and rel_y >= child.y and \
+                    rel_x < child.x + child.width and \
+                    rel_y < child.y + child.height:
+                if not child.mousemove(mouse_id,
+                        rel_x - child.x, rel_y - child.y,
+                        internal_data=internal_data):
+                    # Propagation was stopped. Signal that we took
+                    # care of this event to our caller:
+                    return True
+        # Done!
 
     def __del__(self):
         if self.sdl_texture != None:

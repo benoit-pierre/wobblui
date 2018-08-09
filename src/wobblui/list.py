@@ -140,6 +140,9 @@ class List(Widget):
             self._selected_index = v
             self.needs_redraw = True
 
+    def on_mousemove(self, mouse_id, x, y):
+        pass
+
     def do_redraw(self):
         c = Color.white
         if self.style != None:
