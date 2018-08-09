@@ -2,6 +2,7 @@
 import copy
 import ctypes
 import functools
+import math
 import sdl2 as sdl
 import sys
 import weakref
@@ -48,8 +49,8 @@ class WidgetBase(object):
             if self_value is None:
                 return
             dpi_scale = self_value.style.dpi_scale
-            tex_x = max(1, round(self_value.width))
-            tex_y = max(1, round(self_value.height))
+            tex_x = max(1, math.ceil(self_value.width + 1.0))
+            tex_y = max(1, math.ceil(self_value.height + 1.0))
             if self_value.sdl_texture is None or \
                     self_value.sdl_texture_width != tex_x or \
                     self_value.sdl_texture_height != tex_y:
