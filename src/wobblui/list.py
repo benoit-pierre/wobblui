@@ -2,7 +2,7 @@
 import html
 
 from wobblui.color import Color
-from wobblui.gfx import draw_rectangle
+from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
@@ -46,7 +46,7 @@ class ListEntry(object):
                 c = Color(self.style.get("selected_text"))
         self.text_obj.draw(renderer,
             round(5.0 * self.dpi_scale) + x,
-            round(5.0 * self.dpi_scale) + y,
+            round(self.vertical_padding * self.dpi_scale) + y,
             color=c)
 
     def copy(self):
@@ -85,11 +85,17 @@ class ListEntry(object):
             self._max_width = v
             self.need_size_update = True
 
+    @property
+    def vertical_padding(self):
+        return 10.0
+
     def update_size(self):
         if not self.need_size_update:
             return
         self.need_size_update = False
-        padding = max(0, 5.0 * self.dpi_scale)
+        padding = max(0, round(5.0 * self.dpi_scale))
+        padding_vertical = max(0,
+            round(self.vertical_padding * self.dpi_scale))
         mw = self.max_width
         if mw != None:
             mw -= padding * 2
@@ -102,7 +108,7 @@ class ListEntry(object):
         self._width = round(self.text_width + padding)
         if self.max_width != None and self.max_width < self._width:
             self._width = self.max_width
-        self._height = round(self.text_height + padding)
+        self._height = round(self.text_height + padding_vertical * 2)
         if is_empty:
             self.text_width = 0
             self.text_obj.text = ""
@@ -111,7 +117,7 @@ class List(Widget):
     def __init__(self):
         super().__init__(is_container=False)
         self._entries = []
-        self._selected_index = 0
+        self._selected_index = -1
         self._hover_index = -1
 
     @property
@@ -155,6 +161,45 @@ class List(Widget):
                     width=self.width,
                     draw_hover=(entry_id == self._hover_index))
             cy += round(entry.height)
+
+        # Draw keyboard focus line if we have the focus:
+        if self.focused or True:
+            focus_border_thickness = 2.0
+            c = Color.red
+            if c != None:
+                c = Color(self.style.get("focus_border"))
+            draw_dashed_line(self.renderer,
+                0.5 * focus_border_thickness * self.dpi_scale,
+                0,
+                0.5 * focus_border_thickness * self.dpi_scale,
+                self.height,
+                dash_length=(7.0 * self.dpi_scale),
+                thickness=(focus_border_thickness * self.dpi_scale),
+                color=c)
+            draw_dashed_line(self.renderer,
+                self.width - 0.5 * focus_border_thickness * self.dpi_scale,
+                0,
+                self.width - 0.5 * focus_border_thickness * self.dpi_scale,
+                self.height,
+                dash_length=(7.0 * self.dpi_scale),
+                thickness=(focus_border_thickness * self.dpi_scale),
+                color=c)
+            draw_dashed_line(self.renderer,
+                0,
+                0.5 * focus_border_thickness * self.dpi_scale,
+                self.width,
+                0.5 * focus_border_thickness * self.dpi_scale,
+                dash_length=(7.0 * self.dpi_scale),
+                thickness=(focus_border_thickness * self.dpi_scale),
+                color=c)
+            draw_dashed_line(self.renderer,
+                0,
+                self.height - 0.5 * focus_border_thickness * self.dpi_scale,
+                self.width,
+                self.height - 0.5 * focus_border_thickness * self.dpi_scale,
+                dash_length=(7.0 * self.dpi_scale),
+                thickness=(focus_border_thickness * self.dpi_scale),
+                color=c)
 
     def get_natural_width(self):
         w = 0
