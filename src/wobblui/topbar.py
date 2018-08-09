@@ -26,6 +26,7 @@ class Topbar(Widget):
     def add_to_top(self, child, expand=True):
         self.topbar_box.add(child, expand=expand)
         child.internal_override_parent(self)
+        self.topbar_box.height = self.topbar_box.get_natural_height()
         self.relayout()
         self.needs_redraw = True
 

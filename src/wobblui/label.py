@@ -73,8 +73,7 @@ class Label(Widget):
             return self._layout_height
         text_obj_copy = self.text_obj.copy()
         text_obj_copy.draw_scale = self.dpi_scale
-        (w, h) = text_obj_copy.layout(max_width=given_width,
-            draw_scale=self.dpi_scale)
+        (w, h) = text_obj_copy.layout(max_width=given_width)
         return h
 
     @property

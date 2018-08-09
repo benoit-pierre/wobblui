@@ -79,23 +79,37 @@ class Box(Widget):
                 max_w = max(max_w, child.get_natural_width())
             return max_w
 
-    def get_natural_height(self, max_width=None):
+    def get_natural_height(self, given_width=None):
         if not self.horizontal:
             total_h = 0
             for child in self._children:
-                total_h += child.get_natural_height(max_width=max_width)
+                total_h += child.get_natural_height(given_width=max_width)
             return total_h
         elif len(self.children) == 0:
             return self.height
         else:
             max_h = 0
             for child in self._children:
-                max_h = max(max_w, child.get_natural_height(
-                    max_width=child.width))
+                max_h = max(max_h, child.get_natural_height(
+                    given_width=child.width))
             return max_h
+
+    def _internal_on_resized(self, internal_data=None):
+        for item in self._children:
+            if self.horizontal:
+                item.height = self.height
+            else:
+                item.width = self.width
+                item.height = item.get_natural_height(given_width=self.width)
 
     def add(self, item, expand=True):
         super().add(item)
+        if self.horizontal:
+            item.width = item.get_natural_width()
+            item.height = item.get_natural_height()
+        else:
+            item.width = self.width
+            item.height = item.get_natural_height(given_width=self.width)
         self.expand_info[len(self._children) - 1] = expand
 
     def add_spacer(self):

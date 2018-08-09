@@ -1,0 +1,69 @@
+
+import os
+import sdl2.image as sdlimage
+import tempfile
+
+from wobblui.widget import Widget
+
+sdlimage_initialized = False
+
+def image_to_sdl_surface(pil_image):
+    global sdlimage_initialized
+    if not sdlimage_initialized:
+        flags = sdlimage.IMG_INIT_JPG|sdlimage.IMG_INIT_PNG
+        sdlimage.IMG_Init(flags)
+    sdl_image = None
+    contents = file_path_or_object.read()
+    (fd, path) = tempfile.mkstmep(prefix="wobblui-image-")
+    try:
+        os.close(fd)
+        pil_image.save(file_path_or_object, format="PNG")
+        sdl_image = sdlimage.IMG_Load(path)
+    finally:
+        os.remove(path)
+    if sdl_image is None:
+        err_msg = sdlimage.IMG_GetError()
+        try:
+            err_msg = err_msg.decode("utf-8", "replace")
+        except AttributeError:
+            pass
+        raise ValueError("failed to load image with SDL Image: " +
+            str(err_msg))
+    return sdl_image
+
+def image_to_sdl_texture(renderer, pil_Image):
+    sdl_image = image_to_sdl_surface(pil_image)
+    try:
+        texture = sdl.SDL_CreateTextureFromSurface(renderer, sdl_image)
+    finally:
+        sdlimage.SDL_DestroySurface(sdl_image)
+    return texture
+
+def image_as_grayscale(pil_image):
+    if pil_image.mode.upper() == "RGBA":
+        gray_image = pil_image.convert("LA")
+        return gray_image
+    elif pil_image.mode.upper() == "RGB":
+        gray_image = pil_image.convert("L")
+        return gray_image
+    elif pil_image.mode.upper() == "L" or \
+            pil_image.mode.upper() == "LA":
+        return pil_image.copy()
+    else:
+        raise RuntimeError("unsupported mode: " +
+            pil_image.mode)
+
+def remove_image_alpha(pil_image):
+    if pil_image.mode.upper() == "RGBA":
+        no_alpha_img = PIL.Image.new("RGB",
+            pil_image.size,
+            (255, 255, 255))
+        no_alpha_img.paste(pil_image,
+            mask=pil_image.split()[3])
+        return no_alpha_img
+    elif pil_image.mode.upper() == "RGB":
+        return pil_image.copy()
+    else:
+        raise RuntimeError("unsupported mode: " +
+            pil_Image.mode)
+
