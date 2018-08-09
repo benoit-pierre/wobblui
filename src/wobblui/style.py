@@ -78,6 +78,7 @@ class AppStyleBright(AppStyle):
         self.set("border", "#222")
         self.set("selected_bg", "#ea3")
         self.set("hover_bg", "#f81")
+        self.set("focus_border", "#f50")
         self.set("selected_text", "#000")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 13)
@@ -96,7 +97,8 @@ class AppStyleDark(AppStyle):
         self.set("border", "#000")
         self.set("selected_bg", "#ea3")
         self.set("hover_bg", "#f81")
-        self.set("selected_text", "#000")
+        self.set("focus_border", "#f50")
+        self.set("selected_text", "#500")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 13)
 
