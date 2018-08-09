@@ -38,9 +38,9 @@ class Font(object):
             text = text.encode("utf-8", "replace")
         except AttributeError:
             pass
-        if sdlttf.TTF_SizeText(font, text, ctypes.byref(
+        if sdlttf.TTF_SizeUTF8(font, text, ctypes.byref(
                 width), ctypes.byref(height)) != 0:
-            raise RuntimeError("TTF_SizeText failed")
+            raise RuntimeError("TTF_SizeUTF8 failed")
         return (int(width.value), int(height.value))
 
     def render_text_as_sdl_texture(self, renderer, text, color=None):
@@ -53,7 +53,7 @@ class Font(object):
             text = text.encode("utf-8", "replace")
         except AttributeError:
             pass
-        surface = sdlttf.TTF_RenderText_Blended(font, text, c)
+        surface = sdlttf.TTF_RenderUTF8_Blended(font, text, c)
         texture = sdl.SDL_CreateTextureFromSurface(renderer, surface)
         sdl.SDL_FreeSurface(surface)
         return texture
