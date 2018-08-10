@@ -17,6 +17,7 @@ class Box(Widget):
 
     def layout(self):
         expand_widget_count = 0
+        print("LAYOUTING AT WIDTH: " + str(self.width))
         child_space = 0
         child_id = -1
         for child in self._children:
@@ -36,20 +37,23 @@ class Box(Widget):
                     item_padding
                 child_space += child_size
                 child.height = child_size
-        remaining_space = self.height - child_space
+        remaining_space = max(0, self.height - child_space)
         if self.horizontal:
-            remaining_space = self.width - child_space
+            remaining_space = max(0, self.width - child_space)
         space_per_item = 0
         if expand_widget_count > 0:
             space_per_item = math.floor(
                 remaining_space / expand_widget_count)
         child_id = -1
+        print("LAYOUT BOX: " + str(self.horizontal))
         cx = 0
         cy = 0
         for child in self._children:
             child_id += 1
-            assigned_w = child.width
-            assigned_h = child.height
+            print("PLACING CHILD AT " + str((cx, cy)))
+            assigned_w = max(1, math.ceil(child.width))
+            assigned_h = max(1, math.ceil(child.height))
+            print("ASSIGNED SIZE: " + str((assigned_w, assigned_h)))
             space_for_this_item = space_per_item
             if expand_widget_count <= 1:
                 # Make sure to use up all remaining space:
@@ -111,16 +115,17 @@ class Box(Widget):
             else:
                 item.width = self.width
                 item.height = item.get_natural_height(given_width=self.width)
+        self.layout()
 
     def add(self, item, expand=True):
-        super().add(item)
+        super().add(item, trigger_resize=False)
+        self.expand_info[len(self._children) - 1] = expand
         if self.horizontal:
             item.width = item.get_natural_width()
             item.height = item.get_natural_height()
         else:
             item.width = self.width
             item.height = item.get_natural_height(given_width=self.width)
-        self.expand_info[len(self._children) - 1] = expand
         self.layout()
 
     def add_spacer(self):

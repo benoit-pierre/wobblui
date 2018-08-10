@@ -82,21 +82,13 @@ class Topbar(Widget):
         current_x = round(self.padding * self.dpi_scale)
         first_child = True
         current_y = round(self.padding * self.dpi_scale)
-        for child in self.topbar_box.children:
-            child.x = current_x
-            if first_child:
-                first_child = False
-            else:
-                current_x += round(self.child_padding * self.dpi_scale)
-            child.x = current_x
-            child.y = current_y
-            natural_height = child.get_natural_height()
-            if child.height < natural_height:
-                child.height = natural_height
-            topbar_height = max(math.ceil(
-                child.height + self.padding * 2 * self.dpi_scale),
-                topbar_height)
-            current_x += math.ceil(child.width)
+        self.topbar_box.x = current_x
+        self.topbar_box.y = current_y
+        topbar_height = round((self.topbar_box.height +
+            self.padding * 2) * self.dpi_scale)
+        print("RELAYOUTING TOPBAR UP")
+        self.topbar_box.width = self.width - round(
+            self.padding * self.dpi_scale * 2.0)
         for child in self._children:
             child.x = 0
             child.y = topbar_height + self.border_size

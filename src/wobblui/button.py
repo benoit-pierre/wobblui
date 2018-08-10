@@ -52,6 +52,14 @@ class Button(Widget):
         if self.renderer is None:
             return
         offset_x = round(self.border_size)
+        full_available_size = round(self.width - (offset_x * 2))
+        used_up_size = (self.text_layout_width or 0)
+        if self.contained_image != None:
+            used_up_size += math.ceil(self.contained_image.size[0] *
+                self.contained_image_scale * self.dpi_scale) +\
+                round(self.border_size * 0.7)
+        extra_size = max(0, full_available_size - used_up_size)
+        offset_x += max(0, math.floor(extra_size / 2.0))
         if self.contained_image != None:
             tex = sdl.SDL_CreateTextureFromSurface(self.renderer,
                 self.contained_image_srf)

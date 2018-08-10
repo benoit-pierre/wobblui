@@ -66,6 +66,14 @@ class Label(Widget):
             max_width=self._max_width)
         self._height = self._layout_height
 
+    def get_natural_width(self):
+        if len(self.text_obj.text) == 0:
+            return 0
+        text_obj_copy = self.text_obj.copy()
+        text_obj_copy.draw_scale = self.dpi_scale
+        (w, h) = text_obj_copy.layout()
+        return w
+
     def get_natural_height(self, given_width=None):
         if len(self.text_obj.text) == 0:
             return 0

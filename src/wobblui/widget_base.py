@@ -308,11 +308,15 @@ class WidgetBase(object):
             self.redraw()
             if self.sdl_texture is None:
                 return
+        w = ctypes.c_int32()
+        h = ctypes.c_int32()
+        sdl.SDL_QueryTexture(self.sdl_texture, None, None,
+            ctypes.byref(w), ctypes.byref(h))
         tg = sdl.SDL_Rect()
         tg.x = x
         tg.y = y
-        tg.w = max(1, round(self.width))
-        tg.h = max(1, round(self.height))
+        tg.w = max(1, round(w.value))
+        tg.h = max(1, round(h.value))
         src = sdl.SDL_Rect()
         src.x = 0
         src.y = 0
@@ -367,6 +371,8 @@ class WidgetBase(object):
     @width.setter
     def width(self, v):
         if self._width != v:
+            print("WIDTH CHANGE ON " + str(self) +
+                " -> " + str(v))
             self.size_change(v, self.height)
 
     @height.setter
@@ -505,14 +511,15 @@ class WidgetBase(object):
     def renderer(self):
         return self.get_renderer()
 
-    def add(self, item):
+    def add(self, item, trigger_resize=True):
         if not self.is_container:
             raise RuntimeError("this widget is " +
                 "not a container, can't add children")
         self._children.append(item)
         item.internal_override_parent(self)
         self.needs_redraw = True
-        self.resized()
+        if trigger_resize:
+            self.resized()
 
     def internal_override_parent(self, parent):
         self._parent = parent
