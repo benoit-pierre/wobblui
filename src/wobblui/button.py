@@ -10,7 +10,7 @@ from wobblui.widget import Widget
 
 class Button(Widget):
     def __init__(self, with_border=True):
-        super().__init__(is_container=False)
+        super().__init__(is_container=False, can_get_focus=True)
         self.contained_image = None
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None

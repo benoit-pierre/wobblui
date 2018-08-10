@@ -56,7 +56,7 @@ class Event(object):
         print("EVENT TRIGGER: " + str(self.name) +
             " ON " + str(self.on_object))
         if self._disabled:
-            return
+            return True
         try:
             if self.widget_must_get_event:
                 if self.native_widget_callback(*args,
@@ -74,6 +74,7 @@ class Event(object):
         finally:
             if self.special_post_event_func != None:
                 self.special_post_event_func()
+        return True
 
 class DummyEvent(Event):
     def __init__(self, name, owner=None):

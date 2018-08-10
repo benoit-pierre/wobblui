@@ -143,7 +143,7 @@ class List(Widget):
             self._selected_index = v
             self.needs_redraw = True
 
-    def on_keydown(self, key, physical_key):
+    def on_keydown(self, key, physical_key, modifiers):
         if key == "down":
             self._selected_index += 1
             if self._selected_index >= len(self._entries):

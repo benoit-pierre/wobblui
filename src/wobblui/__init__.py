@@ -20,6 +20,8 @@ def sdl_vkey_map(key):
         return chr(ord("0") + (key - sdl.SDLK_0))
     if key >= sdl.SDLK_a and key <= sdl.SDLK_z:
         return chr(ord("a") + (key - sdl.SDLK_a))
+    if key == sdl.SDLK_KP_TAB or key == sdl.SDLK_TAB:
+        return "tab"
     if key == sdl.SDLK_DOWN:
         return "down"
     if key == sdl.SDLK_UP:
@@ -44,6 +46,8 @@ def sdl_key_map(key):
         return chr(ord("0") + (key - sdl.SDL_SCANCODE_0))
     if key >= sdl.SDL_SCANCODE_A and key <= sdl.SDL_SCANCODE_Z:
         return chr(ord("a") + (key - sdl.SDL_SCANCODE_A))
+    if key == sdl.SDL_SCANCODE_KP_TAB or key == sdl.SDL_SCANCODE_TAB:
+        return "tab"
     if key == sdl.SDL_SCANCODE_DOWN:
         return "down"
     if key == sdl.SDL_SCANCODE_UP:
@@ -162,12 +166,17 @@ def handle_event(event):
     elif event.type == sdl.SDL_KEYDOWN:
         virtual_key = sdl_vkey_map(event.key.keysym.sym)
         physical_key = sdl_key_map(event.key.keysym.scancode)
+        shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
+            ((event.key.keysym.mod & sdl.KMOD_LSHIFT) != 0)
         w = get_window_by_sdl_id(event.motion.windowID)
         if w is None or w.is_closed:
             return
         if w.hidden:
             w.set_hidden(False)
-        w.keydown(virtual_key, physical_key)
+        modifiers = set()
+        if shift:
+            modifiers.add("shift")
+        w.keydown(virtual_key, physical_key, modifiers)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
                 sdl.SDL_WINDOWEVENT_FOCUS_GAINED:

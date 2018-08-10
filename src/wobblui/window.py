@@ -134,9 +134,23 @@ class Window(WidgetBase):
     def _internal_on_mousemove(self, mouse_id, x, y, internal_data=None):
         self.mouse_position_cache[mouse_id] = (x, y)
 
-    def _internal_on_keydown(self, key, physical_key, internal_data=None):
+    def _internal_on_keydown(self, key, physical_key, modifiers,
+            internal_data=None):
         focused_widget = WidgetBase.get_focused_widget_by_window(self)
-        focused_widget.keydown(key, physical_key)
+        if focused_widget.keydown(key, physical_key, modifiers):
+            # Event was not stopped in user handler. Process focus:
+            if key == "tab":
+                if not "shift" in modifiers and \
+                        hasattr(focused_widget, "focus_next"):
+                    focused_widget.focus_next()
+                    
+                elif "shift" in modifiers and \
+                        hasattr(focused_widget, "focus_previous"):
+                    focused_widget.focus_previous()
+                focused_widget.needs_redraw = True
+                new_focused_widget = \
+                    WidgetBase.get_focused_widget_by_window(self)
+                new_focused_widget.needs_redraw = True
 
     def focus_update(self):
         if len(self.children) > 0 and \
