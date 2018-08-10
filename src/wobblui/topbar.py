@@ -89,7 +89,7 @@ class Topbar(Widget):
             self.padding * self.dpi_scale * 2.0)
         self.topbar_box.height = self.topbar_box.get_natural_height(
             given_width=self.topbar_box.width)
-        topbar_height = round((self.topbar_box.height +
+        topbar_height = round(self.topbar_box.height + (
             self.padding * 2) * self.dpi_scale)
         for child in self._children:
             child.x = 0
