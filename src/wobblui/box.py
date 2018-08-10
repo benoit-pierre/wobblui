@@ -54,22 +54,24 @@ class Box(Widget):
             assigned_w = max(1, math.ceil(child.width))
             assigned_h = max(1, math.ceil(child.height))
             print("ASSIGNED SIZE: " + str((assigned_w, assigned_h)))
-            space_for_this_item = space_per_item
-            if expand_widget_count <= 1:
+            if self.expand_info[child_id] and self.horizontal:
+                assigned_w += space_per_item
+            elif self.expand_info[child_id] and not self.horizontal:
+                assigned_h += space_per_item
+            if expand_widget_count <= 1 and \
+                    child_id == len(self._children) - 1:
+                print("LAST EXPANDING ITEM AT THE END OF LAYOUT")
                 # Make sure to use up all remaining space:
                 if self.horizontal:
-                    space_for_this_item = (remaining_space - cx)
+                    assigned_w = (self.width - cx)
                 else:
-                    space_for_this_item = (remaining_space - cy)
+                    assigned_h = (self.height - cy)
             expand_widget_count -= 1
-            if self.expand_info[child_id] and self.horizontal:
-                assigned_w += space_for_this_item
-            elif self.expand_info[child_id] and not self.horizontal:
-                assigned_h += space_for_this_item
             child.x = cx
             child.y = cy
+            print("FINAL ASSIGNED W: " + str(assigned_w))
             child.width = assigned_w
-            child.height = assigned_h
+            child.height = child.get_natural_height(given_width=child.width)
             item_padding = round(self.padding * self.dpi_scale)
             if child_id == len(self._children) - 1:
                 item_padding = 0
