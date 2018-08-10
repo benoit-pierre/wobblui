@@ -211,7 +211,6 @@ class WidgetBase(object):
 
         # See if we want to focus this widget:
         if event_name == "mousedown":
-            print("MOUSE DOWN FOCUS CHECK ON " + str(self))
             event_descends_into_child = False
             for child in self.children:
                 rel_x = x
@@ -224,14 +223,10 @@ class WidgetBase(object):
                         rel_y < child.y + child.height:
                     event_descends_into_child = True
                     break
-            print("WLIL ATTEMPT TO FOCUS: " + str(
-                not event_descends_into_child))
             if not event_descends_into_child:
                 if self.focusable:
-                    print("FOCUSABLE")
                     self.focus()
                 else:
-                    print("SEARCHING FOCUSABLE PARENT")
                     p = self.parent
                     while p != None and not p.focusable:
                         p = p.parent
@@ -419,8 +414,6 @@ class WidgetBase(object):
     @width.setter
     def width(self, v):
         if self._width != v:
-            print("WIDTH CHANGE ON " + str(self) +
-                " -> " + str(v))
             self.size_change(v, self.height)
 
     @height.setter
