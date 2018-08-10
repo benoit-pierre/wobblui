@@ -81,6 +81,12 @@ class Button(Widget):
             self.contained_rich_text_obj.draw(
                 self.renderer, offset_x, 0,
                 color=c, draw_scale=self.dpi_scale)
+        if self.focused:
+            focus_padding = round(2.0 * self.dpi_scale)
+            self.draw_keyboard_focus(
+                focus_padding, focus_padding,
+                self.width - focus_padding * 2,
+                self.height - focus_padding * 2)
 
     def get_natural_height(self, given_width=None):
         my_h = round(self.border_size * 2)
