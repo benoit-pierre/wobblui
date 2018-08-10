@@ -53,7 +53,8 @@ class Topbar(Widget):
 
         # Draw topbar items:
         for child in self.topbar_box.children:
-            child.draw(child.x, child.y)
+            child.draw(child.x + self.topbar_box.x,
+                child.y + self.topbar_box.y)
 
         # Draw border:
         c = Color((100, 100, 100))
@@ -84,11 +85,12 @@ class Topbar(Widget):
         current_y = round(self.padding * self.dpi_scale)
         self.topbar_box.x = current_x
         self.topbar_box.y = current_y
-        topbar_height = round((self.topbar_box.height +
-            self.padding * 2) * self.dpi_scale)
-        print("RELAYOUTING TOPBAR UP")
         self.topbar_box.width = self.width - round(
             self.padding * self.dpi_scale * 2.0)
+        self.topbar_box.height = self.topbar_box.get_natural_height(
+            given_width=self.topbar_box.width)
+        topbar_height = round((self.topbar_box.height +
+            self.padding * 2) * self.dpi_scale)
         for child in self._children:
             child.x = 0
             child.y = topbar_height + self.border_size

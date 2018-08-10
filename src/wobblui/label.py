@@ -46,6 +46,7 @@ class Label(Widget):
         self.update_layout()
 
     def do_redraw(self):
+        self.update_layout()
         for fragment in self.text_obj.fragments:
             fragment.draw(self.renderer,
                 fragment.x, fragment.y,
@@ -62,8 +63,11 @@ class Label(Widget):
         self.text_obj.draw_scale = self.dpi_scale
         self.text_obj.layout(max_width=self._max_width,
             align_if_none=self._current_align)
+        layout_width = self.width
+        if self._max_width != None and self._max_width < layout_width:
+            layout_width = self._max_width
         (self._width, self._layout_height) = self.text_obj.layout(
-            max_width=self._max_width)
+            max_width=layout_width)
         self._height = self._layout_height
 
     def get_natural_width(self):

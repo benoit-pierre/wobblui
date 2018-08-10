@@ -17,7 +17,6 @@ class Box(Widget):
 
     def layout(self):
         expand_widget_count = 0
-        print("LAYOUTING AT WIDTH: " + str(self.width))
         child_space = 0
         child_id = -1
         for child in self._children:
@@ -45,22 +44,18 @@ class Box(Widget):
             space_per_item = math.floor(
                 remaining_space / expand_widget_count)
         child_id = -1
-        print("LAYOUT BOX: " + str(self.horizontal))
         cx = 0
         cy = 0
         for child in self._children:
             child_id += 1
-            print("PLACING CHILD AT " + str((cx, cy)))
             assigned_w = max(1, math.ceil(child.width))
             assigned_h = max(1, math.ceil(child.height))
-            print("ASSIGNED SIZE: " + str((assigned_w, assigned_h)))
             if self.expand_info[child_id] and self.horizontal:
                 assigned_w += space_per_item
             elif self.expand_info[child_id] and not self.horizontal:
                 assigned_h += space_per_item
             if expand_widget_count <= 1 and \
                     child_id == len(self._children) - 1:
-                print("LAST EXPANDING ITEM AT THE END OF LAYOUT")
                 # Make sure to use up all remaining space:
                 if self.horizontal:
                     assigned_w = (self.width - cx)
@@ -69,9 +64,10 @@ class Box(Widget):
             expand_widget_count -= 1
             child.x = cx
             child.y = cy
-            print("FINAL ASSIGNED W: " + str(assigned_w))
             child.width = assigned_w
             child.height = child.get_natural_height(given_width=child.width)
+            if child.height < self.height:
+                child.y += math.floor((self.height - child.height) / 2.0)
             item_padding = round(self.padding * self.dpi_scale)
             if child_id == len(self._children) - 1:
                 item_padding = 0

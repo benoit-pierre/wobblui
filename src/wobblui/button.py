@@ -65,7 +65,7 @@ class Button(Widget):
                 self.contained_image_srf)
             tg = sdl.SDL_Rect()
             tg.x = offset_x
-            tg.y = 0
+            tg.y = round(self.border_size)
             tg.w = math.ceil(self.contained_image.size[0] *
                 self.contained_image_scale * self.dpi_scale)
             tg.h = math.ceil(self.contained_image.size[1] *
@@ -82,8 +82,20 @@ class Button(Widget):
                 self.renderer, offset_x, 0,
                 color=c, draw_scale=self.dpi_scale)
 
+    def get_natural_height(self, given_width=None):
+        my_h = round(self.border_size * 2)
+        if self.contained_image != None:
+            my_h = max(my_h,
+                round(self.contained_image.size[1] *\
+                self.contained_image_scale * self.dpi_scale +
+                self.border_size * 2))
+        if self.contained_richtext_obj != None:
+            my_h = max(my_h, self.text_layout_height +
+                round(self.border_size * 2))
+        return my_h
+
     def get_natural_width(self):
-        my_w = 0
+        my_w = round(self.border_size * 2)
         if self.contained_image != None:
             my_w += round(self.contained_image.size[0] *\
                 self.contained_image_scale * self.dpi_scale)
