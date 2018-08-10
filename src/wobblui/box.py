@@ -15,6 +15,9 @@ class Box(Widget):
         self.padding = 5.0
         self.layout()
 
+    def _internal_on_moved(self, internal_data=None):
+        self.layout()
+
     def layout(self):
         expand_widget_count = 0
         child_space = 0
@@ -44,8 +47,8 @@ class Box(Widget):
             space_per_item = math.floor(
                 remaining_space / expand_widget_count)
         child_id = -1
-        cx = 0
-        cy = 0
+        cx = self.x
+        cy = self.y
         for child in self._children:
             child_id += 1
             assigned_w = max(1, math.ceil(child.width))
@@ -58,9 +61,9 @@ class Box(Widget):
                     child_id == len(self._children) - 1:
                 # Make sure to use up all remaining space:
                 if self.horizontal:
-                    assigned_w = (self.width - cx)
+                    assigned_w = (self.width + self.x - cx)
                 else:
-                    assigned_h = (self.height - cy)
+                    assigned_h = (self.height + self.y - cy)
             expand_widget_count -= 1
             child.x = cx
             child.y = cy

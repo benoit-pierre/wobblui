@@ -237,70 +237,7 @@ class List(Widget):
 
         # Draw keyboard focus line if we have the focus:
         if self.focused:
-            focus_border_thickness = 1.0
-            c = Color.red
-            if c != None:
-                c = Color(self.style.get("focus_border"))
-            draw_dashed_line(self.renderer,
-                0.5 * focus_border_thickness * self.dpi_scale,
-                0,
-                0.5 * focus_border_thickness * self.dpi_scale,
-                self.height,
-                dash_length=(7.0 * self.dpi_scale),
-                thickness=(focus_border_thickness * self.dpi_scale),
-                color=c)
-            draw_dashed_line(self.renderer,
-                self.width - 0.5 * focus_border_thickness * self.dpi_scale,
-                0,
-                self.width - 0.5 * focus_border_thickness * self.dpi_scale,
-                self.height,
-                dash_length=(7.0 * self.dpi_scale),
-                thickness=(focus_border_thickness * self.dpi_scale),
-                color=c)
-            draw_dashed_line(self.renderer,
-                0,
-                0.5 * focus_border_thickness * self.dpi_scale,
-                self.width,
-                0.5 * focus_border_thickness * self.dpi_scale,
-                dash_length=(7.0 * self.dpi_scale),
-                thickness=(focus_border_thickness * self.dpi_scale),
-                color=c)
-            draw_dashed_line(self.renderer,
-                0,
-                self.height - 0.5 * focus_border_thickness * self.dpi_scale,
-                self.width,
-                self.height - 0.5 * focus_border_thickness * self.dpi_scale,
-                dash_length=(7.0 * self.dpi_scale),
-                thickness=(focus_border_thickness * self.dpi_scale),
-                color=c)
-
-        # Draw scroll bar:
-        if max_scroll_down > 0:
-            scroll_percent = max(0.0, min(1.0,
-                self.scroll_y_offset / float(max_scroll_down)))
-            self.scrollbar_height = round(20.0 * self.dpi_scale)
-            self.scrollbar_y = round((self.height -
-                self.scrollbar_height) * scroll_percent)
-            self.scrollbar_width = round(8.0 * self.dpi_scale)
-            self.scrollbar_x = self.width - self.scrollbar_width
-            c = Color.white
-            if self.style != None:
-                c = Color(self.style.get("border"))
-            draw_rectangle(self.renderer,
-                self.scrollbar_x,
-                self.scrollbar_y,
-                self.scrollbar_width, self.scrollbar_height,
-                color=c)
-            c = Color.black
-            if self.style != None:
-                c = Color(self.style.get("selected_bg"))
-            border_width = max(1, round(1 * self.dpi_scale))
-            draw_rectangle(self.renderer,
-                self.scrollbar_x + 1 * border_width,
-                self.scrollbar_y + 1 * border_width,
-                self.scrollbar_width - 2 * border_width,
-                self.scrollbar_height - 2 * border_width,
-                color=c)
+            self.draw_keyboard_focus(0, 0, self.width, self.height)
 
     def get_natural_width(self):
         w = 0

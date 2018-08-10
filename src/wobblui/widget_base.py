@@ -7,7 +7,9 @@ import sdl2 as sdl
 import sys
 import weakref
 
+from wobblui.color import Color
 from wobblui.event import DummyEvent, Event
+from wobblui.gfx import draw_dashed_line
 
 last_wid = -1
 last_add = -1
@@ -39,8 +41,8 @@ class WidgetBase(object):
 
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
-        self.x = 0
-        self.y = 0
+        self._x = 0
+        self._y = 0
         self._width = 64
         self._height = 64
         self._max_width = None
@@ -111,6 +113,8 @@ class WidgetBase(object):
         self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
         self.mouseup = Event("mouseup", owner=self)
+        self.moved = Event("moved", owner=self,
+            allow_preventing_widget_callback_by_user_callbacks=False)
         self.resized = Event("resized", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         if can_get_focus:
@@ -122,6 +126,26 @@ class WidgetBase(object):
             self.focus = DummyEvent("focus", owner=self)
             self.unfocus = DummyEvent("unfocus", owner=self)
         all_widgets.append(weakref.ref(self))
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, v):
+        if self._x != v:
+            self._x = v
+            self.moved()
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, v):
+        if self._y != v:
+            self._y = v
+            self.moved()
 
     def _internal_on_mousedown(self, mouse_id, button, x, y,
             internal_data=None):
@@ -184,6 +208,37 @@ class WidgetBase(object):
                 (not coords_are_abs and x >= 0 and y >= 0 and
                     x < self.width and y < self.width):
             inside_parent = True
+
+        # See if we want to focus this widget:
+        if event_name == "mousedown":
+            print("MOUSE DOWN FOCUS CHECK ON " + str(self))
+            event_descends_into_child = False
+            for child in self.children:
+                rel_x = x
+                rel_y = y
+                if coords_are_abs:
+                    rel_x = x - self.x
+                    rel_y = y - self.y
+                if rel_x >= child.x and rel_y >= child.y and \
+                        rel_x < child.x + child.width and \
+                        rel_y < child.y + child.height:
+                    event_descends_into_child = True
+                    break
+            print("WLIL ATTEMPT TO FOCUS: " + str(
+                not event_descends_into_child))
+            if not event_descends_into_child:
+                if self.focusable:
+                    print("FOCUSABLE")
+                    self.focus()
+                else:
+                    print("SEARCHING FOCUSABLE PARENT")
+                    p = self.parent
+                    while p != None and not p.focusable:
+                        p = p.parent
+                    if p != None and not p.focused:
+                        p.focus()
+
+        # Pass on event to child widgets:
         for child in self.children:
             rel_x = x
             rel_y = y
@@ -202,16 +257,6 @@ class WidgetBase(object):
                 elif event_name == "mousedown":
                     child.last_mouse_down_presses.add((event_args[0],
                         event_args[1]))
-                    # Try to focus this if it's the most inner clicked:
-                    if inside_parent is False:
-                        if child.focusable:
-                            child.focus()
-                        else:
-                            p = child.parent
-                            while p != None and not p.focusable:
-                                p = p.parent
-                            if p != None:
-                                p.focus()
                 elif event_name == "mouseup" and \
                         (event_args[0], event_args[1]) in \
                         child.last_mouse_down_presses:
@@ -232,6 +277,9 @@ class WidgetBase(object):
                             internal_data=internal_data):
                         return True
                 else:
+                    if event_name == "mousedown" and \
+                            not self.focused:
+                        self.focus()
                     if not getattr(child, event_name)(mouse_id,
                             event_args[1],
                             rel_x - child.x, rel_y - child.y,
@@ -453,6 +501,7 @@ class WidgetBase(object):
         if not self.focused:
             raise RuntimeError("not focused")
         self._is_focused = False
+        self.needs_redraw = True
 
     def update(self):
         self.needs_redraw = True
@@ -506,6 +555,44 @@ class WidgetBase(object):
 
     def get_renderer(self):
         return self._renderer
+
+    def draw_keyboard_focus(self, x, y, width, height):
+        focus_border_thickness = 1.0
+        c = Color.red
+        if c != None:
+            c = Color(self.style.get("focus_border"))
+        draw_dashed_line(self.renderer,
+            x + 0.5 * focus_border_thickness * self.dpi_scale,
+            y,
+            x + 0.5 * focus_border_thickness * self.dpi_scale,
+            y + height,
+            dash_length=(7.0 * self.dpi_scale),
+            thickness=(focus_border_thickness * self.dpi_scale),
+            color=c)
+        draw_dashed_line(self.renderer,
+            x + width - 0.5 * focus_border_thickness * self.dpi_scale,
+            y,
+            x + width - 0.5 * focus_border_thickness * self.dpi_scale,
+            y + height,
+            dash_length=(7.0 * self.dpi_scale),
+            thickness=(focus_border_thickness * self.dpi_scale),
+            color=c)
+        draw_dashed_line(self.renderer,
+            x,
+            y + 0.5 * focus_border_thickness * self.dpi_scale,
+            x + width,
+            y + 0.5 * focus_border_thickness * self.dpi_scale,
+            dash_length=(7.0 * self.dpi_scale),
+            thickness=(focus_border_thickness * self.dpi_scale),
+            color=c)
+        draw_dashed_line(self.renderer,
+            x,
+            y + height - 0.5 * focus_border_thickness * self.dpi_scale,
+            x + width,
+            y + height - 0.5 * focus_border_thickness * self.dpi_scale,
+            dash_length=(7.0 * self.dpi_scale),
+            thickness=(focus_border_thickness * self.dpi_scale),
+            color=c)
 
     @property
     def renderer(self):

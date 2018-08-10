@@ -20,6 +20,9 @@ class Topbar(Widget):
         self.topbar_box = HBox()
         self.relayout()
 
+    def _internal_on_moved(self, internal_data=None):
+        self.relayout()
+
     def get_children(self):
         return self._children + self.topbar_box.children
 
@@ -53,8 +56,7 @@ class Topbar(Widget):
 
         # Draw topbar items:
         for child in self.topbar_box.children:
-            child.draw(child.x + self.topbar_box.x,
-                child.y + self.topbar_box.y)
+            child.draw(child.x, child.y)
 
         # Draw border:
         c = Color((100, 100, 100))
