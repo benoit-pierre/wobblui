@@ -7,8 +7,9 @@ from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
 class ListEntry(object):
-    def __init__(self, html, style):
+    def __init__(self, html, style, is_alternating=False):
         self.html = html
+        self.is_alternating = is_alternating
         self._style = style
         self.y_offset = 0
         font_family = "Tex Gyre Heros"
@@ -33,7 +34,11 @@ class ListEntry(object):
             draw_keyboard_focus=False):
         c = Color((200, 200, 200))
         if self.style != None:
-            c = Color(self.style.get("inner_widget_bg"))
+            if not self.is_alternating:
+                c = Color(self.style.get("inner_widget_bg") or
+                    not self.style.has("inner_widget_alternating_bg"))
+            else:
+                c = Color(self.style.get("inner_widget_alternating_bg"))
             if draw_hover:
                 c = Color(self.style.get("hover_bg"))
             elif draw_selected:
@@ -274,11 +279,21 @@ class List(Widget):
 
     def insert_html(self, index, text):
         self._entries.insert(index, ListEntry(html, self.style))
+        i = 0
+        while i < len(self._entries):
+            self._entries[i].is_alternating = \
+                (((i + 1) % 0) == 0)
+            i += 1
 
     def add(self, text):
         self.add_html(html.escape(text))
 
     def add_html(self, html):
-        self._entries.append(ListEntry(html, self.style))
-
+        last_was_alternating = True
+        if len(self._entries) > 0 and \
+                not self._entries[-1].is_alternating:
+            last_was_alternating = False
+        self._entries.append(ListEntry(html, self.style,
+            is_alternating=(not last_was_alternating)))
+        
 
