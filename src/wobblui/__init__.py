@@ -1,6 +1,6 @@
 
+import ctypes
 import sdl2 as sdl
-import sdl2.ext as sdl_ext
 import sys
 import time
 import traceback
@@ -66,7 +66,14 @@ def sdl_key_map(key):
 def event_loop():
     event_loop_ms = 20
     while True:
-        events = sdl_ext.get_events()
+        events = []
+        while True:
+            ev = sdl.SDL_Event()
+            result = sdl.SDL_PollEvent(ctypes.byref(ev))
+            if result == 1:
+                events.append(ev)
+                continue
+            break
         if len(events) == 0:
             if event_loop_ms < 400:
                 event_loop_ms = min(
