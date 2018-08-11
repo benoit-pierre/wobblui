@@ -5,12 +5,17 @@ import os
 import PIL.Image
 import sdl2 as sdl
 
+from wobblui.color import Color
 from wobblui.image import image_to_sdl_surface
 from wobblui.widget import Widget
 
 class Button(Widget):
-    def __init__(self, with_border=True):
-        super().__init__(is_container=False, can_get_focus=True)
+    def __init__(self, with_border=True, clickable=True,
+            image_placement="left"):
+        super().__init__(is_container=False,
+            can_get_focus=clickable)
+        self.image_placment = image_placement
+        self.image_color = Color.white
         self.contained_image = None
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None
@@ -27,6 +32,10 @@ class Button(Widget):
         self.contained_image = pil_image_or_path
         self.contained_image_scale = scale
         self.contained_image_srf = image_to_sdl_surface(pil_image_or_path)
+
+    def set_image_color(self, color):
+        self.image_color = color
+        self.update()
 
     def set_html(self, html):
         font_family = self.style.get("widget_font_family")
@@ -70,7 +79,9 @@ class Button(Widget):
                 self.contained_image_scale * self.dpi_scale)
             tg.h = math.ceil(self.contained_image.size[1] *
                 self.contained_image_scale * self.dpi_scale)
-            sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
+            sdl.SDL_SetRenderDrawColor(self.renderer,
+                self.image_color.red, self.image_color.green,
+                self.image_color.blue, 255)
             sdl.SDL_RenderCopy(self.renderer, tex, None, tg)
             sdl.SDL_DestroyTexture(tex)
             offset_x += tg.w + round(self.border_size * 0.7)
@@ -78,6 +89,7 @@ class Button(Widget):
             c = Color.white
             if self.style != None:
                 c = Color(self.style.get("widget_text"))
+            sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
             self.contained_rich_text_obj.draw(
                 self.renderer, offset_x, 0,
                 color=c, draw_scale=self.dpi_scale)
@@ -114,8 +126,41 @@ class Button(Widget):
         return my_w
 
 class HamburgerButton(Button):
-    def __init__(self):
+    def __init__(self, override_color=None):
         super().__init__(with_border=False)
         self.set_image(os.path.join(os.path.dirname(__file__),
             "img", "sandwich.png"), scale=0.3)
+        color = Color.black
+        if self.style != None:
+            color = self.style.get("widget_text")
+        self.set_image_color(color)
+
+    def internal_override_parent(self, parent):
+        super().internal_override_parent(parent)
+        color = Color(self.style.get("widget_text"))
+        self.set_image_color(color)
+
+class ImageWithLabelBelow(Button):
+    def __init__(self, image_path, image_scale=1.0,
+            color_with_text_color=False):
+        super().__init__(with_border=False, clickable=False,
+            image_placement="top")
+        color = Color.white
+        if color_with_text_color:
+            color = Color(self.style.get("widget_text"))
+        self.color_with_text_color = color_with_text_color
+        self.set_image(image_path, scale=image_scale)
+        self.set_image_color(color)
+
+    def internal_override_parent(self, parent):
+        super().internal_override_parent(parent)
+        if self.color_with_text_color:
+            color = Color(self.style.get("widget_text"))
+            self.set_image_color(color)
+
+class LoadingLabel(ImageWithLabelBelow):
+    def __init__(self, text):
+        super().__init__(
+            os.path.join(os.path.dirname(__file__),
+            "img", "hourglass.png"), image_scale=0.5)
 

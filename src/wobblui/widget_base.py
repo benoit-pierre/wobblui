@@ -58,7 +58,7 @@ class WidgetBase(object):
         self.sdl_texture_height = -1
         def do_redraw():
             self_value = self_ref()
-            if self_value is None:
+            if self_value is None or self_value.renderer is None:
                 return
             dpi_scale = self_value.style.dpi_scale
             tex_x = max(1, math.ceil(self_value.width + 1.0))
@@ -539,6 +539,7 @@ class WidgetBase(object):
                     unfocus_focused()
                 finally:
                     self._is_focused = True
+                    self.needs_redraw = True
 
     def set_focus_index(self, index):
         self.focus_index = index

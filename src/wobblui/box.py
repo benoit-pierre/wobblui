@@ -144,7 +144,7 @@ class HBox(Box):
 
 class CenterBox(Widget):
     def __init__(self):
-        super().__init__(is_container=False)
+        super().__init__(is_container=True)
     
     def relayout(self):
         if len(self._children) == 0:

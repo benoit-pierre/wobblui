@@ -40,6 +40,8 @@ class Topbar(Widget):
 
     def do_redraw(self):
         self.relayout()
+        if self.renderer is None:
+            return
         c = Color((100, 100, 100))
         if self.style != None:
             c = Color(self.style.get("topbar_bg"))

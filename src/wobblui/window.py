@@ -59,6 +59,14 @@ class Window(WidgetBase):
         self.internal_app_reopen()
         all_windows.append(weakref.ref(self))
 
+    def clear(self):
+        old_renderer = self._renderer
+        self._renderer = None
+        for child in self.children:
+            child.renderer_update()
+        self._children = []
+        self._renderer = old_renderer
+
     def internal_app_reopen(self):
         if self.is_closed:
             return
@@ -157,7 +165,8 @@ class Window(WidgetBase):
                 WidgetBase.get_focused_widget_by_window(self) is None:
             sorted_candidates = self.__class__.focus_candidates(
                 self.children)
-            sorted_candidates[0].focus()
+            if len(sorted_candidates) > 0:
+                sorted_candidates[0].focus()
 
     def _internal_on_focus(self, internal_data=None):
         self.focus_update()
