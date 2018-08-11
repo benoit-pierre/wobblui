@@ -5,6 +5,7 @@ import sys
 import time
 import traceback
 
+from wobblui.timer import internal_trigger_check
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
 
@@ -83,6 +84,8 @@ def event_loop():
                 event_loop_ms = min(
                     event_loop_ms + 10,
                     400)
+            internal_trigger_check()
+            redraw_windows()
             continue
         else:
             if event_loop_ms > 20:
@@ -96,6 +99,7 @@ def event_loop():
                 print("*** ERROR IN EVENT HANDLER ***",
                     file=sys.stderr, flush=True)
                 print(str(traceback.format_exc()))
+        internal_trigger_check()
         redraw_windows()
 
 def handle_event(event):
