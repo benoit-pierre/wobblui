@@ -43,6 +43,9 @@ class Window(WidgetBase):
         global all_windows, SDL_initialized
         if not SDL_initialized:
             SDL_initialized = True
+            sdl.SDL_SetHintWithPriority(
+                b"SDL_HINT_RENDER_SCALE_QUALITY", b"2",
+                sdl.SDL_HINT_OVERRIDE)
             sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER)
             sdlttf.TTF_Init()
         self._hidden = False
@@ -145,9 +148,10 @@ class Window(WidgetBase):
     def _internal_on_keydown(self, key, physical_key, modifiers,
             internal_data=None):
         focused_widget = WidgetBase.get_focused_widget_by_window(self)
-        if focused_widget.keydown(key, physical_key, modifiers):
+        if focused_widget is None or \
+                focused_widget.keydown(key, physical_key, modifiers):
             # Event was not stopped in user handler. Process focus:
-            if key == "tab":
+            if key == "tab" and focused_widget != None:
                 if not "shift" in modifiers and \
                         hasattr(focused_widget, "focus_next"):
                     focused_widget.focus_next()
