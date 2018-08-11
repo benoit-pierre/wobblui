@@ -219,13 +219,7 @@ class Window(WidgetBase):
     def add(self, *args, **kwargs):
         return_value = super().add(*args, **kwargs)
         if len(self._children) > 0:
-            focus_item = WidgetBase.\
-                get_focused_widget(self._children[0])
-            if focus_item is None:
-                for child in self._children:
-                    if child.focusable:
-                        self._children[0].focus()
-                        break
+            self.focus_update()
         return return_value
 
     def do_redraw(self):
