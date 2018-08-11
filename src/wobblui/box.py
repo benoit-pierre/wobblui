@@ -142,4 +142,29 @@ class HBox(Box):
     def __init__(self):
         super().__init__(True)
 
+class CenterBox(Widget):
+    def __init__(self):
+        super().__init__(is_container=False)
+    
+    def relayout(self):
+        if len(self._children) == 0:
+            return
+        child = self._children[0]
+        child.width = child.get_natural_width()
+        child.height = child.get_natural_height(
+            given_width=child.width)
+        child.x = math.floor((self.width - child.width) / 2) + self.x
+        child.y = math.floor((self.height - child.height) / 2) + self.y
+
+    def _internal_on_resized(self, internal_data=None):
+        self.relayout()
+
+    def _internal_on_moved(self, internal_data=None):
+        self.relayout()
+
+    def add(self, item):
+        super().add(item)
+        self.relayout()
+
+
 
