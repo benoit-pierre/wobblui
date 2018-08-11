@@ -356,8 +356,8 @@ class WidgetBase(object):
         sdl.SDL_QueryTexture(self.sdl_texture, None, None,
             ctypes.byref(w), ctypes.byref(h))
         tg = sdl.SDL_Rect()
-        tg.x = x
-        tg.y = y
+        tg.x = round(x)
+        tg.y = round(y)
         tg.w = max(1, round(w.value))
         tg.h = max(1, round(h.value))
         src = sdl.SDL_Rect()
