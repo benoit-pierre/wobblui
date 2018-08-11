@@ -1,5 +1,6 @@
 
 import math
+import sdl2 as sdl
 
 from wobblui.widget import Widget
 
@@ -145,7 +146,10 @@ class HBox(Box):
 class CenterBox(Widget):
     def __init__(self):
         super().__init__(is_container=True)
-    
+
+    def do_redraw(self):
+        self.draw_children()
+ 
     def relayout(self):
         if len(self._children) == 0:
             return

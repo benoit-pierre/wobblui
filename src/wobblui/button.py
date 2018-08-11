@@ -7,6 +7,7 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.image import image_to_sdl_surface
+from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
 class Button(Widget):
@@ -46,7 +47,8 @@ class Button(Widget):
             draw_scale=self.dpi_scale)
         self.contained_richtext_obj.set_html(html)
         (self.text_layout_width,
-            self.text_layout_height) = self.text_obj.layout()
+            self.text_layout_height) = \
+            self.contained_richtext_obj.layout()
 
     def set_text(self, text):
         self.set_html(html.escape(text))
@@ -90,8 +92,9 @@ class Button(Widget):
             if self.style != None:
                 c = Color(self.style.get("widget_text"))
             sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
-            self.contained_rich_text_obj.draw(
-                self.renderer, offset_x, 0,
+            self.contained_richtext_obj.draw(
+                self.renderer, offset_x,
+                round(self.height / 2.0 - self.text_layout_height / 2.0),
                 color=c, draw_scale=self.dpi_scale)
         if self.focused:
             focus_padding = round(2.0 * self.dpi_scale)
@@ -144,7 +147,7 @@ class ImageWithLabelBelow(Button):
     def __init__(self, image_path, image_scale=1.0,
             color_with_text_color=False):
         super().__init__(with_border=False, clickable=False,
-            image_placement="top")
+            image_placement="left")
         color = Color.white
         if color_with_text_color:
             color = Color(self.style.get("widget_text"))
@@ -159,8 +162,9 @@ class ImageWithLabelBelow(Button):
             self.set_image_color(color)
 
 class LoadingLabel(ImageWithLabelBelow):
-    def __init__(self, text):
+    def __init__(self, html):
         super().__init__(
             os.path.join(os.path.dirname(__file__),
-            "img", "hourglass.png"), image_scale=0.5)
+            "img", "hourglass.png"), image_scale=0.2)
+        self.set_html(html)
 
