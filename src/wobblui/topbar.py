@@ -10,6 +10,7 @@ from wobblui.widget import Widget
 class Topbar(Widget):
     def __init__(self, padding=None):
         super().__init__(is_container=True)
+        self.type = "topbar"
         self.padding = 15
         if padding != None:
             self.padding = max(0, round(padding))

@@ -142,12 +142,24 @@ class RichText(RichTextObj):
             px_size=12, draw_scale=1.0):
         super().__init__()
         self.default_font_family = font_family
-        self.default_px_size = px_size
+        self._px_size = px_size
         self.draw_scale = draw_scale
         self.fragments = []
         if len(text) > 0:
             self.fragments.append(RichTextFragment(
                 text, font_family, False, False, px_size))
+
+    @property
+    def px_size(self):
+        return self._px_size
+
+    @px_size.setter
+    def px_size(self, v):
+        v = round(v)
+        if self._px_size == v:
+            return
+        self._px_size = v
+        self.set_html(self.html)
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
         for fragment in self.fragments:
@@ -204,7 +216,7 @@ class RichText(RichTextObj):
                 current_y += max(1, font_manager().get_font(
                     self.default_font_family,
                     draw_scale=self.draw_scale,
-                    px_size=self.default_px_size).\
+                    px_size=self.px_size).\
                     render_size(" ")[1])
             layout_h = max(layout_h, current_y)
             max_height_seen_in_line = None
@@ -357,7 +369,7 @@ class RichText(RichTextObj):
                 not isinstance(self.fragments[0], RichTextFragment):
             self.fragments.append(RichTextFragment(
                 text, self.default_font_family, False, False,
-                self.default_px_size))
+                self.px_size))
         else:
             self.fragments[0].text = text
 
@@ -454,7 +466,7 @@ class RichText(RichTextObj):
                 if len(text) > 0:
                     new_fragments.append(RichTextFragment(
                         text, font,
-                        bold, italic, self.default_px_size))
+                        bold, italic, self.px_size))
                     line_empty = False
                     at_block_start = False
         def leave_item(item):

@@ -28,6 +28,8 @@ class WidgetBase(object):
     def __init__(self, is_container=False,
             can_get_focus=False):
         global all_widgets
+
+        self.type = "unknown"
         self._focusable = can_get_focus
         self.padding = 8
         self.needs_redraw = True

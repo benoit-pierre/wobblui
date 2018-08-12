@@ -8,6 +8,7 @@ from wobblui.widget import Widget
 class Label(Widget):
     def __init__(self, text="", color=None):
         super().__init__()
+        self.type = "label"
         font_family = self.style.get("widget_font_family")
         px_size = self.style.get("widget_text_size") 
         self._layout_height = 0
@@ -23,6 +24,14 @@ class Label(Widget):
             self.text = text
         self._user_set_color = color
         self._layout_max_width = None
+
+    def in_topbar(self):
+        p = self.parent
+        while p != None:
+            if p.type == "topbar":
+                return True
+            p = p.parent
+        return False
 
     @property
     def color(self):
@@ -61,6 +70,10 @@ class Label(Widget):
 
     def update_layout(self):
         self.text_obj.draw_scale = self.dpi_scale
+        self.text_obj.px_size = int(self.style.get("widget_text_size"))
+        if self.style.has("topbar_text_size") and self.in_topbar():
+            self.text_obj.px_size = \
+                int(self.style.get("topbar_text_size"))
         self.text_obj.layout(max_width=self._max_width,
             align_if_none=self._current_align)
         layout_width = self.width

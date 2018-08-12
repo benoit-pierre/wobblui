@@ -141,10 +141,14 @@ class ImageButton(Button):
         color = Color.black
         if self.style != None:
             color = self.style.get("widget_text")
+            if self.style.has("saturated_widget_text"):
+                color = Color(self.style.get("saturated_widget_text"))
         self.set_image_color(color)
 
     def do_redraw(self):
         color = Color(self.style.get("widget_text"))
+        if self.style.has("saturated_widget_text"):
+            color = Color(self.style.get("saturated_widget_text"))
         self.image_color = color
         super().do_redraw()
 
@@ -160,6 +164,8 @@ class ImageWithLabel(Button):
         color = Color.white
         if color_with_text_color:
             color = Color(self.style.get("widget_text"))
+            if self.style.has("saturated_widget_text"):
+                color = Color(self.style.get("saturated_widget_text"))
         self.color_with_text_color = color_with_text_color
         self.set_image(image_path, scale=scale,
             scale_to_width=scale_to_width)
@@ -168,6 +174,8 @@ class ImageWithLabel(Button):
     def do_redraw(self):
         if self.color_with_text_color:
             color = Color(self.style.get("widget_text"))
+            if self.style.has("saturated_widget_text"):
+                color = Color(self.style.get("saturated_widget_text"))
             self.image_color = color
         super().do_redraw()
 

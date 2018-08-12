@@ -100,7 +100,8 @@ class AppStyleBright(AppStyle):
         self.set("scrollbar_knob_fg", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 13)
-    
+        self.set("topbar_text_size", 16)
+ 
 class AppStyleDark(AppStyle):
     def __init__(self):
         super().__init__()
@@ -111,7 +112,8 @@ class AppStyleDark(AppStyle):
         self.set("widget_disabled_bg", "#333")
         self.set("inner_widget_bg", "#111")
         self.set("inner_widget_alternating_bg", "#1f1e1e")
-        self.set("widget_text", "#dfdfdf")
+        self.set("widget_text", "#e0e0e0")
+        self.set("saturated_widget_text", "#fff")
         self.set("widget_disabled_text", "#888")
         self.set("border", "#000")
         self.set("selected_bg", "#7ae")
@@ -121,4 +123,5 @@ class AppStyleDark(AppStyle):
         self.set("scrollbar_knob_fg", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 13)
+        self.set("topbar_text_size", 16)
 
