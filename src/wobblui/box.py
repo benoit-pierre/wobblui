@@ -31,15 +31,16 @@ class Box(Widget):
             if self.expand_info[child_id]:
                 expand_widget_count += 1
             if self.horizontal:
-                child_size = child.get_natural_width() + item_padding
-                child_space += child_size
-                child.width = child_size
+                child.width = child.get_natural_width()
+                child.height = min(child.get_natural_height(
+                    given_width=child.width),
+                    self.height)
+                child_space += child.width + item_padding
             else:
-                child_size = child.\
-                    get_natural_height(max_width=self.width) +\
-                    item_padding
-                child_space += child_size
-                child.height = child_size
+                child.width = min(self.width, child.get_natural_width())
+                child.height = child.\
+                    get_natural_height(max_width=self.width)
+                child_space += child.height + item_padding
         remaining_space = max(0, self.height - child_space)
         if self.horizontal:
             remaining_space = max(0, self.width - child_space)
@@ -69,7 +70,7 @@ class Box(Widget):
             child.x = cx
             child.y = cy
             child.width = assigned_w
-            child.height = child.get_natural_height(given_width=child.width)
+            child.height = assigned_h
             if child.height < self.height:
                 child.y += math.floor((self.height - child.height) / 2.0)
             item_padding = round(self.padding * self.dpi_scale)
