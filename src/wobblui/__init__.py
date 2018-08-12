@@ -92,7 +92,7 @@ def event_loop():
                 event_loop_ms = 20
         for event in events:
             try:
-                if not handle_event(event):
+                if handle_event(event) is False:
                     # App termination.
                     return
             except Exception as e:
