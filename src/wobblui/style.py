@@ -16,7 +16,7 @@ class AppStyle(object):
     def has(self, name):
         if not hasattr(self, "values"):
             return False
-        return (name in self.values)
+        return (name.upper() in self.values)
 
     def set(self, name, value):
         if not hasattr(self, "values"):
@@ -92,10 +92,11 @@ class AppStyleBright(AppStyle):
         self.set("widget_text", "#111")
         self.set("widget_disabled_text", "#444")
         self.set("border", "#222")
-        self.set("selected_bg", "#ea3")
+        self.set("selected_bg", "#7ae")
         self.set("hover_bg", "#f81")
-        self.set("focus_border", "#f50")
+        self.set("focus_border", "#a9b")
         self.set("selected_text", "#000")
+        self.set("scrollbar_knob_fg", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 13)
     
@@ -112,10 +113,11 @@ class AppStyleDark(AppStyle):
         self.set("widget_text", "#ccc")
         self.set("widget_disabled_text", "#888")
         self.set("border", "#000")
-        self.set("selected_bg", "#ea3")
+        self.set("selected_bg", "#7ae")
         self.set("hover_bg", "#f81")
-        self.set("focus_border", "#f50")
-        self.set("selected_text", "#500")
+        self.set("focus_border", "#a9b")
+        self.set("selected_text", "#112")
+        self.set("scrollbar_knob_fg", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 13)
 

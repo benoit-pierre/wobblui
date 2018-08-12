@@ -6,7 +6,7 @@ import PIL.Image
 import sdl2 as sdl
 
 from wobblui.color import Color
-from wobblui.image import image_to_sdl_surface
+from wobblui.image import image_to_sdl_surface, stock_image
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
@@ -27,9 +27,15 @@ class Button(Widget):
     def border_size(self):
         return round(self.border * self.dpi_scale)
 
-    def set_image(self, pil_image_or_path, scale=1.0):
+    def set_image(self, pil_image_or_path, scale=None,
+            scale_to_width=None):
+        if scale != None and scale_to_width != None:
+            raise ValueError("cannot specify both scale factor " +
+                "and scale to width measure")
         if not hasattr(pil_image_or_path, "save"):
             pil_image_or_path = PIL.Image.open(pil_image_or_path)
+        if scale_to_width != None:
+            scale = scale_to_width / float(pil_image_or_path.size[0])
         self.contained_image = pil_image_or_path
         self.contained_image_scale = scale
         self.contained_image_srf = image_to_sdl_surface(pil_image_or_path)
@@ -128,11 +134,10 @@ class Button(Widget):
             my_w += round(self.text_layout_width)
         return my_w
 
-class HamburgerButton(Button):
-    def __init__(self, override_color=None):
+class ImageButton(Button):
+    def __init__(self, image, scale_to_width=30):
         super().__init__(with_border=False)
-        self.set_image(os.path.join(os.path.dirname(__file__),
-            "img", "sandwich.png"), scale=0.3)
+        self.set_image(image, scale_to_width=scale_to_width)
         color = Color.black
         if self.style != None:
             color = self.style.get("widget_text")
@@ -143,8 +148,12 @@ class HamburgerButton(Button):
         color = Color(self.style.get("widget_text"))
         self.set_image_color(color)
 
-class ImageWithLabelBelow(Button):
-    def __init__(self, image_path, image_scale=1.0,
+class HamburgerButton(ImageButton):
+    def __init__(self, override_color=None):
+        super().__init__(stock_image("sandwich"))
+
+class ImageWithLabel(Button):
+    def __init__(self, image_path, scale=None, scale_to_width=None,
             color_with_text_color=False):
         super().__init__(with_border=False, clickable=False,
             image_placement="left")
@@ -152,7 +161,8 @@ class ImageWithLabelBelow(Button):
         if color_with_text_color:
             color = Color(self.style.get("widget_text"))
         self.color_with_text_color = color_with_text_color
-        self.set_image(image_path, scale=image_scale)
+        self.set_image(image_path, scale=scale,
+            scale_to_width=scale_to_width)
         self.set_image_color(color)
 
     def internal_override_parent(self, parent):
@@ -161,10 +171,8 @@ class ImageWithLabelBelow(Button):
             color = Color(self.style.get("widget_text"))
             self.set_image_color(color)
 
-class LoadingLabel(ImageWithLabelBelow):
+class LoadingLabel(ImageWithLabel):
     def __init__(self, html):
-        super().__init__(
-            os.path.join(os.path.dirname(__file__),
-            "img", "hourglass.png"), image_scale=0.2)
+        super().__init__(stock_image("hourglass"), scale_to_width=100)
         self.set_html(html)
 

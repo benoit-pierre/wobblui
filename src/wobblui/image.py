@@ -7,6 +7,16 @@ from wobblui.widget import Widget
 
 sdlimage_initialized = False
 
+def stock_image(name):
+    p = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+        "img", name)
+    if name.find(".") < 0:
+        if os.path.exists(p + ".png"):
+            return (p + ".png")
+        elif os.path.exists(p + ".jpg"):
+            return (p + ".jpg")
+    return p
+
 def image_to_sdl_surface(pil_image):
     global sdlimage_initialized
     if not sdlimage_initialized:

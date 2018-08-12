@@ -264,6 +264,8 @@ class List(Widget):
             c = Color.black
             if self.style != None:
                 c = Color(self.style.get("selected_bg"))
+                if self.style.has("scrollbar_knob_fg"):
+                    c = Color(self.style.get("scrollbar_knob_fg"))
             border_width = max(1, round(1 * self.dpi_scale))
             draw_rectangle(self.renderer,
                 self.scrollbar_x + 1 * border_width,
