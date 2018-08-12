@@ -61,9 +61,9 @@ class Color(object, metaclass=BaseColors):
             self.green = max(0, min(255, round(from_value[1])))
             self.blue = max(0, min(255, round(from_value[2])))
         elif isinstance(from_value, Color):
-            self.red = from_value.red
-            self.green = from_value.green
-            self.blue = from_value.blue
+            self.red = max(0, min(255, round(from_value.red)))
+            self.green = max(0, min(255, round(from_value.green)))
+            self.blue = max(0, min(255, round(from_value.blue)))
         else:
             raise ValueError("unrecognized color " +
                 "value: " + str(from_value))

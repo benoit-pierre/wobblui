@@ -6,6 +6,7 @@ import weakref
 
 from wobblui.color import Color
 from wobblui.event import Event
+from wobblui.gfx import draw_rectangle
 from wobblui.widget_base import WidgetBase
 from wobblui.style import AppStyleDark
 
@@ -225,6 +226,15 @@ class Window(WidgetBase):
     def do_redraw(self):
         if self._sdl_window is None or self.renderer is None:
             return
+
+        # Work around potential SDL bug / race condition
+        # (flickering window background)
+        c = Color.white
+        if self.style != None:
+            c = Color(self.style.get("window_bg"))
+        draw_rectangle(self.renderer, 0, 0,
+            self.width, self.height, color=c)
+
         self.draw_children()
 
     def _internal_on_resized(self, internal_data=None):
@@ -240,6 +250,11 @@ class Window(WidgetBase):
         sdl.SDL_SetRenderDrawColor(self.renderer, c.red,
             c.blue, c.green, 255)
         sdl.SDL_RenderClear(self.renderer)
+
+        # Work around potential SDL bug / race condition:
+        # (Flickering window background)
+        draw_rectangle(self.renderer, 0, 0,
+            self.width, self.height, color=c)
         if self.sdl_texture != None:
             self.draw(0, 0)
         sdl.SDL_RenderPresent(self.renderer)

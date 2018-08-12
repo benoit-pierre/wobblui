@@ -87,9 +87,9 @@ class Button(Widget):
                 self.contained_image_scale * self.dpi_scale)
             tg.h = math.ceil(self.contained_image.size[1] *
                 self.contained_image_scale * self.dpi_scale)
-            sdl.SDL_SetRenderDrawColor(self.renderer,
+            sdl.SDL_SetTextureColorMod(tex,
                 self.image_color.red, self.image_color.green,
-                self.image_color.blue, 255)
+                self.image_color.blue)
             sdl.SDL_RenderCopy(self.renderer, tex, None, tg)
             sdl.SDL_DestroyTexture(tex)
             offset_x += tg.w + round(self.border_size * 0.7)
@@ -143,10 +143,10 @@ class ImageButton(Button):
             color = self.style.get("widget_text")
         self.set_image_color(color)
 
-    def internal_override_parent(self, parent):
-        super().internal_override_parent(parent)
+    def do_redraw(self):
         color = Color(self.style.get("widget_text"))
-        self.set_image_color(color)
+        self.image_color = color
+        super().do_redraw()
 
 class HamburgerButton(ImageButton):
     def __init__(self, override_color=None):
@@ -165,14 +165,15 @@ class ImageWithLabel(Button):
             scale_to_width=scale_to_width)
         self.set_image_color(color)
 
-    def internal_override_parent(self, parent):
-        super().internal_override_parent(parent)
+    def do_redraw(self):
         if self.color_with_text_color:
             color = Color(self.style.get("widget_text"))
-            self.set_image_color(color)
+            self.image_color = color
+        super().do_redraw()
 
 class LoadingLabel(ImageWithLabel):
     def __init__(self, html):
-        super().__init__(stock_image("hourglass"), scale_to_width=100)
+        super().__init__(stock_image("hourglass"), scale_to_width=100,
+            color_with_text_color=True)
         self.set_html(html)
 

@@ -604,6 +604,7 @@ class WidgetBase(object):
 
     def internal_override_parent(self, parent):
         self._parent = parent
+        self.needs_redraw = True
 
     @property
     def parent(self):
