@@ -2,6 +2,7 @@
 import html
 
 from wobblui.color import Color
+from wobblui.event import Event
 from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
@@ -124,6 +125,8 @@ class ListEntry(object):
 class List(Widget):
     def __init__(self):
         super().__init__(is_container=False, can_get_focus=True)
+        self.triggered = Event("triggered", owner=self)
+        self.triggered_by_single_click = False
         self._entries = []
         self._selected_index = -1
         self.scroll_y_offset = 0
@@ -167,6 +170,8 @@ class List(Widget):
                 self._entries[self._selected_index].y_offset,
                 self.scroll_y_offset)
             self.needs_redraw = True
+        elif key == "space" or key == "return":
+            self.triggered()
 
     def on_mousewheel(self, mouse_id, x, y):
         self.scroll_y_offset = max(0,
@@ -176,6 +181,14 @@ class List(Widget):
 
     def on_mousemove(self, mouse_id, x, y):
         pass
+
+    def on_doubleclick(self, mouse_id, button, x, y):
+        if not self.triggered_by_single_click:
+            self.triggered()
+
+    def on_click(self, mouse_id, button, x, y):
+        if self.triggered_by_single_click:
+            self.triggered()
 
     def on_mousedown(self, mouse_id, button, x, y):
         click_index = self.coords_to_entry(x, y)

@@ -5,11 +5,13 @@ import functools
 import math
 import sdl2 as sdl
 import sys
+import time
 import weakref
 
 from wobblui.color import Color
 from wobblui.event import DummyEvent, Event
 from wobblui.gfx import draw_dashed_line
+from wobblui.uiconf import config
 
 last_wid = -1
 last_add = -1
@@ -43,6 +45,7 @@ class WidgetBase(object):
 
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
+        self.last_mouse_click_with_time = dict()
         self._x = 0
         self._y = 0
         self._width = 64
@@ -114,6 +117,7 @@ class WidgetBase(object):
         self.mousewheel = Event("mousewheel", owner=self)
         self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
+        self.doubleclick = Event("doubleclick", owner=self)
         self.mouseup = Event("mouseup", owner=self)
         self.moved = Event("moved", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
@@ -258,11 +262,30 @@ class WidgetBase(object):
                         (event_args[0], event_args[1]) in \
                         child.last_mouse_down_presses:
                     # Special click event:
-                    child.click(mouse_id, rel_x - child.x,
-                        rel_y - child.y,
-                        internal_data=internal_data)
                     child.last_mouse_down_presses.discard(
                         (event_args[0], event_args[1]))
+
+                    # See if this is a double-click:
+                    t = time.monotonic() - 10.0
+                    if (event_args[0], event_args[1]) in \
+                            child.last_mouse_click_with_time:
+                        t = child.last_mouse_click_with_time[
+                            (event_args[0], event_args[1])]
+                    if t > time.monotonic() - config.get("doubleclick_time"):
+                        # It's a double click!
+                        del(child.last_mouse_click_with_time[
+                            (event_args[0], event_args[1])])
+                        child.doubleclick(mouse_id, event_args[1],
+                            rel_x - child.x,
+                            rel_y - child.y)
+                    else:
+                        # Just a normal click.
+                        child.last_mouse_click_with_time[
+                            (event_args[0], event_args[1])] = time.monotonic()
+                        child.click(mouse_id, event_args[1],
+                            rel_x - child.x,
+                            rel_y - child.y,
+                            internal_data=internal_data)
                 # Trigger actual event on the child widget:
                 if event_name == "mousemove":
                     if not child.mousemove(mouse_id,

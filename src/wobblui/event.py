@@ -1,4 +1,6 @@
 
+import sys
+
 class Event(object):
     def __init__(self, name, owner=None,
             special_post_event_func=None,
@@ -46,8 +48,14 @@ class Event(object):
                 return True
         if self.on_object != None and \
                 hasattr(self.on_object, "on_" + str(self.name)):
-            result = getattr(self.on_object,
-                "on_" + str(self.name))(*args)
+            try:
+                result = getattr(self.on_object,
+                    "on_" + str(self.name))(*args)
+            except Exception as e:
+                print("ERROR: Exception processing " +
+                    "on_" + str(self.name) + " on " + str(self.on_object),
+                    file=sys.stderr, flush=True)
+                raise e
             if result is True:
                 return True
         return False

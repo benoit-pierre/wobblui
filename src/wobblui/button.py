@@ -6,6 +6,7 @@ import PIL.Image
 import sdl2 as sdl
 
 from wobblui.color import Color
+from wobblui.event import DummyEvent, Event
 from wobblui.image import image_to_sdl_surface, stock_image
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
@@ -15,6 +16,10 @@ class Button(Widget):
             image_placement="left"):
         super().__init__(is_container=False,
             can_get_focus=clickable)
+        if clickable:
+            self.triggered = Event("triggered", owner=self)
+        else:
+            self.triggered = DummyEvent("triggered", owner=self)
         self.image_placment = image_placement
         self.image_color = Color.white
         self.contained_image = None
@@ -22,6 +27,9 @@ class Button(Widget):
         self.contained_richtext_obj = None
         self.text_layout_width = None
         self.border = 5.0
+
+    def on_click(self, mouse_id, button, x, y):
+        self.triggered()
 
     @property
     def border_size(self):
