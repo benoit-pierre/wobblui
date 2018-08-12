@@ -171,7 +171,8 @@ class List(Widget):
                 self.scroll_y_offset)
             self.needs_redraw = True
         elif key == "space" or key == "return":
-            self.triggered()
+            if self._selected_index >= 0:
+                self.triggered()
 
     def on_mousewheel(self, mouse_id, x, y):
         self.scroll_y_offset = max(0,
@@ -187,7 +188,8 @@ class List(Widget):
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
-        if self.triggered_by_single_click:
+        if self.triggered_by_single_click and \
+                self._selected_index >= 0:
             self.triggered()
 
     def on_mousedown(self, mouse_id, button, x, y):
