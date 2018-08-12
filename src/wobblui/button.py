@@ -70,6 +70,8 @@ class Button(Widget):
             return
         offset_x = round(self.border_size)
         full_available_size = round(self.width - (offset_x * 2))
+        if full_available_size < 0:
+            return
         used_up_size = (self.text_layout_width or 0)
         if self.contained_image != None:
             used_up_size += math.ceil(self.contained_image.size[0] *
@@ -84,9 +86,9 @@ class Button(Widget):
             tg.x = offset_x
             tg.y = round(self.border_size)
             tg.w = math.ceil(self.contained_image.size[0] *
-                self.contained_image_scale * self.dpi_scale)
+                self.contained_image_scale * self.dpi_scale * 1.0)
             tg.h = math.ceil(self.contained_image.size[1] *
-                self.contained_image_scale * self.dpi_scale)
+                self.contained_image_scale * self.dpi_scale * 1.0)
             sdl.SDL_SetTextureColorMod(tex,
                 self.image_color.red, self.image_color.green,
                 self.image_color.blue)
@@ -137,6 +139,7 @@ class Button(Widget):
 class ImageButton(Button):
     def __init__(self, image, scale_to_width=30):
         super().__init__(with_border=False)
+        self.original_image = image
         self.set_image(image, scale_to_width=scale_to_width)
         color = Color.black
         if self.style != None:
@@ -144,6 +147,10 @@ class ImageButton(Button):
             if self.style.has("saturated_widget_text"):
                 color = Color(self.style.get("saturated_widget_text"))
         self.set_image_color(color)
+
+    def __repr__(self):
+        return "<wobblui.ImageBUtton original_image='" +\
+            str(self.original_image).replace("'", "'\"'\"'") + "'>"
 
     def do_redraw(self):
         color = Color(self.style.get("widget_text"))
@@ -161,6 +168,7 @@ class ImageWithLabel(Button):
             color_with_text_color=False):
         super().__init__(with_border=False, clickable=False,
             image_placement="left")
+        self.original_image = image_path
         color = Color.white
         if color_with_text_color:
             color = Color(self.style.get("widget_text"))
