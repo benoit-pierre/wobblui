@@ -46,7 +46,7 @@ def image_to_sdl_texture(renderer, pil_image):
     try:
         texture = sdl.SDL_CreateTextureFromSurface(renderer, sdl_image)
     finally:
-        sdl.SDL_DestroySurface(sdl_image)
+        sdl.SDL_FreeSurface(sdl_image)
     return texture
 
 def image_as_grayscale(pil_image):
