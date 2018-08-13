@@ -88,8 +88,8 @@ class Font(object):
             return self._avg_letter_width
         if not is_android():
             test_str = "This is a test test."
-            width = self.get_qt_font_metrics().width(test_str)
-            self._avg_letter_width = width
+            (width, height) = self.render_size(test_str)
+            self._avg_letter_width = (width / float(len(test_str)))
             return self._avg_letter_width
         raise NotImplementedError("oopsies")
 
@@ -144,19 +144,22 @@ class FontManager(object):
             del(self.font_by_sizedpistyle_cache[remove_this[1]])
             del(self.font_by_sizedpistyle_cache_times[remove_this[1]])
 
-    def get_word_width(self, word, font_name, bold=False, italic=False,
+    def get_word_width(self, word, font_name,
+            bold=False, italic=False,
             px_size=12, display_dpi=96):
-        metrics = self.get_qt_font_metrics(font_name, bold, italic,
-            px_size=px_size, dpi=display_dpi)
-        return metrics.width(word)
+        (w, h) = self.get_font(font_name, bold, italic,
+            px_size=px_size, display_dpi=display_dpi).render_size(word)
+        return w
 
-    def get_word_height(self, word, font_name, bold=False, italic=False,
+    def get_word_height(self, word, font_name,
+            bold=False, italic=False,
             px_size=12, display_dpi=96):
-        metrics = self.get_qt_font_metrics(font_name, bold, italic,
-            px_size=px_size, dpi=display_dpi)
-        return metrics.height()
+        (w, h) = self.get_font(font_name, bold, italic,
+            px_size=px_size, display_dpi=display_dpi).render_size(word)
+        return h
 
-    def get_qt_font_metrics(self, font_name, bold=False, italic=False,
+    def get_qt_font_metrics(self, font_name,
+            bold=False, italic=False,
             px_size=12, dpi=96):
         return self.get_font(font_name, bold, italic,
             px_size=px_size, display_dpi=dpi).get_qt_font_metrics()

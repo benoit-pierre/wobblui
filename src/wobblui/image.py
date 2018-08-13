@@ -1,5 +1,6 @@
 
 import os
+import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
 import tempfile
 
@@ -40,12 +41,12 @@ def image_to_sdl_surface(pil_image):
             str(err_msg))
     return sdl_image
 
-def image_to_sdl_texture(renderer, pil_Image):
+def image_to_sdl_texture(renderer, pil_image):
     sdl_image = image_to_sdl_surface(pil_image)
     try:
         texture = sdl.SDL_CreateTextureFromSurface(renderer, sdl_image)
     finally:
-        sdlimage.SDL_DestroySurface(sdl_image)
+        sdl.SDL_DestroySurface(sdl_image)
     return texture
 
 def image_as_grayscale(pil_image):

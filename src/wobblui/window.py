@@ -70,6 +70,7 @@ class Window(WidgetBase):
             child.renderer_update()
         self._children = []
         self._renderer = old_renderer
+        self.update()
 
     def internal_app_reopen(self):
         if self.is_closed:

@@ -172,6 +172,10 @@ def handle_event(event):
         physical_key = sdl_key_map(event.key.keysym.scancode)
         shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
             ((event.key.keysym.mod & sdl.KMOD_LSHIFT) != 0)
+        ctrl = ((event.key.keysym.mod & sdl.KMOD_RCTRL) != 0) or \
+            ((event.key.keysym.mod & sdl.KMOD_LCTRL) != 0)
+        alt = ((event.key.keysym.mod & sdl.KMOD_RALT) != 0) or \
+            ((event.key.keysym.mod & sdl.KMOD_LALT) != 0)
         w = get_window_by_sdl_id(event.motion.windowID)
         if w is None or w.is_closed:
             return
@@ -180,6 +184,10 @@ def handle_event(event):
         modifiers = set()
         if shift:
             modifiers.add("shift")
+        if ctrl:
+            modifiers.add("ctrl")
+        if alt:
+            modifiers.add("alt")
         w.keydown(virtual_key, physical_key, modifiers)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \

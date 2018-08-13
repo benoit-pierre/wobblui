@@ -68,9 +68,11 @@ def draw_line(renderer, x1, y1, x2, y2, color=None, thickness=3.0):
         dash_length=None, thickness=thickness)
 
 def draw_font(renderer, text, x, y,
+        font_family="Sans Serif",
         px_size=12, bold=False, italic=False,
         color=None):
-    font = font_manager().get_font(name, bold=bold, italic=italic,
+    font = font_manager().get_font(font_family,
+        bold=bold, italic=italic,
         px_size=px_size)
     if font != None:
         tex = font.render_text_as_sdl_texture(renderer, text, color)
