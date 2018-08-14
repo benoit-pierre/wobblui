@@ -25,6 +25,10 @@ def sdl_vkey_map(key):
         return chr(ord("a") + (key - sdl.SDLK_a))
     if key == sdl.SDLK_KP_TAB or key == sdl.SDLK_TAB:
         return "tab"
+    if key == sdl.SDLK_LALT or key == sdl.SDLK_RALT:
+        return "alt"
+    if key == sdl.SDLK_LCTRL or key == sdl.SDLK_RCTRL:
+        return "ctrl"
     if key == sdl.SDLK_DOWN:
         return "down"
     if key == sdl.SDLK_UP:

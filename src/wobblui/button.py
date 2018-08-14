@@ -28,6 +28,10 @@ class Button(Widget):
         self.text_layout_width = None
         self.border = 5.0
 
+    def on_keydown(self, key, physical_key, modifiers):
+        if key == "return" or key == "space":
+            self.triggered()
+
     def on_click(self, mouse_id, button, x, y):
         self.triggered()
 
