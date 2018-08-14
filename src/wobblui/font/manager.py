@@ -7,6 +7,7 @@ import time
 
 from applog import logdebug, logerror, loginfo, logwarning
 from osintegration import is_android
+from wobblui.color import Color
 import wobblui.font.info
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
@@ -43,8 +44,9 @@ class Font(object):
             raise RuntimeError("TTF_SizeUTF8 failed")
         return (int(width.value), int(height.value))
 
-    def draw_at(self, renderer, text, x, y):
-        tex = self.render_text_as_sdl_texture(renderer, text)
+    def draw_at(self, renderer, text, x, y, color=Color.black):
+        tex = self.render_text_as_sdl_texture(renderer, text,
+            color=Color.white)
         w = ctypes.c_int32()
         h = ctypes.c_int32()
         w.value = 0
@@ -56,6 +58,8 @@ class Font(object):
         tg.y = y
         tg.w = w.value
         tg.h = h.value
+        sdl.SDL_SetTextureColorMod(tex,
+            color.red, color.green, color.blue)
         sdl.SDL_RenderCopy(renderer, tex, None, tg)
         sdl.SDL_DestroyTexture(tex)
 
