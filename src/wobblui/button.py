@@ -157,7 +157,7 @@ class ImageButton(Button):
         self.set_image_color(color)
 
     def __repr__(self):
-        return "<wobblui.ImageBUtton original_image='" +\
+        return "<wobblui.ImageButton original_image='" +\
             str(self.original_image).replace("'", "'\"'\"'") + "'>"
 
     def do_redraw(self):

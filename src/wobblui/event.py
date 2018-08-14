@@ -3,6 +3,7 @@ import sys
 
 class Event(object):
     def __init__(self, name, owner=None,
+            special_pre_event_func=None,
             special_post_event_func=None,
             allow_preventing_widget_callback_by_user_callbacks=True):
         self.name = name
@@ -12,6 +13,7 @@ class Event(object):
         self.on_object = owner
         self._disabled = False
         self.special_post_event_func = special_post_event_func
+        self.special_pre_event_func = special_pre_event_func
 
     @property
     def disabled(self):
@@ -65,6 +67,8 @@ class Event(object):
             " ON " + str(self.on_object))
         if self._disabled:
             return True
+        if self.special_pre_event_func != None:
+            self.special_pre_event_func()
         try:
             if self.widget_must_get_event:
                 if self.native_widget_callback(*args,

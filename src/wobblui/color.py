@@ -75,7 +75,7 @@ class Color(object, metaclass=BaseColors):
     @property
     def html(self):
         def tohex(v):
-            t = "{:x}".format(int(v))
+            t = "{:x}".format(max(0, min(255, int(v))))
             while len(t) < 2:
                 t = "0" + t
             return t

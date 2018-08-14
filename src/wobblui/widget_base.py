@@ -61,10 +61,15 @@ class WidgetBase(object):
         self.sdl_texture = None
         self.sdl_texture_width = -1
         self.sdl_texture_height = -1
-        def do_redraw():
+
+        self.restore_old_target = -1
+        def start_redraw():
             self_value = self_ref()
             if self_value is None or self_value.renderer is None:
                 return
+            if self_value.restore_old_target != -1:
+                raise RuntimeError("nested redraw on " +
+                    str(self_value) + ", this is forbidden")
             dpi_scale = self_value.style.dpi_scale
             tex_x = max(1, math.ceil(self_value.width + 1.0))
             tex_y = max(1, math.ceil(self_value.height + 1.0))
@@ -94,20 +99,30 @@ class WidgetBase(object):
                     sdl.SDL_BLENDMODE_BLEND)
                 self_value.sdl_texture_width = tex_x
                 self_value.sdl_texture_height = tex_y
-            old_target = sdl.SDL_GetRenderTarget(self_value.renderer)
+            self_value.restore_old_target = \
+                sdl.SDL_GetRenderTarget(self_value.renderer)
             sdl.SDL_SetRenderTarget(self_value.renderer,
                 self_value.sdl_texture)
             sdl.SDL_SetRenderDrawColor(self_value.renderer, 0, 0, 0, 0)
             sdl.SDL_RenderClear(self_value.renderer)
             sdl.SDL_SetRenderDrawColor(self_value.renderer,
                 255, 255, 255, 255)
+        def end_redraw():
+            self_value = self_ref()
+            if self_value is None or self_value.renderer is None:
+                return
+            sdl.SDL_SetRenderDrawColor(self_value.renderer,
+                255, 255, 255, 255)
             if hasattr(self_value, "do_redraw"):
                 self_value.do_redraw()
             sdl.SDL_RenderPresent(self_value.renderer)
-            sdl.SDL_SetRenderTarget(self_value.renderer, old_target)
+            sdl.SDL_SetRenderTarget(self_value.renderer,
+                self_value.restore_old_target)
+            self_value.restore_old_target = -1
             self_value.post_redraw()
         self.redraw = Event("redraw", owner=self,
-            special_post_event_func=do_redraw)
+            special_post_event_func=end_redraw,
+            special_pre_event_func=start_redraw)
         self.post_redraw = Event("post_redraw", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         self.focus_index = None
@@ -392,8 +407,7 @@ class WidgetBase(object):
         src.h = tg.h
         sdl.SDL_SetRenderDrawColor(self.renderer,
             255, 255, 255, 255)
-        sdl.SDL_RenderCopy(self.renderer,
-            self.sdl_texture, src, tg)
+        sdl.SDL_RenderCopy(self.renderer, self.sdl_texture, src, tg)
 
     def redraw_if_necessary(self):
         for child in self.children:

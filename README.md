@@ -11,3 +11,9 @@ Cool stuff:
 - easy to add custom widgets
 - proper redraw handling to avoid battery drain
 
+# License
+
+`wobblui` is available under liberal licensing, [see LICENSE.md for
+details](LICENSE.md). If you add more cool stuff, we would be
+delighted to see pull requests!
+

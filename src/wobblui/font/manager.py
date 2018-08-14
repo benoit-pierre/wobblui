@@ -43,6 +43,22 @@ class Font(object):
             raise RuntimeError("TTF_SizeUTF8 failed")
         return (int(width.value), int(height.value))
 
+    def draw_at(self, renderer, text, x, y):
+        tex = self.render_text_as_sdl_texture(renderer, text)
+        w = ctypes.c_int32()
+        h = ctypes.c_int32()
+        w.value = 0
+        h.value = 0
+        sdl.SDL_QueryTexture(tex, None, None,
+            ctypes.byref(w), ctypes.byref(h))
+        tg = sdl.SDL_Rect()
+        tg.x = x
+        tg.y = y
+        tg.w = w.value
+        tg.h = h.value
+        sdl.SDL_RenderCopy(renderer, tex, None, tg)
+        sdl.SDL_DestroyTexture(tex)
+
     def render_text_as_sdl_texture(self, renderer, text, color=None):
         font = self.get_sdl_font()
         if color != None:

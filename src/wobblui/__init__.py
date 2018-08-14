@@ -5,6 +5,8 @@ import sys
 import time
 import traceback
 
+from wobblui.keyboard import internal_update_text_events,\
+    get_active_text_widget, get_modifiers
 from wobblui.timer import internal_trigger_check
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
@@ -100,6 +102,7 @@ def event_loop():
                     file=sys.stderr, flush=True)
                 print(str(traceback.format_exc()))
         internal_trigger_check()
+        internal_update_text_events()
         redraw_windows()
 
 def handle_event(event):
@@ -167,6 +170,11 @@ def handle_event(event):
             w.set_hidden(False)
         w.mousemove(int(event.motion.which),
             float(event.motion.x), float(event.motion.y))
+    elif event.type == sdl.SDL_TEXTINPUT:
+        text = event.text.text.decode("utf-8", "replace")
+        widget = get_active_text_widget()
+        if widget != None and hasattr(widget, "on_text"):
+            widget.on_text(text, get_modifiers())
     elif event.type == sdl.SDL_KEYDOWN:
         virtual_key = sdl_vkey_map(event.key.keysym.sym)
         physical_key = sdl_key_map(event.key.keysym.scancode)
