@@ -177,7 +177,7 @@ class List(Widget):
     def on_mousewheel(self, mouse_id, x, y):
         self.scroll_y_offset = max(0,
             self.scroll_y_offset -
-            round(y * 60.0 * self.dpi_scale))
+            round(y * 20.0 * self.dpi_scale))
         self.needs_redraw = True
 
     def on_mousemove(self, mouse_id, x, y):

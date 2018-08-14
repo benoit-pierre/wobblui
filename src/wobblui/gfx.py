@@ -5,7 +5,8 @@ import sdl2 as sdl
 from wobblui.color import Color
 from wobblui.font.manager import font_manager
 
-def draw_rectangle(renderer, x, y, w, h, color=None):
+def draw_rectangle(renderer, x, y, w, h, color=None,
+        filled=True):
     if color is None:
         color = Color("#aaa")
     rect = sdl.SDL_Rect()
@@ -18,7 +19,10 @@ def draw_rectangle(renderer, x, y, w, h, color=None):
     sdl.SDL_SetRenderDrawColor(renderer,
         round(color.red), round(color.green),
         round(color.blue), 255)
-    sdl.SDL_RenderFillRect(renderer, rect)
+    if filled:
+        sdl.SDL_RenderFillRect(renderer, rect)
+    else:
+        sdl.SDL_RenderDrawRect(renderer, rect)
 
 def draw_dashed_line(renderer, x1, y1, x2, y2, color=None,
         dash_length=7.0, thickness=3.0):
