@@ -9,6 +9,7 @@ from applog import logdebug, logerror, loginfo, logwarning
 from osintegration import is_android
 from wobblui.color import Color
 import wobblui.font.info
+from wobblui.sdlinit import initialize_sdl
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
 
@@ -41,7 +42,8 @@ class Font(object):
             pass
         if sdlttf.TTF_SizeUTF8(font, text, ctypes.byref(
                 width), ctypes.byref(height)) != 0:
-            raise RuntimeError("TTF_SizeUTF8 failed")
+            raise RuntimeError("TTF_SizeUTF8 failed: " +
+                str(sdlttf.TTF_GetError().decode("utf-8", "replace")))
         return (int(width.value), int(height.value))
 
     def draw_at(self, renderer, text, x, y, color=Color.black):
@@ -81,6 +83,7 @@ class Font(object):
     def get_sdl_font(self):
         if self._sdl_font != None:
             return self._sdl_font
+        initialize_sdl()
         variant = "Regular"
         if self.italic and not self.bold:
             variant = "Italic"

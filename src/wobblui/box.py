@@ -2,6 +2,8 @@
 import math
 import sdl2 as sdl
 
+from wobblui.color import Color
+from wobblui.gfx import draw_rectangle
 from wobblui.widget import Widget
 
 class BoxSpacer(Widget):
@@ -39,7 +41,7 @@ class Box(Widget):
             else:
                 child.width = min(self.width, child.get_natural_width())
                 child.height = child.\
-                    get_natural_height(max_width=self.width)
+                    get_natural_height(given_width=self.width)
                 child_space += child.height + item_padding
         remaining_space = max(0, self.height - child_space)
         if self.horizontal:
@@ -100,7 +102,7 @@ class Box(Widget):
         if not self.horizontal:
             total_h = 0
             for child in self._children:
-                total_h += child.get_natural_height(given_width=max_width)
+                total_h += child.get_natural_height(given_width=given_width)
             return total_h
         elif len(self.children) == 0:
             return self.height

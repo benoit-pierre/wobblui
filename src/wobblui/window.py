@@ -8,9 +8,8 @@ from wobblui.color import Color
 from wobblui.event import Event
 from wobblui.gfx import draw_rectangle
 from wobblui.widget_base import WidgetBase
+from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
-
-SDL_initialized=False
 
 all_windows = []
 
@@ -35,6 +34,7 @@ def get_window_by_sdl_id(sdl_id):
 class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,
             style=None):
+        initialize_sdl()
         if style is None:
             style = AppStyleDark()
         self.mouse_position_cache = dict()
@@ -42,13 +42,6 @@ class Window(WidgetBase):
         self._style = style
         super().__init__(is_container=True, can_get_focus=True)
         global all_windows, SDL_initialized
-        if not SDL_initialized:
-            SDL_initialized = True
-            sdl.SDL_SetHintWithPriority(
-                b"SDL_HINT_RENDER_SCALE_QUALITY", b"2",
-                sdl.SDL_HINT_OVERRIDE)
-            sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER)
-            sdlttf.TTF_Init()
         self._hidden = False
         self._width = width
         self._height = height
@@ -69,6 +62,7 @@ class Window(WidgetBase):
         for child in self.children:
             child.renderer_update()
         self._children = []
+        assert(len(self.children) == 0)
         self._renderer = old_renderer
         self.update()
 

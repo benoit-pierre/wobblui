@@ -15,6 +15,9 @@ class RichTextObj(object):
         self.width = None
         self.height = None
 
+    def draw(self, renderer, x, y, color=None, draw_scale=None):
+        pass
+
     def __repr__(self):
         t = "<RichTextObj x:" + str(self.x) +\
             " y: " + str(self.y) + ">"
@@ -136,6 +139,9 @@ class RichTextLinebreak(RichTextObj):
         super().__init__()
         self.text = "\n"
         self.html = "<br/>"
+
+    def copy(self):
+        return RichTextLinebreak()
 
 class RichText(RichTextObj):
     def __init__(self, text="", font_family="Tex Gyre Heros",
@@ -273,7 +279,6 @@ class RichText(RichTextObj):
             part_amount = len(next_element.parts)
             if part_amount == 0:
                 assert(next_element.text == "")
-                current_line_elements += 1
                 i += 1
                 continue
 
@@ -347,6 +352,7 @@ class RichText(RichTextObj):
         # Record last line pair if not empty:
         if current_line_elements > 0:
             clen = len(layouted_elements)
+            assert(clen >= current_line_elements)
             forward_start = 0
             if isinstance(
                     layouted_elements[clen - current_line_elements],

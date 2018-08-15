@@ -149,8 +149,10 @@ class Button(Widget):
         return my_w
 
 class ImageButton(Button):
-    def __init__(self, image, scale_to_width=30):
-        super().__init__(with_border=False)
+    def __init__(self, image, scale_to_width=30,
+            clickable=True):
+        super().__init__(with_border=False,
+            clickable=clickable)
         self.original_image = image
         self.set_image(image, scale_to_width=scale_to_width)
         color = Color.black
