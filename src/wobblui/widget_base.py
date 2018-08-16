@@ -290,15 +290,26 @@ class WidgetBase(object):
                         p.focus()
 
         # Pass on event to child widgets:
-        for child in self.children:
+        child_list = self.children
+        check_widget_overlap = False
+        if hasattr(self, "get_children_in_strict_mouse_event_order"):
+            child_list = self.get_children_in_strict_mouse_event_order()
+            check_widget_overlap = True
+        force_no_more_matches = False
+        for child in child_list:
             rel_x = x
             rel_y = y
             if coords_are_abs:
                 rel_x = x - self.abs_x
                 rel_y = y - self.abs_y
-            if rel_x >= child.x and rel_y >= child.y and \
+            if not force_no_more_matches and \
+                    rel_x >= child.x and rel_y >= child.y and \
                     rel_x < child.x + child.width and \
                     rel_y < child.y + child.height:
+                # If we're in strict ordered mouse event mode, this
+                # widget will be treated as obscuring the next ones:
+                if check_widget_overlap:
+                    force_no_more_matches = True
                 # Track some side effects, to make sure e.g. mouse move
                 # events get followed up by one last outside-of-widget
                 # event when mouse leaves, or that mouse down changes
@@ -358,9 +369,14 @@ class WidgetBase(object):
             else:
                 if child.last_mouse_move_was_inside:
                     child.last_mouse_move_was_inside = False
-                    child.mousemove(mouse_id,
-                        rel_x - child.x, rel_y - child.y,
-                        internal_data=internal_data)
+                    if force_no_more_matches:
+                        # Need to use true outside fake coordinates
+                        # to remove focus etc
+                        child.mousemove(mouse_id, -5, -5)
+                    else:
+                        child.mousemove(mouse_id,
+                            rel_x - child.x, rel_y - child.y,
+                            internal_data=internal_data)
                 if event_name == "mouseup" and \
                         (event_args[0], event_args[1]) in \
                         child.last_mouse_down_presses:

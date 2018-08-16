@@ -28,11 +28,15 @@ class Button(Widget):
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None
         self.text_layout_width = None
+        self.extra_image_render_func = None
         self.border = 5.0
         if with_border:
             self.border = 15.0
         if len(text) > 0:
             self.set_text(text)
+
+    def internal_set_extra_image_render(self, func):
+        self.extra_image_render_func = func
 
     def on_keydown(self, key, physical_key, modifiers):
         if key == "return" or key == "space":
@@ -50,11 +54,14 @@ class Button(Widget):
         if scale != None and scale_to_width != None:
             raise ValueError("cannot specify both scale factor " +
                 "and scale to width measure")
+        if scale is None and scale_to_width is None:
+            scale = 1.0
         if not hasattr(pil_image_or_path, "save"):
             pil_image_or_path = PIL.Image.open(pil_image_or_path)
         if scale_to_width != None:
             scale = scale_to_width / float(pil_image_or_path.size[0])
         self.contained_image = pil_image_or_path
+        assert(scale != None)
         self.contained_image_scale = scale
         self.contained_image_srf = image_to_sdl_surface(pil_image_or_path)
 
@@ -116,6 +123,8 @@ class Button(Widget):
                 self.contained_image_scale * self.dpi_scale * 1.0)
             tg.h = math.ceil(self.contained_image.size[1] *
                 self.contained_image_scale * self.dpi_scale * 1.0)
+            if self.extra_image_render_func != None:
+                self.extra_image_render_func(tg.x, tg.y, tg.w, tg.h)
             sdl.SDL_SetTextureColorMod(tex,
                 self.image_color.red, self.image_color.green,
                 self.image_color.blue)
@@ -195,6 +204,43 @@ class ImageButton(Button):
 class HamburgerButton(ImageButton):
     def __init__(self, override_color=None):
         super().__init__(stock_image("sandwich"))
+
+class HoverCircleImageButton(Button):
+    def __init__(self, image_path, scale=None, scale_to_width=None):
+        super().__init__(with_border=False, clickable=True)
+        self.image_path = image_path
+        color = Color.white
+        self.set_image(image_path, scale=scale,
+            scale_to_width=scale_to_width)
+        self.set_image_color(color)
+        self.internal_set_extra_image_render(self.render_circle)
+        self.circle_r = 0
+        self.circle_g = 150
+        self.circle_b = 250
+
+    def __del__(self):
+        if hasattr(self, "circle_srf") and self.circle_srf != None:
+            sdl.SDL_FreeSurface(self.circle_srf)
+            self.circle_srf = None
+        super().__del__()
+
+    def render_circle(self, x, y, w, h):
+        if not hasattr(self, "circle_img") or self.circle_img is None:
+            self.circle_img = PIL.Image.open(stock_image("hovercircle"))
+        if not hasattr(self, "circle_srf") or self.circle_srf is None:
+            self.circle_srf = image_to_sdl_surface(self.circle_img)
+
+        tex = sdl.SDL_CreateTextureFromSurface(self.renderer,
+            self.circle_srf)
+        tg = sdl.SDL_Rect()
+        tg.x = x
+        tg.y = y
+        tg.w = w
+        tg.h = h
+        sdl.SDL_SetTextureColorMod(tex,
+            self.circle_r, self.circle_g, self.circle_b)
+        sdl.SDL_RenderCopy(self.renderer, tex, None, tg)
+        sdl.SDL_DestroyTexture(tex)
 
 class ImageWithLabel(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,

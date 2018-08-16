@@ -8,7 +8,7 @@ import weakref
 from wobblui.color import Color
 from wobblui.event import Event
 from wobblui.gfx import draw_rectangle
-from wobblui.widget_base import WidgetBase
+from wobblui.widget_base import all_widgets, WidgetBase
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
 
@@ -36,6 +36,7 @@ class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,
             style=None):
         initialize_sdl()
+        self.need_update_layout = True
         if style is None:
             style = AppStyleDark()
         self.mouse_position_cache = dict()
@@ -218,7 +219,7 @@ class Window(WidgetBase):
     def add(self, *args, **kwargs):
         return_value = super().add(*args, **kwargs)
         if len(self._children) > 0:
-            self.update_layout()
+            self.need_update_layout = True
             self.focus_update()
         return return_value
 
@@ -234,12 +235,23 @@ class Window(WidgetBase):
         draw_rectangle(self.renderer, 0, 0,
             self.width, self.height, color=c)
 
+        self.update_layout()
         self.draw_children()
 
     def _internal_on_resized(self, internal_data=None):
-        self.update_layout()
+        self.need_update_layout = True
+        for w_ref in all_widgets:
+            w = w_ref()
+            if w is None or not hasattr(w, "parent_window") or \
+                    w.parent_window != self:
+                continue
+            if hasattr(w, "parentwindowresized"):
+                w.parentwindowresized()
 
     def update_layout(self):
+        if not self.need_update_layout:
+            return
+        self.need_update_layout = False
         changed = False
         if len(self._children) > 0:
             # Make first child fill out the window:
@@ -272,6 +284,9 @@ class Window(WidgetBase):
                     child.height = intended_h
         if changed:
             self.needs_redraw = True
+
+    def get_children_in_strict_mouse_event_order(self):
+        return list(reversed(self._children))
 
     def _internal_on_post_redraw(self, internal_data=None):
         sdl.SDL_SetRenderTarget(self.renderer, None)
