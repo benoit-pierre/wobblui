@@ -10,6 +10,12 @@ class BoxSpacer(Widget):
     def __init__(self):
         super().__init__(is_container=False)
 
+    def get_natural_width(self):
+        return 0
+
+    def get_natural_height(self, given_width=None):
+        return 0
+
 class Box(Widget):
     def __init__(self, horizontal):
         super().__init__(is_container=True)
@@ -28,18 +34,9 @@ class Box(Widget):
         # Adjust items on the non-box axis:
         for item in self._children:
             if self.horizontal:
-                nat_height = item.get_natural_height(given_width=\
-                    item.width)
-                if nat_height < self.height:
-                    item.height = nat_height
-                else:
-                    item.height = self.height
+                item.height = self.height
             else:
-                nat_width = item.get_natural_width()
-                if nat_width < self.width:
-                    item.width = nat_width
-                else:
-                    item.width = self.width
+                item.width = self.width
 
         # Adjust size along box axis:
         expand_widget_count = 0
@@ -54,12 +51,8 @@ class Box(Widget):
                 expand_widget_count += 1
             if self.horizontal:
                 child.width = child.get_natural_width()
-                child.height = min(child.get_natural_height(
-                    given_width=child.width),
-                    self.height)
                 child_space += child.width + item_padding
             else:
-                child.width = min(self.width, child.get_natural_width())
                 child.height = child.\
                     get_natural_height(given_width=self.width)
                 child_space += child.height + item_padding
@@ -85,9 +78,9 @@ class Box(Widget):
                     child_id == len(self._children) - 1:
                 # Make sure to use up all remaining space:
                 if self.horizontal:
-                    assigned_w = (self.width + self.x - cx)
+                    assigned_w = (self.width - cx)
                 else:
-                    assigned_h = (self.height + self.y - cy)
+                    assigned_h = (self.height - cy)
             expand_widget_count -= 1
             child.x = cx
             child.y = cy
@@ -168,7 +161,23 @@ class CenterBox(Widget):
 
     def do_redraw(self):
         self.draw_children()
- 
+
+    def get_natural_width(self):
+        if len(self._children) == 0:
+            return 0
+        return self._children[0].get_natural_width() +\
+            (self.padding * 2 * self.dpi_scale)
+
+    def get_natural_height(self, given_width=None):
+        if len(self._children) == 0:
+            return 0
+        v = given_width
+        if v != None:
+            v -= (self.padding * 2 * self.dpi_scale)
+        return self._children[0].get_natural_height(
+            given_width=v) +\
+            (self.padding * 2 * self.dpi_scale)
+
     def relayout(self):
         if len(self._children) == 0:
             return

@@ -7,6 +7,7 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.event import DummyEvent, Event
+from wobblui.gfx import draw_rectangle
 from wobblui.image import image_to_sdl_surface, stock_image
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
@@ -28,6 +29,8 @@ class Button(Widget):
         self.contained_richtext_obj = None
         self.text_layout_width = None
         self.border = 5.0
+        if with_border:
+            self.border = 15.0
         if len(text) > 0:
             self.set_text(text)
 
@@ -83,6 +86,15 @@ class Button(Widget):
     def do_redraw(self):
         if self.renderer is None:
             return
+        if self.with_border:
+            c = Color.white
+            if self.style != None:
+                c = Color(self.style.get("button_bg"))
+            fill_border = round(self.border_size * 0.3)
+            draw_rectangle(self.renderer, fill_border, fill_border,
+                self.width - fill_border * 2,
+                self.height - fill_border * 2,
+                color=c)
         offset_x = round(self.border_size)
         full_available_size = round(self.width - (offset_x * 2))
         if full_available_size < 0:
