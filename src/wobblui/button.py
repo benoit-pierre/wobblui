@@ -12,7 +12,7 @@ from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
 class Button(Widget):
-    def __init__(self, with_border=True, clickable=True,
+    def __init__(self, text="", with_border=True, clickable=True,
             image_placement="left"):
         super().__init__(is_container=False,
             can_get_focus=clickable)
@@ -20,13 +20,16 @@ class Button(Widget):
             self.triggered = Event("triggered", owner=self)
         else:
             self.triggered = DummyEvent("triggered", owner=self)
-        self.image_placment = image_placement
+        self.with_border = (with_border is True)
+        self.image_placement = image_placement
         self.image_color = Color.white
         self.contained_image = None
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None
         self.text_layout_width = None
         self.border = 5.0
+        if len(text) > 0:
+            self.set_text(text)
 
     def on_keydown(self, key, physical_key, modifiers):
         if key == "return" or key == "space":
