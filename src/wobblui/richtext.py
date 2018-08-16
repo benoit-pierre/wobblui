@@ -370,14 +370,24 @@ class RichText(RichTextObj):
         return (layout_w, layout_h)
  
     def set_text(self, text):
+        parts = text.replace("\r\n", "\n").\
+            replace("\r", "\n").split("\n")
         self.fragments = self.fragments[:1]
         if len(self.fragments) == 0 or \
                 not isinstance(self.fragments[0], RichTextFragment):
+            self.fragments = []
             self.fragments.append(RichTextFragment(
-                text, self.default_font_family, False, False,
+                parts[0], self.default_font_family, False, False,
                 self.px_size))
         else:
-            self.fragments[0].text = text
+            self.fragments[0].text = parts[0]
+        i = 1
+        while i < len(parts):
+            self.fragments.append(RichTextLinebreak())
+            self.fragments.append(RichTextFragment(
+                parts[i], self.default_font_family, False, False,
+                self.px_size))
+            i += 1
 
     @property
     def html(self):
@@ -413,6 +423,7 @@ class RichText(RichTextObj):
 
     def set_html(self, html):
         new_fragments = []
+        in_small = 0
         in_bold = 0
         in_italic = 0
         line_empty = True
@@ -439,10 +450,13 @@ class RichText(RichTextObj):
 
         def visit_item(item):
             nonlocal new_fragments, in_bold, in_italic, \
-                line_empty, at_block_start
+                line_empty, at_block_start, in_small
             if item.node_type == "element" and \
                     item.name.lower() == "b":
                 in_bold += 1
+            elif item.node_type == "element" and \
+                    item.name.lower() == "small":
+                in_small += 1
             elif item.node_type == "element" and \
                     item.name.lower() == "br":
                 if not at_block_start or not line_empty:
@@ -458,6 +472,7 @@ class RichText(RichTextObj):
                 font = self.default_font_family
                 bold = (in_bold > 0)
                 italic = (in_italic > 0)
+                small = (in_small > 0)
                 text = item.content
                 if at_block_start:
                     while text.startswith("\n") or \
@@ -470,17 +485,23 @@ class RichText(RichTextObj):
                 if at_block_start and len(text.strip()) == 0:
                     text = ""
                 if len(text) > 0:
+                    fac = 1.0
+                    if small:
+                        fac = 0.75
                     new_fragments.append(RichTextFragment(
                         text, font,
-                        bold, italic, self.px_size))
+                        bold, italic, self.px_size * fac))
                     line_empty = False
                     at_block_start = False
         def leave_item(item):
             nonlocal in_bold, in_italic, line_empty,\
-                at_block_start
+                at_block_start, in_small
             if item.node_type == "element" and \
                     item.name.lower() == "b":
-                in_bold = max(0, in_bold)
+                in_bold = max(0, in_bold - 1)
+            elif item.node_type == "element" and \
+                    item.name.lower() == "small":
+                in_small = max(0, in_small - 1)
             if is_block(item):
                 if not line_empty:
                     add_line_break()
