@@ -150,9 +150,8 @@ class Box(Widget):
         self.layout()
 
     def add_spacer(self):
-        super().add(BoxSpacer())
-        self.expand_info[len(self._children) - 1] = expand
-        self.layout()
+        self.add(BoxSpacer(), expand=True)
+        assert(len(self._children) > 0)
 
 class VBox(Box):
     def __init__(self):
