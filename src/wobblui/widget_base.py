@@ -691,6 +691,8 @@ class WidgetBase(object):
                 raise ValueError("child is not contained: " +
                     str(item))
             return
+        if item.parent == self:
+            item.internal_override_parent(None)
         self._children.remove(item)
 
     def add(self, item, trigger_resize=True):

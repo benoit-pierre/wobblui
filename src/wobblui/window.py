@@ -63,6 +63,8 @@ class Window(WidgetBase):
         self._renderer = None
         for child in self.children:
             child.renderer_update()
+            if child.parent == self:
+                child.internal_override_parent(None)
         self._children = []
         assert(len(self.children) == 0)
         self._renderer = old_renderer
