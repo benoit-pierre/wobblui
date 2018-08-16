@@ -19,6 +19,7 @@ class Topbar(Widget):
             self.child_padding = 0
         self.topbar_height = 0
         self.topbar_box = HBox()
+        self.topbar_box.internal_override_parent(self)
         self.relayout()
 
     def _internal_on_moved(self, internal_data=None):
@@ -27,9 +28,15 @@ class Topbar(Widget):
     def get_children(self):
         return self._children + [self.topbar_box]
 
+    def remove(self, item, error_if_not_present=True):
+        if item in self.topbar_box.children:
+            self.topbar_box.remove(item,
+                error_if_not_present=error_if_not_present) 
+        else:
+            super().remove(item, error_if_not_present=error_if_not_present)
+
     def add_to_top(self, child, expand=True):
         self.topbar_box.add(child, expand=expand)
-        child.internal_override_parent(self)
         self.topbar_box.height = self.topbar_box.get_natural_height()
         self.relayout()
         self.needs_redraw = True
@@ -58,9 +65,9 @@ class Topbar(Widget):
             color=c)
 
         # Draw topbar items:
-        for child in self.topbar_box.children:
-            child.draw(child.x + self.topbar_box.x,
-                child.y + self.topbar_box.y)
+        self.topbar_box.draw(
+            self.topbar_box.x,
+            self.topbar_box.y)
 
         # Draw border:
         c = Color((100, 100, 100))

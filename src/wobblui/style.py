@@ -83,7 +83,6 @@ class AppStyle(object):
 class AppStyleBright(AppStyle):
     def __init__(self):
         super().__init__()
-        self.set("widget_bg", "#ccc")
         self.set("window_bg", "#efeeed")
         self.set("button_bg", "#bbb")
         self.set("topbar_bg", "#36e6ff")
@@ -95,7 +94,7 @@ class AppStyleBright(AppStyle):
         self.set("widget_disabled_text", "#444")
         self.set("border", "#222")
         self.set("selected_bg", "#7ae")
-        self.set("hover_bg", "#f81")
+        self.set("hover_bg", "#4af")
         self.set("focus_border", "#c7a")
         self.set("selected_text", "#000")
         self.set("scrollbar_knob_fg", "#ea3")
@@ -106,7 +105,6 @@ class AppStyleBright(AppStyle):
 class AppStyleDark(AppStyle):
     def __init__(self):
         super().__init__()
-        self.set("widget_bg", "#333")
         self.set("window_bg", "#222")
         self.set("button_bg", "#444")
         self.set("topbar_bg", "#333333")
@@ -118,7 +116,7 @@ class AppStyleDark(AppStyle):
         self.set("widget_disabled_text", "#888")
         self.set("border", "#000")
         self.set("selected_bg", "#7ae")
-        self.set("hover_bg", "#f81")
+        self.set("hover_bg", "#4af")
         self.set("focus_border", "#a9b")
         self.set("selected_text", "#112")
         self.set("scrollbar_knob_fg", "#ea3")

@@ -63,8 +63,8 @@ class Event(object):
         return False
 
     def __call__(self, *args, internal_data=None):
-        print("EVENT TRIGGER: " + str(self.name) +
-            " ON " + str(self.on_object))
+        #print("EVENT TRIGGER: " + str(self.name) +
+        #    " ON " + str(self.on_object))
         if self._disabled:
             return True
         if self.special_pre_event_func != None:

@@ -168,9 +168,11 @@ class RichText(RichTextObj):
         self.set_html(self.html)
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
+        assert(renderer != None and x != None and y != None)
         for fragment in self.fragments:
             if isinstance(fragment, RichTextLinebreak):
                 continue
+            assert(fragment != None)
             fragment.draw(renderer, fragment.x + x, fragment.y + y,
                 color=color, draw_scale=draw_scale)
 

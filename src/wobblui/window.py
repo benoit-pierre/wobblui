@@ -1,5 +1,6 @@
 
 import ctypes
+import math
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import weakref
@@ -217,6 +218,7 @@ class Window(WidgetBase):
     def add(self, *args, **kwargs):
         return_value = super().add(*args, **kwargs)
         if len(self._children) > 0:
+            self.update_layout()
             self.focus_update()
         return return_value
 
@@ -235,9 +237,41 @@ class Window(WidgetBase):
         self.draw_children()
 
     def _internal_on_resized(self, internal_data=None):
-        for child in self.children:
-            child.width = self.width
-            child.height = self.height
+        self.update_layout()
+
+    def update_layout(self):
+        changed = False
+        if len(self._children) > 0:
+            # Make first child fill out the window:
+            self._children[0].x = 0
+            self._children[0].y = 0
+            if self.width != self._children[0].width:
+                self._children[0].width = self.width
+                changed = True
+            if self.height != self._children[0].height:
+                self._children[0].height = self.height
+                changed = True
+
+            # Let the others float about, but shrink them to
+            # window size:
+            for child in self._children[1:]:
+                child.x = max(0, min(math.floor(self.width) - 1,
+                    child.x))
+                child.y = max(0, min(math.floor(self.height) - 1,
+                    child.y))
+                intended_w = min(child.get_natural_width(),
+                    max(1, math.floor(self.width) - child.x))
+                if child.width != intended_w:
+                    changed = True
+                    child.width = intended_w
+                intended_h = min(child.get_natural_height(
+                    given_width=child.width),
+                    max(1, math.floor(self.height) - child.y))
+                if child.height != intended_h:
+                    changed = True
+                    child.height = intended_h
+        if changed:
+            self.needs_redraw = True
 
     def _internal_on_post_redraw(self, internal_data=None):
         sdl.SDL_SetRenderTarget(self.renderer, None)

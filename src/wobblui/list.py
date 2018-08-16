@@ -9,6 +9,8 @@ from wobblui.widget import Widget
 
 class ListEntry(object):
     def __init__(self, html, style, is_alternating=False):
+        self._width = 0
+        self._layout_width = 0
         self.html = html
         self.is_alternating = is_alternating
         self._style = style
@@ -31,8 +33,11 @@ class ListEntry(object):
             self.dpi_scale = style.dpi_scale
 
     def draw(self, renderer, x, y, draw_selected=False,
-            draw_hover=False, width=None,
-            draw_keyboard_focus=False):
+            draw_hover=False,
+            draw_keyboard_focus=False,
+            draw_no_bg=False):
+        self.update_size()
+        no_bg = draw_no_bg
         c = Color((200, 200, 200))
         if self.style != None:
             if not self.is_alternating:
@@ -41,13 +46,14 @@ class ListEntry(object):
             else:
                 c = Color(self.style.get("inner_widget_alternating_bg"))
             if draw_hover:
+                no_bg = False
                 c = Color(self.style.get("hover_bg"))
             elif draw_selected:
+                no_bg = False
                 c = Color(self.style.get("selected_bg"))
-        if width is None:
-            width = self.width
-        draw_rectangle(renderer, x, y,
-            width, self.height, c)
+        if not no_bg:
+            draw_rectangle(renderer, x, y,
+                self.width, self.height, c)
         c = Color((0, 0, 0))
         if self.style != None:
             c = Color(self.style.get("widget_text"))
@@ -61,12 +67,27 @@ class ListEntry(object):
     def copy(self):
         li = ListEntry(self.html, self.style)
         li.max_width = self.max_width
+        li.width = self.width
+        li.needs_size_update = True
         return li
+
+    def get_natural_width(self):
+        text_copy = self.text_obj.copy()
+        (w, h) = text_copy.layout(max_width=None)
+        return (w + round(10.0 * self.dpi_scale))
 
     @property
     def width(self):
         self.update_size()
         return self._width
+
+    @width.setter
+    def width(self, v):
+        if self._max_width != None:
+            v = min(self._max_width, v)
+        if self._width != v:
+            self._width = v
+            self.need_size_update = True
 
     @property
     def height(self):
@@ -89,7 +110,8 @@ class ListEntry(object):
 
     @max_width.setter
     def max_width(self, v):
-        v = int(round(v))
+        if v != None:
+            v = int(round(v))
         if self._max_width != v:
             self._max_width = v
             self.need_size_update = True
@@ -107,29 +129,31 @@ class ListEntry(object):
             round(self.vertical_padding * self.dpi_scale))
         mw = self.max_width
         if mw != None:
-            mw -= padding * 2
+            mw = min(self.width, mw) - padding * 2
+        else:
+            mw = self.width
         is_empty = False
         if self.text_obj.text == "":
             is_empty = True
             self.text_obj.text = " "
         (self.text_width, self.text_height) = self.text_obj.layout(
             max_width=mw)
-        self._width = round(self.text_width + padding)
-        if self.max_width != None and self.max_width < self._width:
-            self._width = self.max_width
+        self._layout_width = round(self.text_width + padding)
         self._height = round(self.text_height + padding_vertical * 2)
         if is_empty:
             self.text_width = 0
             self.text_obj.text = ""
 
-class List(Widget):
-    def __init__(self):
+class ListBase(Widget):
+    def __init__(self, render_as_menu=False):
         super().__init__(is_container=False, can_get_focus=True)
         self.triggered = Event("triggered", owner=self)
         self.triggered_by_single_click = False
         self._entries = []
         self._selected_index = -1
+        self._hover_index = -1
         self.scroll_y_offset = 0
+        self.render_as_menu = render_as_menu
 
     @property
     def hover_index(self):
@@ -181,7 +205,11 @@ class List(Widget):
         self.needs_redraw = True
 
     def on_mousemove(self, mouse_id, x, y):
-        pass
+        click_index = self.coords_to_entry(x, y)
+        if click_index != self._hover_index:
+            self._hover_index = click_index
+            if self.render_as_menu:
+                self.needs_redraw = True
 
     def on_doubleclick(self, mouse_id, button, x, y):
         if not self.triggered_by_single_click:
@@ -218,32 +246,45 @@ class List(Widget):
         content_height = 0
         max_scroll_down = 0
         while True:
-            # Draw background:
+            # Draw border if a menu:
+            border_size = max(1, round(1.0 * self.dpi_scale))
+            if not self.render_as_menu:
+                border_size = 0
+            c = Color.black
+            if self.style != None and self.style.has("border"):
+                c = Color(self.style.get("border"))
+            if border_size > 0:
+                draw_rectangle(self.renderer, 0, 0,
+                    self.width, self.height, color=c)
+               
+            # Draw background: 
             c = Color.white
             if self.style != None:
                 c = Color(self.style.get("inner_widget_bg"))
-            draw_rectangle(self.renderer, 0, 0,
-                self.width, self.height, c)
+                if self.render_as_menu and self.style.has("button_bg"):
+                    c = Color(self.style.get("button_bg"))
+            draw_rectangle(self.renderer, border_size, border_size,
+                self.width - border_size * 2,
+                self.height - border_size * 2,
+                color=c)
 
             # Draw items:
-            cx = 0
-            cy = 0
+            cx = border_size
+            cy = border_size
             entry_id = -1
             for entry in self._entries:
                 entry_id += 1
                 entry.style = self.style
-                if entry.width > self.width and (entry.max_width is None
-                        or entry.max_width != self.width):
-                    entry.max_width = self.width
-                elif entry.width < self.width and \
-                        (entry.max_width != self.width):
-                    entry.max_width = self.width
+                entry.width = self.width - round(border_size * 2)
                 entry.y_offset = cy
-                entry.draw(self.renderer, cx, cy - self.scroll_y_offset,
+                entry.draw(self.renderer,
+                    cx, cy - self.scroll_y_offset,
                     draw_selected=(
-                    entry_id == self._selected_index),
-                    width=self.width,
-                    draw_hover=False)
+                    entry_id == self._selected_index and
+                    entry_id != self._hover_index),
+                    draw_hover=(self.render_as_menu and
+                    entry_id == self._hover_index),
+                    draw_no_bg=self.render_as_menu)
                 cy += round(entry.height)
                 content_height = max(content_height, cy)
 
@@ -290,15 +331,20 @@ class List(Widget):
                 color=c)
 
     def get_natural_width(self):
+        border_size = max(1, round(1.0 * self.dpi_scale))
+        if not self.render_as_menu:
+            border_size = 0
         w = 0
         entry_copies = []
         for entry in self._entries:
-            entry_copies.append(entry.copy())
-            entry_copies[-1].max_width = None
-            w = max(w, entry_copies[-1].width)
-        return max(w, round(12 * self.dpi_scale))
+            w = max(w, entry.get_natural_width())
+        w = max(w, round(12 * self.dpi_scale)) + border_size * 2
+        return w
 
     def get_natural_height(self, given_width=None):
+        border_size = max(1, round(1.0 * self.dpi_scale))
+        if not self.render_as_menu:
+            border_size = 0
         h = 0
         if given_width != None:
             h = 0
@@ -306,11 +352,12 @@ class List(Widget):
             for entry in self._entries:
                 entry_copies.append(entry.copy())
                 entry_copies[-1].max_width = given_width
+                entry_copies[-1].width = given_width
                 h += entry_copies[-1].height
         else:
             for entry in self._entries:
                 h += entry.height
-        return max(h, round(12 * self.dpi_scale))
+        return max(h, round(12 * self.dpi_scale)) + border_size * 2
 
     @property
     def entries(self):
@@ -341,4 +388,7 @@ class List(Widget):
         self._entries.append(ListEntry(html, self.style,
             is_alternating=(not last_was_alternating)))
         
+class List(ListBase):
+    def __init__(self):
+        super().__init__(render_as_menu=False)
 

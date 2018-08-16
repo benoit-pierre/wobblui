@@ -126,6 +126,8 @@ class Button(Widget):
             c = Color.white
             if self.style != None:
                 c = Color(self.style.get("widget_text"))
+                if self.disabled and self.style.has("widget_disabled_text"):
+                    c = Color(self.style.get("widget_disabled_text"))
             sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
             self.contained_richtext_obj.draw(
                 self.renderer, offset_x,
@@ -175,6 +177,8 @@ class ImageButton(Button):
             color = self.style.get("widget_text")
             if self.style.has("saturated_widget_text"):
                 color = Color(self.style.get("saturated_widget_text"))
+            if self.disabled and style.has("widget_disabled_text"):
+                color = Color(self.style.get("widget_disabled_text"))
         self.set_image_color(color)
 
     def __repr__(self):

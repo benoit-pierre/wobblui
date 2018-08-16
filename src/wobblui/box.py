@@ -235,8 +235,8 @@ class CenterBox(Widget):
         child.height = min(round(self.height -
             outer_padding * 2), child.get_natural_height(
             given_width=child.width))
-        child.x = math.floor((self.width - child.width) / 2) + self.x
-        child.y = math.floor((self.height - child.height) / 2) + self.y
+        child.x = math.floor((self.width - child.width) / 2)
+        child.y = math.floor((self.height - child.height) / 2)
 
     def _internal_on_resized(self, internal_data=None):
         self.relayout()

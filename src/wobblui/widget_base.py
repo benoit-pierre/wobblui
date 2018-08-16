@@ -6,6 +6,7 @@ import math
 import sdl2 as sdl
 import sys
 import time
+import traceback
 import weakref
 
 from wobblui.color import Color
@@ -56,7 +57,7 @@ class WidgetBase(object):
         self._children = []
         self._parent = None
         self._renderer = None
-        self.disabled = False
+        self._disabled = False
         self_ref = weakref.ref(self)
         self.sdl_texture = None
         self.sdl_texture_width = -1
@@ -149,6 +150,22 @@ class WidgetBase(object):
         all_widgets.append(weakref.ref(self))
 
     @property
+    def disabled(self):
+        return self._disabled
+
+    @disabled.setter
+    def disabled(self, v):
+        v = (v is True)
+        if self._disabled != v:
+            self._disabled = v
+            if self.focused:
+                if hasattr(self, "focus_next"):
+                    self.focus_next()
+                if self.focused:
+                    self.unfocus()
+            self.update()
+
+    @property
     def x(self):
         return self._x
 
@@ -188,6 +205,24 @@ class WidgetBase(object):
         self._post_mouse_event_handling("mousewheel",
             [mouse_id, x, y],
             internal_data=internal_data)
+
+    @property
+    def abs_x(self):
+        x = self.x
+        p = self.parent
+        while p != None:
+            x += p.x
+            p = p.parent
+        return x
+
+    @property
+    def abs_y(self):
+        y = self.y
+        p = self.parent
+        while p != None:
+            y += p.y
+            p = p.parent
+        return y
 
     def _post_mouse_event_handling(self, event_name,
             event_args, internal_data=None):
@@ -237,8 +272,8 @@ class WidgetBase(object):
                 rel_x = x
                 rel_y = y
                 if coords_are_abs:
-                    rel_x = x - self.x
-                    rel_y = y - self.y
+                    rel_x = x - self.abs_x
+                    rel_y = y - self.abs_y
                 if rel_x >= child.x and rel_y >= child.y and \
                         rel_x < child.x + child.width and \
                         rel_y < child.y + child.height:
@@ -259,8 +294,8 @@ class WidgetBase(object):
             rel_x = x
             rel_y = y
             if coords_are_abs:
-                rel_x = x - self.x
-                rel_y = y - self.y
+                rel_x = x - self.abs_x
+                rel_y = y - self.abs_y
             if rel_x >= child.x and rel_y >= child.y and \
                     rel_x < child.x + child.width and \
                     rel_y < child.y + child.height:
@@ -520,7 +555,7 @@ class WidgetBase(object):
 
     @property
     def focusable(self):
-        return self._focusable
+        return (self._focusable and not self.disabled)
 
     @property
     def focused(self):
@@ -631,10 +666,23 @@ class WidgetBase(object):
     def renderer(self):
         return self.get_renderer()
 
+    def remove(self, item, error_if_not_present=True):
+        if not self.is_container:
+            raise RuntimeError("this widget is " +
+                "not a container, can't remove children")
+        if not item in self._children:
+            if error_if_not_present:
+                raise ValueError("child is not contained: " +
+                    str(item))
+            return
+        self._children.remove(item)
+
     def add(self, item, trigger_resize=True):
         if not self.is_container:
             raise RuntimeError("this widget is " +
                 "not a container, can't add children")
+        if item.parent != None:
+            item.parent.remove(item, error_if_not_present=False)
         self._children.append(item)
         item.internal_override_parent(self)
         self.needs_redraw = True
