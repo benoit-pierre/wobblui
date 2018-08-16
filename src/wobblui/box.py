@@ -18,10 +18,30 @@ class Box(Widget):
         self.padding = 5.0
         self.layout()
 
+    def do_redraw(self):
+        self.draw_children()
+
     def _internal_on_moved(self, internal_data=None):
         self.layout()
 
     def layout(self):
+        # Adjust items on the non-box axis:
+        for item in self._children:
+            if self.horizontal:
+                nat_height = item.get_natural_height(given_width=\
+                    item.width)
+                if nat_height < self.height:
+                    item.height = nat_height
+                else:
+                    item.height = self.height
+            else:
+                nat_width = item.get_natural_width()
+                if nat_width < self.width:
+                    item.width = nat_width
+                else:
+                    item.width = self.width
+
+        # Adjust size along box axis:
         expand_widget_count = 0
         child_space = 0
         child_id = -1
@@ -51,8 +71,8 @@ class Box(Widget):
             space_per_item = math.floor(
                 remaining_space / expand_widget_count)
         child_id = -1
-        cx = self.x
-        cy = self.y
+        cx = 0
+        cy = 0
         for child in self._children:
             child_id += 1
             assigned_w = max(1, math.ceil(child.width))
@@ -73,8 +93,10 @@ class Box(Widget):
             child.y = cy
             child.width = assigned_w
             child.height = assigned_h
-            if child.height < self.height:
+            if self.horizontal and child.height < self.height:
                 child.y += math.floor((self.height - child.height) / 2.0)
+            elif not self.horizontal and child.width < self.width:
+                child.x += math.floor((self.width - child.width) / 2.0)
             item_padding = round(self.padding * self.dpi_scale)
             if child_id == len(self._children) - 1:
                 item_padding = 0
@@ -114,12 +136,6 @@ class Box(Widget):
             return max_h
 
     def _internal_on_resized(self, internal_data=None):
-        for item in self._children:
-            if self.horizontal:
-                item.height = self.height
-            else:
-                item.width = self.width
-                item.height = item.get_natural_height(given_width=self.width)
         self.layout()
 
     def add(self, item, expand=True):
@@ -147,8 +163,9 @@ class HBox(Box):
         super().__init__(True)
 
 class CenterBox(Widget):
-    def __init__(self):
+    def __init__(self, padding=0):
         super().__init__(is_container=True)
+        self.padding = padding
 
     def do_redraw(self):
         self.draw_children()
@@ -156,10 +173,14 @@ class CenterBox(Widget):
     def relayout(self):
         if len(self._children) == 0:
             return
+        outer_padding = (self.padding * self.dpi_scale)
         child = self._children[0]
-        child.width = child.get_natural_width()
-        child.height = child.get_natural_height(
-            given_width=child.width)
+        nat_width = child.get_natural_width()
+        child.width = min(round(self.width -
+            outer_padding * 2), nat_width)
+        child.height = min(round(self.height -
+            outer_padding * 2), child.get_natural_height(
+            given_width=child.width))
         child.x = math.floor((self.width - child.width) / 2) + self.x
         child.y = math.floor((self.height - child.height) / 2) + self.y
 

@@ -25,7 +25,7 @@ class Topbar(Widget):
         self.relayout()
 
     def get_children(self):
-        return self._children + self.topbar_box.children
+        return self._children + [self.topbar_box]
 
     def add_to_top(self, child, expand=True):
         self.topbar_box.add(child, expand=expand)
@@ -59,7 +59,8 @@ class Topbar(Widget):
 
         # Draw topbar items:
         for child in self.topbar_box.children:
-            child.draw(child.x, child.y)
+            child.draw(child.x + self.topbar_box.x,
+                child.y + self.topbar_box.y)
 
         # Draw border:
         c = Color((100, 100, 100))
