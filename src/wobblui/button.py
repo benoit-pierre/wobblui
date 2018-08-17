@@ -198,6 +198,8 @@ class ImageButton(Button):
         color = Color(self.style.get("widget_text"))
         if self.style.has("saturated_widget_text"):
             color = Color(self.style.get("saturated_widget_text"))
+        if self.disabled and self.style.has("widget_disabled_text"):
+            color = Color(self.style.get("widget_disabled_text"))
         self.image_color = color
         super().do_redraw()
 
