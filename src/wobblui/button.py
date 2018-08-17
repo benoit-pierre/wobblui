@@ -191,8 +191,11 @@ class ImageButton(Button):
         self.set_image_color(color)
 
     def __repr__(self):
+        orig_img = "none"
+        if hasattr(self, "original_image"):
+            orig_img = str(self.original_image)
         return "<wobblui.ImageButton original_image='" +\
-            str(self.original_image).replace("'", "'\"'\"'") + "'>"
+            orig_img.replace("'", "'\"'\"'") + "'>"
 
     def do_redraw(self):
         color = Color(self.style.get("widget_text"))

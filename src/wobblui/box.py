@@ -230,6 +230,6 @@ class CenterBox(Widget):
             given_width=child.width))
         child.x = math.floor((self.width - child.width) / 2)
         child.y = math.floor((self.height - child.height) / 2)
-
+        child.relayout_if_necessary()
 
 

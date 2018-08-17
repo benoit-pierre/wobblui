@@ -12,37 +12,22 @@ import weakref
 from wobblui.color import Color
 from wobblui.event import DummyEvent, Event
 from wobblui.gfx import draw_dashed_line
+from wobblui.keyboard import enable_text_events
 from wobblui.uiconf import config
-
-last_wid = -1
-last_add = -1
-all_widgets = list()
-
-def tab_sort(a, b):
-    if a.focus_index is None and b.focus_index != None:
-        return 1
-    if b.focus_index is None and a.focus_index != None:
-        return -1
-    if a.focus_index != b.focus_index:
-        return (a.focus_index - b.focus_index)
-    return (a.added_order - b.added_order)
+from wobblui.widgetman import add_widget, all_widgets, \
+    get_widget_id, get_add_id, tab_sort
 
 class WidgetBase(object):
     def __init__(self, is_container=False,
-            can_get_focus=False):
-        global all_widgets
-
+            can_get_focus=False,
+            takes_text_input=False):
         self.type = "unknown"
         self._focusable = can_get_focus
         self.padding = 8
         self.needs_redraw = True
 
-        global last_wid
-        self.id = last_wid + 1
-        last_wid += 1
-        global last_add
-        self.added_order = last_add + 1
-        last_add += 1
+        self.id = get_widget_id()
+        self.added_order = get_add_id()
 
         self.needs_relayout = True
         self.last_mouse_move_was_inside = False
@@ -131,6 +116,21 @@ class WidgetBase(object):
             allow_preventing_widget_callback_by_user_callbacks=False)
         self.focus_index = None
         self._is_focused = False
+
+        # Note: textinput event can't be a dummy event even if
+        # widget doesn't take text input, because Window instnaces
+        # need this event to be working even not marked as widgets
+        # taking text input (which would cause them to prompt the
+        # virtual keyboard on Android/iOS merely by existing).
+        # Therefore, the event must always work, but the window
+        # won't actually dispatch it to any widget if it's not
+        # marked with .takes_text_input = True
+        self.textinput = Event("textinput", owner=self)
+        if not can_get_focus or not takes_text_input:
+            self.takes_text_input = False
+        else:
+            self.takes_text_input = True
+
         self.mousemove = Event("mousemove", owner=self)
         self.mousedown = Event("mousedown", owner=self)
         self.mousewheel = Event("mousewheel", owner=self)
@@ -152,7 +152,7 @@ class WidgetBase(object):
         else:
             self.focus = DummyEvent("focus", owner=self)
             self.unfocus = DummyEvent("unfocus", owner=self)
-        all_widgets.append(weakref.ref(self))
+        add_widget(self)
 
     @property
     def disabled(self):
@@ -546,6 +546,7 @@ class WidgetBase(object):
 
     @staticmethod
     def focus_candidates(group_widget):
+        global all_widgets
         assert(group_widget != None)
         group_widgets = group_widget
         if type(group_widgets) != list:
@@ -653,6 +654,9 @@ class WidgetBase(object):
                     if not child.focusable:
                         if try_children_focus(child):
                             return True
+                    else:
+                        child.focus()
+                        return True
                 return False
             if not try_children_focus(self):
                 return True  # prevent focus
@@ -664,6 +668,8 @@ class WidgetBase(object):
                 finally:
                     self._is_focused = True
                     self.needs_redraw = True
+                    if self.takes_text_input:
+                        enable_text_events(self)
 
     def set_focus_index(self, index):
         self.focus_index = index

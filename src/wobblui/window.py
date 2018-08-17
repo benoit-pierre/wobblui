@@ -11,8 +11,7 @@ from wobblui.gfx import draw_rectangle
 from wobblui.widget_base import all_widgets, WidgetBase
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
-
-all_windows = []
+from wobblui.widgetman import all_windows
 
 def get_focused_window():
     global all_windows
@@ -165,6 +164,11 @@ class Window(WidgetBase):
                     WidgetBase.get_focused_widget_by_window(self)
                 new_focused_widget.needs_redraw = True
 
+    def _internal_on_textinput(self, text, modifiers, internal_data=None):
+        focused_widget = WidgetBase.get_focused_widget_by_window(self)
+        if focused_widget != None and focused_widget.takes_text_input:
+            focused_widget.textinput(text, modifiers)
+
     def focus_update(self):
         if len(self.children) > 0 and \
                 WidgetBase.get_focused_widget_by_window(self) is None:
@@ -238,6 +242,7 @@ class Window(WidgetBase):
         self.draw_children()
 
     def _internal_on_resized(self, internal_data=None):
+        self.needs_relayout = True
         for w_ref in all_widgets:
             w = w_ref()
             if w is None or not hasattr(w, "parent_window") or \
@@ -245,6 +250,8 @@ class Window(WidgetBase):
                 continue
             if hasattr(w, "parentwindowresized"):
                 w.parentwindowresized()
+        for child in self._children:
+            child.needs_relayout = True
 
     def on_relayout(self):
         changed = False

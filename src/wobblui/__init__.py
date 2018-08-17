@@ -187,8 +187,8 @@ def handle_event(event):
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
         widget = get_active_text_widget()
-        if widget != None and hasattr(widget, "on_text"):
-            widget.on_text(text, get_modifiers())
+        if widget != None and text != "\n" and text != "\r\n":
+            widget.textinput(text, get_modifiers())
     elif event.type == sdl.SDL_KEYDOWN:
         virtual_key = sdl_vkey_map(event.key.keysym.sym)
         physical_key = sdl_key_map(event.key.keysym.scancode)
@@ -211,6 +211,8 @@ def handle_event(event):
         if alt:
             modifiers.add("alt")
         w.keydown(virtual_key, physical_key, modifiers)
+        if virtual_key.lower() == "return":
+            w.textinput("\n", get_modifiers())
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
                 sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
