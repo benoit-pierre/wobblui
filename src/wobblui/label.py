@@ -25,6 +25,12 @@ class Label(Widget):
         self._user_set_color = color
         self._layout_max_width = None
 
+    def set_text(self, v):
+        self.text = v
+
+    def set_html(self, v):
+        self.html = v
+
     def in_topbar(self):
         p = self.parent
         while p != None:
