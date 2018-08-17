@@ -44,6 +44,7 @@ class WidgetBase(object):
         self.added_order = last_add + 1
         last_add += 1
 
+        self.needs_relayout = True
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
         self.last_mouse_click_with_time = dict()
@@ -68,6 +69,8 @@ class WidgetBase(object):
             self_value = self_ref()
             if self_value is None or self_value.renderer is None:
                 return
+            if self_value.needs_relayout:
+                self_value.relayout()
             if self_value.restore_old_target != -1:
                 raise RuntimeError("nested redraw on " +
                     str(self_value) + ", this is forbidden")
@@ -135,6 +138,8 @@ class WidgetBase(object):
         self.click = Event("click", owner=self)
         self.doubleclick = Event("doubleclick", owner=self)
         self.mouseup = Event("mouseup", owner=self)
+        self.relayout = Event("relayout", owner=self,
+            allow_preventing_widget_callback_by_user_callbacks=False)
         self.moved = Event("moved", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         self.resized = Event("resized", owner=self,
@@ -184,6 +189,24 @@ class WidgetBase(object):
         if self._y != v:
             self._y = v
             self.moved()
+
+    def _internal_on_relayout(self, internal_data=None):
+        self.needs_relayout = False
+        need_parent_relayout = True
+        current_natural_width = self.get_natural_width()
+        current_natural_height = self.get_natural_height(
+            given_width=current_natural_width)
+        if hasattr(self, "_cached_previous_natural_width"):
+            if self._cached_previous_natural_width == \
+                    current_natural_width and \
+                    self._cached_previous_natural_height ==\
+                    current_natural_height:
+                need_parent_relayout = False
+        self._cached_previous_natural_width = current_natural_width
+        self._cached_previous_natural_height = current_natural_height
+        if self.parent != None and need_parent_relayout:
+            self.parent.needs_relayout = True
+            self.parent.needs_redraw = True
 
     def _internal_on_mousedown(self, mouse_id, button, x, y,
             internal_data=None):
@@ -421,10 +444,10 @@ class WidgetBase(object):
         return 1.0
 
     def get_natural_width(self):
-        return self.width
+        return 64
 
     def get_natural_height(self, given_width=None):
-        return self.height
+        return 64
 
     def draw_children(self):
         for child in self.children:
@@ -459,6 +482,16 @@ class WidgetBase(object):
         sdl.SDL_SetRenderDrawColor(self.renderer,
             255, 255, 255, 255)
         sdl.SDL_RenderCopy(self.renderer, self.sdl_texture, src, tg)
+
+    def relayout_if_necessary(self):
+        changed = False
+        for child in self.children:
+            if child.relayout_if_necessary():
+                changed = True
+        if self.needs_relayout:
+            changed = True
+            self.relayout()
+        return changed
 
     def redraw_if_necessary(self):
         for child in self.children:
@@ -543,6 +576,7 @@ class WidgetBase(object):
     def size_change(self, w, h):
         self._width = w
         self._height = h
+        self.needs_relayout = True
         self.needs_redraw = True
         self.resized()
 
@@ -702,8 +736,10 @@ class WidgetBase(object):
         if item.parent != None:
             item.parent.remove(item, error_if_not_present=False)
         self._children.append(item)
+        self.needs_relayout = True
         item.internal_override_parent(self)
         self.needs_redraw = True
+        item.relayout()
         if trigger_resize:
             self.resized()
 

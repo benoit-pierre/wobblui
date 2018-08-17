@@ -20,10 +20,6 @@ class Topbar(Widget):
         self.topbar_height = 0
         self.topbar_box = HBox()
         self.topbar_box.internal_override_parent(self)
-        self.relayout()
-
-    def _internal_on_moved(self, internal_data=None):
-        self.relayout()
 
     def get_children(self):
         return self._children + [self.topbar_box]
@@ -38,7 +34,7 @@ class Topbar(Widget):
     def add_to_top(self, child, expand=True):
         self.topbar_box.add(child, expand=expand)
         self.topbar_box.height = self.topbar_box.get_natural_height()
-        self.relayout()
+        self.needs_relayout = True
         self.needs_redraw = True
 
     @property
@@ -47,7 +43,6 @@ class Topbar(Widget):
             2.0 * self.dpi_scale))
 
     def do_redraw(self):
-        self.relayout()
         if self.renderer is None:
             return
         c = Color((100, 100, 100))
@@ -91,11 +86,12 @@ class Topbar(Widget):
         for child in self._children:
             child.draw(child.x, child.y)
 
-    def relayout(self):
+    def on_relayout(self):
         topbar_height = round((5 + self.padding * 2) * self.dpi_scale)
         current_x = round(self.padding * self.dpi_scale)
         first_child = True
         current_y = round(self.padding * self.dpi_scale)
+        self.topbar_box.relayout_if_necessary()
         self.topbar_box.x = current_x
         self.topbar_box.y = current_y
         self.topbar_box.width = self.width - round(
