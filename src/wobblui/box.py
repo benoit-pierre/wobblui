@@ -24,15 +24,11 @@ class Box(Widget):
         self.item_padding = 5.0
         self.box_surrounding_padding =\
             max(0, box_surrounding_padding)
-        self.layout()
 
     def do_redraw(self):
         self.draw_children()
 
-    def _internal_on_moved(self, internal_data=None):
-        self.layout()
-
-    def layout(self):
+    def on_relayout(self):
         # Adjust items on the non-box axis:
         for item in self._children:
             if self.horizontal:
@@ -167,13 +163,11 @@ class Box(Widget):
             max_h = 0
             for child in self._children:
                 max_h = max(max_h, child.get_natural_height(
-                    given_width=child.width))
+                    given_width=None))  # horizontal box doesn't
+                                        # support compression right now
             max_h += round(self.box_surrounding_padding *
                 self.dpi_scale * 2)
             return max_h
-
-    def _internal_on_resized(self, internal_data=None):
-        self.layout()
 
     def add(self, item, expand=True):
         super().add(item, trigger_resize=False)
@@ -184,7 +178,6 @@ class Box(Widget):
         else:
             item.width = self.width
             item.height = item.get_natural_height(given_width=self.width)
-        self.layout()
 
     def add_spacer(self):
         self.add(BoxSpacer(), expand=True)
@@ -224,7 +217,7 @@ class CenterBox(Widget):
             given_width=v) +\
             (self.padding * 2 * self.dpi_scale)
 
-    def relayout(self):
+    def on_relayout(self):
         if len(self._children) == 0:
             return
         outer_padding = (self.padding * self.dpi_scale)
@@ -237,16 +230,6 @@ class CenterBox(Widget):
             given_width=child.width))
         child.x = math.floor((self.width - child.width) / 2)
         child.y = math.floor((self.height - child.height) / 2)
-
-    def _internal_on_resized(self, internal_data=None):
-        self.relayout()
-
-    def _internal_on_moved(self, internal_data=None):
-        self.relayout()
-
-    def add(self, item):
-        super().add(item)
-        self.relayout()
-
+        child.relayout_if_necessary()
 
 

@@ -7,6 +7,8 @@ import tempfile
 
 import osintegration
 
+DEBUG_FONTINFO=False
+
 def extract_name_ending(font_filename):
     extracted_letters = 0
     if font_filename.lower().endswith(".ttf"):
@@ -41,6 +43,10 @@ def get_font_paths_by_name(name):
             "packaged-fonts"))):
         (variant_name, extracted_letters) = extract_name_ending(
             filename)
+        if DEBUG_FONTINFO:
+            print("searching " + str(name_variants) +
+                " in " + str((variant_name, extracted_letters)) +
+                " of packaged " + str(filename))
         if len(variant_name) > 0:
             for name_variant in name_variants:
                 base = filename[:-extracted_letters].lower()
@@ -52,19 +58,22 @@ def get_font_paths_by_name(name):
                         (base.lower() + variant_name.lower()) == \
                         name_variant:
                     if variant_name.lower() != "regular":
-                        candidates.append(os.path.normpath(os.path.join(
+                        candidates.append((base + variant_name[:1].upper() +
+                            variant_name[1:].lower(),
+                            os.path.normpath(os.path.join(
                             os.path.abspath(os.path.dirname(__file__)),
-                            "packaged-fonts", filename)))
+                            "packaged-fonts", filename))))
                     else:
-                        candidates = [os.path.normpath(os.path.join(
+                        candidates = [(base,
+                            os.path.normpath(os.path.join(
                             os.path.abspath(os.path.dirname(__file__)),
-                            "packaged-fonts", filename))] + candidates
+                            "packaged-fonts", filename)))] + candidates
     if len(candidates) > 0:
         return candidates
 
     # Don't try other places on android:
     if osintegration.is_android():
-        return
+        return []
 
     # Search system-wide:
     import fontconfig
@@ -109,12 +118,15 @@ def get_font_as_ttf_files(name):
             prefix="fontinfoutil-conversion-cache-")
     new_paths = []
     for (fname, fpath) in get_font_paths_by_name(name):
+        if fpath.lower().endswith(".ttf"):
+            new_paths.append((fname, fpath))
+            continue
         cache_name = hmac.new(b"unnecessarysalt",
             fpath.encode("utf-8"), hashlib.sha512).hexdigest()
         full_path = os.path.join(cache_path, cache_name + ".ttf")
         if os.path.exists(full_path):
             return full_path
-        import fontotfttf
+        import wobblui.font.otfttf as fontotfttf
         try:
             fontotfttf.otf_to_ttf(fpath, full_path)
             new_paths.append((fname, full_path))

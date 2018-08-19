@@ -11,8 +11,7 @@ from wobblui.gfx import draw_rectangle
 from wobblui.widget_base import all_widgets, WidgetBase
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
-
-all_windows = []
+from wobblui.widgetman import all_windows
 
 def get_focused_window():
     global all_windows
@@ -36,7 +35,6 @@ class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,
             style=None):
         initialize_sdl()
-        self.need_update_layout = True
         if style is None:
             style = AppStyleDark()
         self.mouse_position_cache = dict()
@@ -166,6 +164,17 @@ class Window(WidgetBase):
                     WidgetBase.get_focused_widget_by_window(self)
                 new_focused_widget.needs_redraw = True
 
+    def _internal_on_textinput(self, text, modifiers, internal_data=None):
+        focused_widget = WidgetBase.get_focused_widget_by_window(self)
+        if focused_widget != None and focused_widget.takes_text_input:
+            focused_widget.textinput(text, modifiers)
+
+    def focus_first_item(self):
+        focused_widget = WidgetBase.get_focused_widget_by_window(self)
+        if focused_widget != None:
+            focused_widget.unfocus()
+        self.focus_update()
+
     def focus_update(self):
         if len(self.children) > 0 and \
                 WidgetBase.get_focused_widget_by_window(self) is None:
@@ -221,7 +230,6 @@ class Window(WidgetBase):
     def add(self, *args, **kwargs):
         return_value = super().add(*args, **kwargs)
         if len(self._children) > 0:
-            self.need_update_layout = True
             self.focus_update()
         return return_value
 
@@ -237,11 +245,10 @@ class Window(WidgetBase):
         draw_rectangle(self.renderer, 0, 0,
             self.width, self.height, color=c)
 
-        self.update_layout()
         self.draw_children()
 
     def _internal_on_resized(self, internal_data=None):
-        self.need_update_layout = True
+        self.needs_relayout = True
         for w_ref in all_widgets:
             w = w_ref()
             if w is None or not hasattr(w, "parent_window") or \
@@ -249,11 +256,10 @@ class Window(WidgetBase):
                 continue
             if hasattr(w, "parentwindowresized"):
                 w.parentwindowresized()
+        for child in self._children:
+            child.needs_relayout = True
 
-    def update_layout(self):
-        if not self.need_update_layout:
-            return
-        self.need_update_layout = False
+    def on_relayout(self):
         changed = False
         if len(self._children) > 0:
             # Make first child fill out the window:
@@ -273,13 +279,12 @@ class Window(WidgetBase):
                     child.x))
                 child.y = max(0, min(math.floor(self.height) - 1,
                     child.y))
-                intended_w = min(child.get_natural_width(),
+                intended_w = min(child.width,
                     max(1, math.floor(self.width) - child.x))
                 if child.width != intended_w:
                     changed = True
                     child.width = intended_w
-                intended_h = min(child.get_natural_height(
-                    given_width=child.width),
+                intended_h = min(child.height,
                     max(1, math.floor(self.height) - child.y))
                 if child.height != intended_h:
                     changed = True

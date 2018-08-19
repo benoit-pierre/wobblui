@@ -11,11 +11,19 @@ from wobblui.timer import internal_trigger_check
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
 
-def redraw_windows():
+def redraw_windows(layout_only=False):
     for w_ref in all_windows:
         w = w_ref()
         if w is None or w.hidden:
             continue
+        i = 0
+        while i < 10:
+            if not w.relayout_if_necessary():
+                break
+            i += 1
+        if i == 10:
+            print("WARNING: a widget appears to be causing a " +
+                "relayout() loop", file=sys.stderr, flush=True)
         w.redraw_if_necessary()
 
 def sdl_vkey_map(key):
@@ -75,8 +83,9 @@ def sdl_key_map(key):
     return str("scancode-" + str(key))
 
 def event_loop():
-    event_loop_ms = 20
+    event_loop_ms = 10
     while True:
+        time.sleep(event_loop_ms * 0.001)
         events = []
         while True:
             ev = sdl.SDL_Event()
@@ -86,16 +95,16 @@ def event_loop():
                 continue
             break
         if len(events) == 0:
-            if event_loop_ms < 400:
+            if event_loop_ms < 300:
                 event_loop_ms = min(
-                    event_loop_ms + 10,
-                    400)
+                    event_loop_ms + 1,
+                    300)
             internal_trigger_check()
             redraw_windows()
             continue
         else:
-            if event_loop_ms > 20:
-                event_loop_ms = 20
+            if event_loop_ms > 10:
+                event_loop_ms = 10
         for event in events:
             try:
                 if handle_event(event) is False:
@@ -105,6 +114,7 @@ def event_loop():
                 print("*** ERROR IN EVENT HANDLER ***",
                     file=sys.stderr, flush=True)
                 print(str(traceback.format_exc()))
+        redraw_windows(layout_only=True)
         internal_trigger_check()
         internal_update_text_events()
         redraw_windows()
@@ -177,8 +187,8 @@ def handle_event(event):
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
         widget = get_active_text_widget()
-        if widget != None and hasattr(widget, "on_text"):
-            widget.on_text(text, get_modifiers())
+        if widget != None and text != "\n" and text != "\r\n":
+            widget.textinput(text, get_modifiers())
     elif event.type == sdl.SDL_KEYDOWN:
         virtual_key = sdl_vkey_map(event.key.keysym.sym)
         physical_key = sdl_key_map(event.key.keysym.scancode)
@@ -201,6 +211,8 @@ def handle_event(event):
         if alt:
             modifiers.add("alt")
         w.keydown(virtual_key, physical_key, modifiers)
+        if virtual_key.lower() == "return":
+            w.textinput("\n", get_modifiers())
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
                 sdl.SDL_WINDOWEVENT_FOCUS_GAINED:

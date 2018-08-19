@@ -1,7 +1,7 @@
 
 import sdl2 as sdl
 
-from wobblui.window import all_windows
+from wobblui.widgetman import all_windows
 
 def get_modifiers():
     result = set()
@@ -55,6 +55,7 @@ def enable_text_events(widget):
     if widget != None and not widget.focused:
         raise ValueError("cannot enable text events " +
             "for a widget without keyboard focus")
+    assert(hasattr(widget, "parent_window"))
     if current_text_events_widget != None:
         if widget != None:
             sdl.SDL_StopTextInput()

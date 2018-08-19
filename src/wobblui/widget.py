@@ -5,9 +5,11 @@ from wobblui.widget_base import all_widgets, tab_sort, WidgetBase
 from wobblui.window import Window
 
 class Widget(WidgetBase):
-    def __init__(self, is_container=False, can_get_focus=False):
+    def __init__(self, is_container=False, can_get_focus=False,
+            takes_text_input=False):
         super().__init__(is_container=is_container,
-            can_get_focus=can_get_focus)
+            can_get_focus=can_get_focus,
+            takes_text_input=takes_text_input)
         self.parentwindowresized = Event("parentwindowresized",
             owner=self)
 

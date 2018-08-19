@@ -58,10 +58,10 @@ class Label(Widget):
         if self._current_align == alignment:
             return
         self._current_align = alignment
-        self.update_layout()
+        self.needs_relayout = True
 
     def do_redraw(self):
-        self.update_layout()
+        self.needs_relayout = True
         for fragment in self.text_obj.fragments:
             fragment.draw(self.renderer,
                 fragment.x, fragment.y,
@@ -71,10 +71,10 @@ class Label(Widget):
     def _internal_on_resized(self, internal_data=None):
         old_w = self._width
         if self._max_width != self._layout_max_width:
-            self.update_layout()
+            self.needs_relayout = True
             self._width = max(old_w, self._width)
 
-    def update_layout(self):
+    def on_relayout(self):
         self.text_obj.draw_scale = self.dpi_scale
         self.text_obj.px_size = int(self.style.get("widget_text_size"))
         if self.style.has("topbar_text_size") and self.in_topbar():
@@ -100,8 +100,6 @@ class Label(Widget):
     def get_natural_height(self, given_width=None):
         if len(self.text_obj.text) == 0:
             return 0
-        if given_width is None:
-            return self._layout_height
         text_obj_copy = self.text_obj.copy()
         text_obj_copy.draw_scale = self.dpi_scale
         (w, h) = text_obj_copy.layout(max_width=given_width)
@@ -114,7 +112,8 @@ class Label(Widget):
     @text.setter
     def text(self, t):
         self.text_obj.set_text(t)
-        self.update_layout()
+        self.needs_relayout = True
+        self.needs_redraw = True
 
     @property
     def html(self):
@@ -123,5 +122,6 @@ class Label(Widget):
     @text.setter
     def html(self, t):
         self.text_obj.set_html(t)
-        self.update_layout()
+        self.needs_relayout = True
+        self.needs_redraw = True
 
