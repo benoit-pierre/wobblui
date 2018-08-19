@@ -11,10 +11,14 @@ class Menu(ListBase):
     def on_triggered(self):
         item_id = self.selected_index
         if item_id >= 0:
-            self.focus_next()
+            f = None
             if item_id < len(self.callback_funcs):
                 if self.callback_funcs[item_id] != None:
-                    self.callback_funcs[item_id]()
+                    f = self.callback_funcs[item_id]
+            if self.focused:
+                self.focus_next()
+            if f != None:
+                f()
 
     def add(self, text, func_callback=None):
         super().add(text)

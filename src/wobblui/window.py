@@ -273,13 +273,12 @@ class Window(WidgetBase):
                     child.x))
                 child.y = max(0, min(math.floor(self.height) - 1,
                     child.y))
-                intended_w = min(child.get_natural_width(),
+                intended_w = min(child.width,
                     max(1, math.floor(self.width) - child.x))
                 if child.width != intended_w:
                     changed = True
                     child.width = intended_w
-                intended_h = min(child.get_natural_height(
-                    given_width=child.width),
+                intended_h = min(child.height,
                     max(1, math.floor(self.height) - child.y))
                 if child.height != intended_h:
                     changed = True
