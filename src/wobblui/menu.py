@@ -1,6 +1,52 @@
 
+from wobblui.color import Color
 from wobblui.event import Event
-from wobblui.list import ListBase
+from wobblui.gfx import draw_rectangle
+from wobblui.list import ListBase, ListEntry
+
+class MenuSeparator(ListEntry):
+    def __init__(self, style, is_alternating=False):
+        super().__init__("---", style,
+            is_alternating=is_alternating)
+        self.disabled = True
+        self.padding_horizontal = 15.0
+        self.padding_vertical = 3.0
+        self.line_thickness = 1.0
+        self.update_size()
+
+    def draw(self, renderer, x, y, draw_selected=False,
+            draw_hover=False,
+            draw_keyboard_focus=False,
+            draw_no_bg=False):
+        dpi_scale = 1.0
+        if self.style != None:
+            dpi_scale = self.style.dpi_scale
+        c = Color((0, 0, 0))
+        if self.style != None:
+            c = Color(self.style.get("widget_text"))
+        draw_w = (round(self.width) - round(self.padding_horizontal
+            * dpi_scale) * 2)
+        draw_h = max(1, round(self.line_thickness * dpi_scale))
+        if draw_w < 1:
+            return
+        draw_x = round(x + self.padding_horizontal * dpi_scale)
+        draw_y = round(y + self.padding_vertical * dpi_scale)
+        draw_rectangle(renderer, draw_x, draw_y,
+            draw_w, draw_h, color=c)
+
+    def get_natural_width(self):
+        if self.style != 0.0:
+            return round(20.0 * self.style.dpi_scale)
+        return 20
+
+    def update_size(self):
+        dpi_scale = 1.0
+        if self.style != None:
+            dpi_scale = self.style.dpi_scale
+        self._height = round(
+            self.padding_vertical * dpi_scale) * 2 +\
+            max(1, round(self.line_thickness * dpi_scale))
+    
 
 class Menu(ListBase):
     def __init__(self):
@@ -19,6 +65,16 @@ class Menu(ListBase):
                 self.focus_next()
             if f != None:
                 f()
+
+    def add_separator(self):
+        self.add("---")
+        sep_entry = MenuSeparator(
+            self._entries[-1].style,
+            is_alternating=self._entries[-1].is_alternating)
+        self._entries = self._entries[:-1]
+        self._entries.append(sep_entry)
+        self._entries[-1].disabled = True
+        self.needs_relayout = True
 
     def add(self, text, func_callback=None):
         super().add(text)
