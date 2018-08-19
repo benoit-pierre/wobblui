@@ -12,6 +12,7 @@ class ListEntry(object):
         self._width = 0
         self._layout_width = 0
         self.html = html
+        self.disabled = False
         self.is_alternating = is_alternating
         self._style = style
         self.y_offset = 0
@@ -59,6 +60,8 @@ class ListEntry(object):
             c = Color(self.style.get("widget_text"))
             if draw_hover or draw_selected:
                 c = Color(self.style.get("selected_text"))
+            if self.disabled and self.style.has("widget_disabled_text"):
+                c = Color(self.style.get("widget_disabled_text"))
         self.text_obj.draw(renderer,
             round(5.0 * self.dpi_scale) + x,
             round(self.vertical_padding * self.dpi_scale) + y,
@@ -155,6 +158,17 @@ class ListBase(Widget):
         self.scroll_y_offset = 0
         self.render_as_menu = render_as_menu
 
+    def set_disabled(self, entry_index, state):
+        new_state = (state is True)
+        if self._entries[entry_index].disabled == state:
+            return
+        self._entries[entry_index].disabled = state
+        if self._selected_index == entry_index:
+            self._selected_index = -1
+        if self._hover_index == entry_index:
+            self._selected_index = -1
+        self.needs_redraw = True
+
     @property
     def hover_index(self):
         return self._hover_index
@@ -180,6 +194,21 @@ class ListBase(Widget):
             self._selected_index += 1
             if self._selected_index >= len(self._entries):
                 self._selected_index = len(self._entries) - 1
+                if len(self._entries) == 0:
+                    self._selected_index = -1
+            # Make sure we haven't selected a disabled entry:
+            if len(self._entries) > 0:
+                while self._selected_index < len(self._entries) and \
+                        self._entries[self._selected_index].disabled:
+                    self._selected_index += 1
+                while self.selected_index >= 0 and \
+                        (self._selected_index >= len(self._entries) or
+                        self._entries[self._selected_index].disabled):
+                    self._selected_index -= 1
+                if self._selected_index < 0:
+                    # No non-disabled entries.
+                    self._selected_index = -1
+
             self.scroll_y_offset = max(
                 self._entries[self._selected_index].y_offset +
                 self._entries[self._selected_index].height -
@@ -190,6 +219,20 @@ class ListBase(Widget):
             self._selected_index -= 1
             if self._selected_index < 0:
                 self._selected_index = 0
+                if len(self._entries) == 0:
+                    self._selected_index = -1
+            # Make sure we haven't selected a disabled entry:
+            if len(self._entries) > 0:
+                while self._selected_index >= 0 and \
+                        self._entries[self._selected_index].disabled:
+                    self._selected_index -= 1
+                while self.selected_index < len(self._entries) and \
+                        (self._selected_index < 0 or
+                        self._entries[self._selected_index].disabled):
+                    self._selected_index += 1
+                if self._selected_index >= len(self._entries):
+                    # No non-disabled entries.
+                    self._selected_index = -1
             self.scroll_y_offset = min(
                 self._entries[self._selected_index].y_offset,
                 self.scroll_y_offset)
@@ -205,17 +248,25 @@ class ListBase(Widget):
         self.needs_redraw = True
 
     def on_mousemove(self, mouse_id, x, y):
+        self.set_selection_by_mouse_pos(x, y) 
+
+    def set_selection_by_mouse_pos(self, x, y):
         click_index = self.coords_to_entry(x, y)
         if click_index != self._hover_index:
+            if click_index >= 0 and \
+                    self._entries[click_index].disabled:
+                return  # it's a disabled entry, ignore
             self._hover_index = click_index
             if self.render_as_menu:
                 self.needs_redraw = True
 
     def on_doubleclick(self, mouse_id, button, x, y):
+        self.set_selection_by_mouse_pos(x, y)
         if not self.triggered_by_single_click:
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
+        self.set_selection_by_mouse_pos(x, y)
         if self.triggered_by_single_click and \
                 self._selected_index >= 0:
             self.triggered()

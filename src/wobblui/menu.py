@@ -13,7 +13,8 @@ class Menu(ListBase):
         if item_id >= 0:
             self.focus_next()
             if item_id < len(self.callback_funcs):
-                self.callback_funcs[item_id]()
+                if self.callback_funcs[item_id] != None:
+                    self.callback_funcs[item_id]()
 
     def add(self, text, func_callback=None):
         super().add(text)
