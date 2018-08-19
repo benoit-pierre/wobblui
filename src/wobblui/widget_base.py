@@ -131,6 +131,8 @@ class WidgetBase(object):
         else:
             self.takes_text_input = True
 
+        self.parentchanged = Event("parentchanged", owner=self,
+            allow_preventing_widget_callback_by_user_callbacks=False)
         self.mousemove = Event("mousemove", owner=self)
         self.mousedown = Event("mousedown", owner=self)
         self.mousewheel = Event("mousewheel", owner=self)
@@ -751,8 +753,11 @@ class WidgetBase(object):
             self.resized()
 
     def internal_override_parent(self, parent):
+        if self._parent == parent:
+            return
         self._parent = parent
         self.needs_redraw = True
+        self.parentchanged()
 
     @property
     def parent(self):
