@@ -1,6 +1,6 @@
 
 """
-This is external code (slightly modified) from fonttools.
+This is code is based on slightly modified code from fonttools.
 The original licensing of this code / fonttools is as follows:
 
 MIT License
@@ -29,10 +29,6 @@ SOFTWARE.
 
 from __future__ import print_function, division, absolute_import
 import sys
-from fontTools.ttLib import TTFont, newTable
-from cu2qu.pens import Cu2QuPen
-from fontTools.pens.ttGlyphPen import TTGlyphPen
-from fontTools.ttx import makeOutputFileName
 import argparse
 
 
@@ -47,6 +43,9 @@ REVERSE_DIRECTION = True
 
 def glyphs_to_quadratic(
         glyphs, max_err=MAX_ERR, reverse_direction=REVERSE_DIRECTION):
+    from cu2qu.pens import Cu2QuPen
+    from fontTools.pens.ttGlyphPen import TTGlyphPen
+
     quadGlyphs = {}
     for gname in glyphs.keys():
         glyph = glyphs[gname]
@@ -61,6 +60,20 @@ def glyphs_to_quadratic(
 def otf_to_ttf_do(ttFont, post_format=POST_FORMAT, **kwargs):
     if ttFont.sfntVersion != "OTTO":
         raise NotImplementedError("cannot convert this font format")
+
+    try:
+        from fontTools.ttLib import TTFont, newTable
+        from cu2qu.pens import Cu2QuPen
+        from fontTools.pens.ttGlyphPen import TTGlyphPen
+        from fontTools.ttx import makeOutputFileName
+    except ImportError:
+        print("wobblui.font.otftottf.py: " +
+            "warning: OTF font conversion aborted due to " +
+            "missing fontTools and cu2qu dependencies",
+            file=sys.stderr, flush=True)
+        raise ValueError("cannot convert OTF fonts without " +
+            "the fontTools and cu2qu libraries")
+
     assert "CFF " in ttFont
 
     glyphOrder = ttFont.getGlyphOrder()
@@ -98,8 +111,8 @@ def otf_to_ttf(fpath, new_fpath):
         otf_to_ttf_do(font, post_format=POST_FORMAT,
                max_err=MAX_ERR,
                reverse_direction=REVERSE_DIRECTION)
-    except NotImplementedError:
-        raise NotImplementedError("cannot convert this font " +
+    except (NotImplementedError, ValueError):
+        raise ValueError("cannot convert this font " +
             "from otf to ttf: " + str(fpath))
     font.save(new_fpath)
     return new_fpath
