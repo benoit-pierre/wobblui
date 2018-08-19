@@ -622,6 +622,7 @@ class WidgetBase(object):
         self.needs_redraw = True
 
     def update(self):
+        self.needs_relayout = True
         self.needs_redraw = True
 
     def focus_next(self):

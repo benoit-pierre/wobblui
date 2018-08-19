@@ -169,6 +169,12 @@ class Window(WidgetBase):
         if focused_widget != None and focused_widget.takes_text_input:
             focused_widget.textinput(text, modifiers)
 
+    def focus_first_item(self):
+        focused_widget = WidgetBase.get_focused_widget_by_window(self)
+        if focused_widget != None:
+            focused_widget.unfocus()
+        self.focus_update()
+
     def focus_update(self):
         if len(self.children) > 0 and \
                 WidgetBase.get_focused_widget_by_window(self) is None:
