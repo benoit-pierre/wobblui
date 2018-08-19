@@ -115,8 +115,15 @@ def get_font_as_ttf_files(name):
         if os.path.exists(full_path):
             return full_path
         import fontotfttf
-        fontotfttf.otf_to_ttf(fpath, full_path)
-        new_paths.append((fname, full_path))
+        try:
+            fontotfttf.otf_to_ttf(fpath, full_path)
+            new_paths.append((fname, full_path))
+        except ValueError:
+            print("wobblui.font.info.py: " +
+                "warning: font conversion failed: " +
+                str((fname, full_path)), file=sys.stderr,
+                flush=True)
+            continue
     return new_paths
 
 
