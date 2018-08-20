@@ -220,6 +220,7 @@ def handle_event(event):
             if w != None and not w.focused and not w.is_closed:
                 w.focus()
                 w.redraw()
+                internal_update_text_events()
         elif event.window.event == \
                 sdl.SDL_WINDOWEVENT_RESIZED:
             w = get_window_by_sdl_id(event.window.windowID)
@@ -230,6 +231,7 @@ def handle_event(event):
             w = get_window_by_sdl_id(event.window.windowID)
             if w != None and w.focused and not w.is_closed:
                 w.unfocus()
+                internal_update_text_events()
         elif event.window.event == \
                 sdl.SDL_WINDOWEVENT_CLOSE:
             w = get_window_by_sdl_id(event.window.windowID)

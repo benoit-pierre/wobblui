@@ -17,56 +17,66 @@ def get_modifiers():
         result.add("alt")
     return result
 
-current_text_events_widget = None
+# All widgets that have focus in their respective window and take text input:
+current_text_events_widgets = []
+
+# Current state of text input:
+text_input_suspended = True
+
 def internal_update_text_events():
-    global current_text_events_widget, all_windows
-    if current_text_events_widget is None:
-        return
+    global current_text_events_widgets, \
+        all_windows,\
+        text_input_suspended
 
-    # If widget taking text input has no keyboard focus, stop input:
-    if not current_text_events_widget.focused:
-        sdl.SDL_StopTextInput()
-        current_text_events_widget = None
-
+    # Throw out all widgets that have lost keyboard focus or lost
+    # their parent window:
     seen_windows = []
-    for win_ref in all_windows:
-        win = win_ref()
-        if win == None:
+    for w_ref in all_windows:
+        w = w_ref()
+        if w != None:
+            seen_windows.append(w)
+    new_list = []
+    for widget in current_text_events_widgets:
+        if not widget.focused or \
+                not widget.parent_window in seen_windows:
             continue
-        seen_windows.append(win)
-        if not win.focused or win.hidden:
-            # If parent of widget taking input is hidden, stop input:
-            if current_text_events_widget != None and \
-                    current_text_events_widget.parent_window == win:
-                sdl.SDL_StopTextInput()
-                current_text_events_widget = None
-            continue
+        new_list.append(widget)
+    current_text_events_widgets = new_list
 
-    # If parent window of widget taking text input is gone, stop input:
-    if current_text_events_widget != None and \
-            not current_text_events_widget.parent_window in seen_windows:
+    # See which widgets which want text input are in active windows:
+    current_text_events_active_widgets = []
+    for widget in current_text_events_widgets:
+        if widget.parent_window.focused and \
+                not widget.parent_window.hidden:
+            current_text_events_active_widgets.append(widget)
+
+    # Udpate SDL text input state accordingly to available active widgets:
+    if len(current_text_events_active_widgets) > 0 and \
+            text_input_suspended:
+        sdl.SDL_StartTextInput()
+        text_input_suspended = False
+    elif len(current_text_events_active_widgets) == 0 and \
+            not text_input_suspended:
         sdl.SDL_StopTextInput()
-        current_text_events_widget = None
+        text_input_suspended = True
+
+    return current_text_events_active_widgets
 
 def enable_text_events(widget):
-    global current_text_events_widget
-    if current_text_events_widget == widget:
+    global current_text_events_widgets
+    if widget in current_text_events_widgets:
         return
     if widget != None and not widget.focused:
         raise ValueError("cannot enable text events " +
             "for a widget without keyboard focus")
     assert(hasattr(widget, "parent_window"))
-    if current_text_events_widget != None:
-        if widget != None:
-            sdl.SDL_StopTextInput()
-        current_text_events_widget = widget
-        return
-    current_text_events_widget = widget
-    if widget != None:
-        sdl.SDL_StartTextInput()
+    current_text_events_widgets.append(widget)
+    internal_update_text_events()
 
 def get_active_text_widget():
     global current_text_events_widget
-    internal_update_text_events()
-    return current_text_events_widget
+    widgets = internal_update_text_events()
+    if len(widgets) == 0:
+        return None
+    return widgets[0]
 

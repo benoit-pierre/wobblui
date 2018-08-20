@@ -136,10 +136,6 @@ class Window(WidgetBase):
             return (0, 0)
         return self.mouse_position_cache[mouse_id]
 
-    #@property
-    #def parent_window(self):
-    #    return self
-
     def _internal_on_mousemove(self, mouse_id, x, y, internal_data=None):
         super()._internal_on_mousemove(mouse_id, x, y,
             internal_data=internal_data)

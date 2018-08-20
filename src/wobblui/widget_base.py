@@ -617,7 +617,7 @@ class WidgetBase(object):
     def shares_focus_group(self, widget):
         return True
 
-    def on_unfocus(self):
+    def _internal_on_unfocus(self, internal_data=None):
         if not self.focused:
             raise RuntimeError("not focused")
         self._is_focused = False
@@ -636,11 +636,14 @@ class WidgetBase(object):
             "type of widget")
 
     def on_focus(self):
+        if self.focused:
+            return
         def unfocus_focused():
             global all_widgets
             for w_ref in all_widgets:
                 w = w_ref()
-                if w is None or not w.shares_focus_group(self):
+                if w is None or w is self or \
+                        not w.shares_focus_group(self):
                     continue
                 if w.focused:
                     w.unfocus()
