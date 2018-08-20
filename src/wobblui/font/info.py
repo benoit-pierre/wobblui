@@ -34,6 +34,9 @@ def extract_name_ending(font_filename):
 
 def get_font_paths_by_name(name):
     # Search in packaged folder:
+    if DEBUG_FONTINFO:
+        print("get_font_paths_by_name: searching for '" +
+            str(name) + "'")
     name_variants = []
     name_variants.append(name.lower())
     name_variants.append(name.replace(" ", "").lower())
@@ -44,7 +47,8 @@ def get_font_paths_by_name(name):
         (variant_name, extracted_letters) = extract_name_ending(
             filename)
         if DEBUG_FONTINFO:
-            print("searching " + str(name_variants) +
+            print("get_font_paths_by_name: " +
+                "searching " + str(name_variants) +
                 " in " + str((variant_name, extracted_letters)) +
                 " of packaged " + str(filename))
         if len(variant_name) > 0:
@@ -69,6 +73,10 @@ def get_font_paths_by_name(name):
                             os.path.abspath(os.path.dirname(__file__)),
                             "packaged-fonts", filename)))] + candidates
     if len(candidates) > 0:
+        if DEBUG_FONTINFO:
+            print("get_font_paths_by_name: " +
+                "got candidates for " + str(name) +
+                ": " + str(candidates))
         return candidates
 
     # Don't try other places on android:
@@ -80,6 +88,10 @@ def get_font_paths_by_name(name):
     from font.query import get_font_name
     candidates = []
     unspecific_variants = ["italic", "bold", "condensed"]
+    if DEBUG_FONTINFO:
+        print("get_font_paths_by_name: " +
+            "got no candidates for " + str(name) +
+            ", searching system-wide...", flush=True)
     def is_not_regular(font_name):
         for unspecific_variant in unspecific_variants:
             if font_name.lower().endswith(unspecific_variant):
