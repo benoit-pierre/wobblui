@@ -119,7 +119,9 @@ def event_loop():
         internal_update_text_events()
         redraw_windows()
 
+mouse_ids_button_ids_pressed = set()
 def handle_event(event):
+    global mouse_ids_button_ids_pressed
     if event.type == sdl.SDL_QUIT:
         window = get_focused_window()
         if window != None and w.focused:
@@ -143,14 +145,26 @@ def handle_event(event):
             return
         if w.hidden:
             w.set_hidden(False)
+        capture_enabled = (len(mouse_ids_button_ids_pressed) > 0)
         if event.type == sdl.SDL_MOUSEBUTTONDOWN:
+            mouse_ids_button_ids_pressed.add(
+                (int(event.button.which),
+                int(event.button.button)))
             w.mousedown(int(event.button.which),
                 int(event.button.button),
                 float(event.button.x), float(event.button.y))
+            if not capture_enabled:
+                sdl.SDL_CaptureMouse(sdl.SDL_TRUE)
         else:
             w.mouseup(int(event.button.which),
                 int(event.button.button),
                 float(event.button.x), float(event.button.y))
+            mouse_ids_button_ids_pressed.discard(
+                (int(event.button.which),
+                int(event.button.button)))
+            if capture_enabled and \
+                    len(mouse_ids_button_ids_pressed) == 0:
+                sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
     elif event.type == sdl.SDL_MOUSEWHEEL:
         sdl_touch_mouseid = -1
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
