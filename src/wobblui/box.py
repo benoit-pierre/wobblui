@@ -17,8 +17,11 @@ class BoxSpacer(Widget):
         return 0
 
 class Box(Widget):
-    def __init__(self, horizontal, box_surrounding_padding=0):
+    def __init__(self, horizontal, box_surrounding_padding=0,
+            stretch_children_on_secondary_axis=True):
         super().__init__(is_container=True)
+        self.stretch_children_on_secondary_axis =\
+            stretch_children_on_secondary_axis=True
         self.horizontal = (horizontal is True)
         self.expand_info = dict()
         self.item_padding = 5.0
@@ -42,13 +45,21 @@ class Box(Widget):
         # Adjust items on the non-box axis:
         for item in self._children:
             if self.horizontal:
-                item.height = self.height -\
+                iheight = self.height -\
                     round(self.box_surrounding_padding *
                     2 * self.dpi_scale)
+                if not self.stretch_children_on_secondary_axis:
+                    iheight = min(iheight,
+                        item.get_natural_height(item.width))
+                item.height = iheight
             else:
-                item.width = self.width -\
+                iwidth = self.width -\
                     round(self.box_surrounding_padding *
                     2 * self.dpi_scale)
+                if not self.stretch_children_on_secondary_axis:
+                    iwidth = min(iwidth,
+                        item.get_natural_width(item.width))
+                item.width = iwidth
 
         # Adjust size along box axis:
         expand_widget_count = 0
@@ -68,7 +79,7 @@ class Box(Widget):
                 child_space += child.width + item_padding
             else:
                 child.height = child.\
-                    get_natural_height(given_width=self.width)
+                    get_natural_height(given_width=child.width)
                 child_space += child.height + item_padding
         remaining_space = max(0, self.height - child_space -
             round(self.box_surrounding_padding * self.dpi_scale * 2))
@@ -92,8 +103,8 @@ class Box(Widget):
                 assigned_w += space_per_item
             elif self.expand_info[child_id] and not self.horizontal:
                 assigned_h += space_per_item
-            if expand_widget_count <= 1 and \
-                    child_id == len(self._children) - 1:
+            if expand_widget_count == 1 and \
+                    not self.got_visible_child_after_index(child_id):
                 # Make sure to use up all remaining space:
                 if self.horizontal:
                     assigned_w = (self.width - cx -
@@ -110,18 +121,6 @@ class Box(Widget):
                 child.width = assigned_w
             else:
                 child.height = assigned_h
-            if self.horizontal and child.height < (self.height -
-                    round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)):
-                child.y += math.floor((self.height - child.height -
-                    round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)) / 2.0)
-            elif not self.horizontal and child.width < (self.width -
-                    round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)):
-                child.x += math.floor((self.width - child.width -
-                    round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)) / 2.0)
             item_padding = round(self.item_padding * self.dpi_scale)
             if not self.got_visible_child_after_index(child_id):
                 item_padding = 0
@@ -129,6 +128,37 @@ class Box(Widget):
                 cx += assigned_w + item_padding
             else:
                 cy += assigned_h + item_padding
+
+        # Adjust items again on the non-box axis for horizontal items if
+        # they are naturally scaled (not stretched), since their new width
+        # can change their natural height::
+        if self.horizontal and not self.stretch_children_on_secondary_axis:
+            for item in self._children:
+                iheight = self.height -\
+                    round(self.box_surrounding_padding *
+                    2 * self.dpi_scale)
+                iheight = min(iheight,
+                    item.get_natural_height(item.width))
+                item.height = iheight
+
+        # Update placement if not fully stretched on secondary axis:
+        if not self.stretch_children_on_secondary_axis:
+            for child in self.children:
+                if child.invisible:
+                    continue
+                if self.horizontal and child.height < (self.height -
+                        round(self.box_surrounding_padding *
+                            self.dpi_scale * 2)):
+                    child.y += math.floor((self.height - child.height -
+                        round(self.box_surrounding_padding *
+                            self.dpi_scale * 2)) / 2.0)
+                elif not self.horizontal and child.width < (self.width -
+                        round(self.box_surrounding_padding *
+                            self.dpi_scale * 2)):
+                    child.x += math.floor((self.width - child.width -
+                        round(self.box_surrounding_padding *
+                            self.dpi_scale * 2)) / 2.0)
+
         self.needs_redraw = True
 
     def got_visible_child_after_index(self, index):
@@ -225,14 +255,20 @@ class Box(Widget):
         assert(len(self._children) > 0)
 
 class VBox(Box):
-    def __init__(self, box_surrounding_padding=0):
+    def __init__(self, box_surrounding_padding=0,
+            stretch_children_on_secondary_axis=True):
         super().__init__(False,
-            box_surrounding_padding=box_surrounding_padding)
+            box_surrounding_padding=box_surrounding_padding,
+            stretch_children_on_secondary_axis=\
+                stretch_children_on_secondary_axis)
 
 class HBox(Box):
-    def __init__(self, box_surrounding_padding=0):
+    def __init__(self, box_surrounding_padding=0,
+            stretch_children_on_secondary_axis=True):
         super().__init__(True,
-            box_surrounding_padding=box_surrounding_padding)
+            box_surrounding_padding=box_surrounding_padding,
+            stretch_children_on_secondary_axis=\
+                stretch_children_on_secondary_axis)
 
 class CenterBox(Widget):
     def __init__(self, padding=0):
