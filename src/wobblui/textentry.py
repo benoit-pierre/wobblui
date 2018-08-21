@@ -45,8 +45,8 @@ class TextEntry(Widget):
             draw_scale=self.dpi_scale)
         self.text_obj.set_text("This is a test text")
         (w, h) = self.text_obj.layout()
+        self.default_width = w * 2
         self.text_obj.set_html(self.html)
-        self.default_width = w
         self.needs_relayout = True
 
     def set_text(self, v):
@@ -125,6 +125,11 @@ class TextEntry(Widget):
         self.selection_length = 0
         self.cursor_offset = start
 
+    def select_all(self):
+        self.cursor_offset = 0
+        self.selection_length = len(self.text)
+        self.needs_redraw = True
+
     def on_keydown(self, virtual_key, physical_key, modifiers):
         if "ctrl" in modifiers:
             if virtual_key == "c" or virtual_key == "x":
@@ -140,9 +145,7 @@ class TextEntry(Widget):
                 if virtual_key == "x" and self.selection_length != 0:
                     self.del_selection()
             elif virtual_key == "a":
-                self.cursor_offset = 0
-                self.selection_length = len(self.text)
-                self.needs_redraw = True
+                self.select_all()
             elif virtual_key == "v":
                 self.del_selection()
                 self.text_obj.insert_text_at_offset(
