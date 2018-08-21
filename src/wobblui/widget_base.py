@@ -147,15 +147,17 @@ class WidgetBase(object):
             allow_preventing_widget_callback_by_user_callbacks=False)
         self.resized = Event("resized", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
-        if can_get_focus:
-            self.focus = Event("focus", owner=self,
+        self.focus = Event("focus", owner=self,
                 allow_preventing_widget_callback_by_user_callbacks=False)
+        if can_get_focus:
             self.unfocus = Event("unfocus", owner=self,
                 allow_preventing_widget_callback_by_user_callbacks=False)
         else:
-            self.focus = DummyEvent("focus", owner=self)
             self.unfocus = DummyEvent("unfocus", owner=self)
         add_widget(self)
+
+    def set_invisible(self, v):
+        self.invisible = v
 
     @property
     def invisible(self):
@@ -676,8 +678,8 @@ class WidgetBase(object):
                     continue
                 if w.focused:
                     w.unfocus()
-        if self.disabled:
-            return True  # prevent focus
+        if self.disabled or self.invisible:
+            return True  # prevent focus entirely
         if not self.focusable:
             # See if a child can be focused:
             def try_children_focus(w):

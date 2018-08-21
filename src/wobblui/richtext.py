@@ -583,7 +583,7 @@ class RichText(object):
                 in_bold = max(0, in_bold - 1)
             elif item.node_type == "element" and \
                     item.name.lower() == "i":
-                in_bold = max(0, in_italic - 1)
+                in_italic = max(0, in_italic - 1)
             elif item.node_type == "element" and \
                     item.name.lower() == "small":
                 in_small = max(0, in_small - 1)
