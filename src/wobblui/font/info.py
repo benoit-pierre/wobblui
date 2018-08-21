@@ -14,8 +14,8 @@ def extract_name_ending(font_filename):
     if font_filename.lower().endswith(".ttf"):
         extracted_letters += len(".ttf")
         font_filename = font_filename[:-len(".ttf")]
-    variants = ["Bold", "Italic", "BoldItalic",
-        "ItalicBold", "Regular"]
+    variants = ["BoldItalic",
+        "ItalicBold", "Regular", "Bold", "Italic"]
     for variant in variants:
         if font_filename.endswith("-" + variant.lower()) or \
                 font_filename.endswith("-" + variant) or \
@@ -85,7 +85,7 @@ def get_font_paths_by_name(name):
 
     # Search system-wide:
     import fontconfig
-    from font.query import get_font_name
+    from wobblui.font.query import get_font_name
     candidates = []
     unspecific_variants = ["italic", "bold", "condensed"]
     if DEBUG_FONTINFO:
