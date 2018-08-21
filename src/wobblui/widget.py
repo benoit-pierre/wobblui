@@ -12,13 +12,14 @@ class Widget(WidgetBase):
             takes_text_input=takes_text_input)
         self.parentwindowresized = Event("parentwindowresized",
             owner=self)
+        self._temp_style = AppStyleBright()
 
     def update_window(self):
         self.needs_redraw = True
 
     def get_style(self):
         if self.parent_window == None:
-            return AppStyleBright()
+            return self._temp_style
         return self.parent_window.style
 
     @property

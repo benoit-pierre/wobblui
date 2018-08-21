@@ -24,8 +24,18 @@ class Box(Widget):
         self.item_padding = 5.0
         self.box_surrounding_padding =\
             max(0, box_surrounding_padding)
+        self.bg_color = None
+
+    def set_background_color(self, c):
+        if c is None:
+            self.bg_color = None
+            return
+        self.bg_color = Color(c)
 
     def do_redraw(self):
+        if self.bg_color != None:
+            draw_rectangle(self.renderer, 0, 0,
+                self.width, self.height, color=self.bg_color)
         self.draw_children()
 
     def on_relayout(self):
@@ -46,8 +56,10 @@ class Box(Widget):
         child_id = -1
         for child in self._children:
             child_id += 1
+            if child.invisible:
+                continue
             item_padding = round(self.item_padding * self.dpi_scale)
-            if child_id == len(self._children) - 1:
+            if not self.got_visible_child_after_index(child_id):
                 item_padding = 0
             if self.expand_info[child_id]:
                 expand_widget_count += 1
@@ -72,6 +84,8 @@ class Box(Widget):
         cy = round(self.box_surrounding_padding * self.dpi_scale)
         for child in self._children:
             child_id += 1
+            if child.invisible:
+                continue
             assigned_w = max(1, math.ceil(child.width))
             assigned_h = max(1, math.ceil(child.height))
             if self.expand_info[child_id] and self.horizontal:
@@ -109,7 +123,7 @@ class Box(Widget):
                     round(self.box_surrounding_padding *
                         self.dpi_scale * 2)) / 2.0)
             item_padding = round(self.item_padding * self.dpi_scale)
-            if child_id == len(self._children) - 1:
+            if not self.got_visible_child_after_index(child_id):
                 item_padding = 0
             if self.horizontal:
                 cx += assigned_w + item_padding
@@ -117,15 +131,27 @@ class Box(Widget):
                 cy += assigned_h + item_padding
         self.needs_redraw = True
 
+    def got_visible_child_after_index(self, index):
+        index += 1
+        while index < len(self._children):
+            if self._children[index].invisible:
+                index += 1
+                continue
+            return True
+        return False
+
     def get_natural_width(self):
         if self.horizontal:
             total_w = 0
             i = 0
             while i < len(self._children):
                 child = self._children[i]
+                if child.invisible:
+                    i += 1
+                    continue
                 total_w += child.get_natural_width()
                 item_padding = round(self.item_padding * self.dpi_scale)
-                if i == len(self._children) - 1:
+                if not self.got_visible_child_after_index(i):
                     item_padding = 0
                 total_w += item_padding
                 i += 1
@@ -135,11 +161,17 @@ class Box(Widget):
         elif len(self.children) == 0:
             return 0
         else:
+            found_children = False
             max_w = 0
             for child in self._children:
+                if child.invisible:
+                    continue
+                found_children = True
                 max_w = max(max_w, child.get_natural_width())
             max_w += round(self.box_surrounding_padding *
                 self.dpi_scale * 2)
+            if not found_children:
+                return 0
             return max_w
 
     def get_natural_height(self, given_width=None):
@@ -148,9 +180,12 @@ class Box(Widget):
             i = 0
             while i < len(self._children):
                 child = self._children[i]
+                if child.invisible:
+                    i += 1
+                    continue
                 total_h += child.get_natural_height(given_width=given_width)
                 item_padding = round(self.item_padding * self.dpi_scale)
-                if i == len(self._children) - 1:
+                if not self.got_visible_child_after_index(i):
                     item_padding = 0
                 total_h += item_padding
                 i += 1
@@ -160,13 +195,19 @@ class Box(Widget):
         elif len(self.children) == 0:
             return 0
         else:
+            found_children = False
             max_h = 0
             for child in self._children:
+                if child.invisible:
+                    continue
+                found_children = True
                 max_h = max(max_h, child.get_natural_height(
                     given_width=None))  # horizontal box doesn't
                                         # support compression right now
             max_h += round(self.box_surrounding_padding *
                 self.dpi_scale * 2)
+            if not found_children:
+                return 0
             return max_h
 
     def add(self, item, expand=True):

@@ -25,6 +25,7 @@ class WidgetBase(object):
         self._focusable = can_get_focus
         self.padding = 8
         self.needs_redraw = True
+        self._invisible = False
 
         self.id = get_widget_id()
         self.added_order = get_add_id()
@@ -136,6 +137,7 @@ class WidgetBase(object):
         self.mousemove = Event("mousemove", owner=self)
         self.mousedown = Event("mousedown", owner=self)
         self.mousewheel = Event("mousewheel", owner=self)
+        self.stylechanged = Event("stylechanged", owner=self)
         self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
         self.doubleclick = Event("doubleclick", owner=self)
@@ -155,6 +157,25 @@ class WidgetBase(object):
             self.focus = DummyEvent("focus", owner=self)
             self.unfocus = DummyEvent("unfocus", owner=self)
         add_widget(self)
+
+    @property
+    def invisible(self):
+        return self._invisible
+
+    @invisible.setter
+    def invisible(self, v):
+        v = (v is True)
+        if self._invisible != v:
+            self._invisible = v
+            if self.focused:
+                if hasattr(self, "focus_next"):
+                    self.focus_next()
+                if self.focused:
+                    self.unfocus()
+            self.needs_relayout = True
+            if self.parent != None:
+                self.parent.needs_relayout = True
+            self.update()
 
     @property
     def disabled(self):
@@ -330,7 +351,9 @@ class WidgetBase(object):
             if not force_no_more_matches and \
                     rel_x >= child.x and rel_y >= child.y and \
                     rel_x < child.x + child.width and \
-                    rel_y < child.y + child.height:
+                    rel_y < child.y + child.height and \
+                    not child.invisible and \
+                    (not child.disabled or event_name != "mousedown"):
                 # If we're in strict ordered mouse event mode, this
                 # widget will be treated as obscuring the next ones:
                 if check_widget_overlap:
@@ -367,7 +390,8 @@ class WidgetBase(object):
                     else:
                         # Just a normal click.
                         child.last_mouse_click_with_time[
-                            (event_args[0], event_args[1])] = time.monotonic()
+                            (event_args[0], event_args[1])] = \
+                            time.monotonic()
                         child.click(mouse_id, event_args[1],
                             rel_x - child.x,
                             rel_y - child.y,
@@ -459,6 +483,8 @@ class WidgetBase(object):
             child.draw(child.x, child.y)
 
     def draw(self, x, y):
+        if self.invisible:
+            return
         self.redraw_if_necessary()
         if self.sdl_texture is None:
             if self._width < 0 or self._height < 0 or \
@@ -606,9 +632,13 @@ class WidgetBase(object):
                 continue
             return w
 
+    def _internal_on_stylechanged(self, internal_data=None):
+        self.needs_redraw = True
+
     @property
     def focusable(self):
-        return (self._focusable and not self.disabled)
+        return (self._focusable and not self.disabled and \
+            not self.invisible)
 
     @property
     def focused(self):
@@ -745,6 +775,17 @@ class WidgetBase(object):
         if not self.is_container:
             raise RuntimeError("this widget is " +
                 "not a container, can't add children")
+        # Check that this nesting is valid:
+        if item == self:
+            raise ValueError("cannot add widget to itself")
+        item_p = item.parent
+        while item_p != None:
+            if item_p == self:
+                raise ValueError("cannot add widget here, " +
+                    "this results in a cycle")
+            item_p = item_p.parent
+
+        # Remove item from previous parent if any:
         if item.parent != None:
             item.parent.remove(item, error_if_not_present=False)
         self._children.append(item)
@@ -758,9 +799,17 @@ class WidgetBase(object):
     def internal_override_parent(self, parent):
         if self._parent == parent:
             return
+        prev_style = self.get_style()
+        old_parent = self._parent
         self._parent = parent
         self.needs_redraw = True
         self.parentchanged()
+        if prev_style != self.get_style():
+            def recursive_style_event(item):
+                item.stylechanged()
+                for child in item.children:
+                    recursive_style_event(child)
+            recursive_style_event(self) 
 
     @property
     def parent(self):
