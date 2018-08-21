@@ -23,7 +23,6 @@ class Label(Widget):
         else:
             self.text = text
         self._user_set_color = color
-        self._layout_max_width = None
 
     def set_text(self, v):
         self.text = v
@@ -67,12 +66,6 @@ class Label(Widget):
                 fragment.x, fragment.y,
                 color=self.color,
                 draw_scale=self.dpi_scale)
-
-    def _internal_on_resized(self, internal_data=None):
-        old_w = self._width
-        if self._max_width != self._layout_max_width:
-            self.needs_relayout = True
-            self._width = max(old_w, self._width)
 
     def on_relayout(self):
         self.text_obj.draw_scale = self.dpi_scale

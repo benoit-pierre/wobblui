@@ -6,9 +6,24 @@ from wobblui.color import Color
 from wobblui.font.manager import font_manager
 
 def draw_rectangle(renderer, x, y, w, h, color=None,
-        filled=True):
+        filled=True, unfilled_border_thickness=1.0):
     if color is None:
         color = Color("#aaa")
+    if not filled:
+        border = max(1, round(unfilled_border_thickness))
+        draw_rectangle(renderer,
+            x, y, w, min(border, h),
+            color=color, filled=True)
+        draw_rectangle(renderer,
+            x, y + h - border, w, min(border, h),
+            color=color, filled=True)
+        draw_rectangle(renderer,
+            x, y, min(border, w), h,
+            color=color, filled=True)
+        draw_rectangle(renderer,
+            x + w - min(border, w), y, h, border,
+            color=color, filled=True)
+        return
     rect = sdl.SDL_Rect()
     rect.x = max(0, round(x))
     rect.y = max(0, round(y))

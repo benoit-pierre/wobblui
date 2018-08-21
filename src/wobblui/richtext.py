@@ -14,9 +14,37 @@ class RichTextObj(object):
         self.y = None
         self.width = None
         self.height = None
+        self.italic = False
+        self.bold = False
+        self.font_family = "Sans Serif"
+        self.px_size = 12
+        self.draw_scale = 1.0
+
+    def character_index_to_offset(self, c):
+        if c == 0:
+            (w, h) = self.get_font().render_size(" ")
+            w = 0
+        else:
+            (w, h) = self.get_font().render_size(self.text[:c])
+        y = 0
+        x = w
+        if self.x != None:
+            x += self.x
+        if self.y != None:
+            y += self.y
+        return (x, y, h)
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
         pass
+
+    def get_font(self, draw_scale=None):
+        if draw_scale is None:
+            draw_scale = self.draw_scale
+        font = font_manager().get_font(self.font_family,
+            bold=self.bold, italic=self.italic,
+            px_size=self.px_size,
+            draw_scale=draw_scale)
+        return font
 
     def __repr__(self):
         t = "<RichTextObj x:" + str(self.x) +\
@@ -47,10 +75,7 @@ class RichTextFragment(RichTextObj):
             color = Color.black
         if draw_scale is None:
             draw_scale = self.draw_scale
-        font = font_manager().get_font(self.font_family,
-            bold=self.bold, italic=self.italic,
-            px_size=self.px_size,
-            draw_scale=self.draw_scale)
+        font = self.get_font(draw_scale=draw_scale)
         tex = font.render_text_as_sdl_texture(renderer,
             self.text, color=color)
         w = ctypes.c_int32()
@@ -143,7 +168,7 @@ class RichTextLinebreak(RichTextObj):
     def copy(self):
         return RichTextLinebreak()
 
-class RichText(RichTextObj):
+class RichText(object):
     def __init__(self, text="", font_family="Tex Gyre Heros",
             px_size=12, draw_scale=1.0):
         super().__init__()
@@ -154,6 +179,33 @@ class RichText(RichTextObj):
         if len(text) > 0:
             self.fragments.append(RichTextFragment(
                 text, font_family, False, False, px_size))
+
+    def remove_char_before_offset(self, offset):
+        c = offset - 1
+        i = 0
+        while i < len(self.fragments):
+            fragment = self.fragments[i]
+            if c < len(fragment.text) or i == len(self.fragments) - 1:
+                fragment.text = fragment.text[:c] +\
+                    fragment.text[c + 1:]
+                return
+            c -= len(fragment.text)
+            i += 1
+
+    def insert_text_at_offset(self, offset, text):
+        if len(self.fragments) == 0:
+            self.set_text(text)
+            return
+        c = offset
+        i = 0
+        while i < len(self.fragments):
+            fragment = self.fragments[i]
+            if c < len(fragment.text) or i == len(self.fragments) - 1:
+                fragment.text = fragment.text[:c] + text +\
+                    fragment.text[c:]
+                return
+            c -= len(fragment.text)
+            i += 1
 
     @property
     def px_size(self):
@@ -166,6 +218,25 @@ class RichText(RichTextObj):
             return
         self._px_size = v
         self.set_html(self.html)
+
+    def character_count(self):
+        return len(self.text)
+
+    def character_index_to_offset(self, c):
+        i = 0
+        while i < len(self.fragments):
+            fragment = self.fragments[i]
+            if c < len(fragment.text) or i == len(self.fragments) - 1:
+                return fragment.character_index_to_offset(
+                    max(0, min(len(fragment.text), c)))
+            c -= len(fragment.text)
+            i += 1
+        obj = RichTextObj()
+        obj.font_family = self.default_font_family
+        obj.px_size = self.px_size
+        obj.draw_scale = self.draw_scale
+        (w, h) = obj.get_font().render_size(" ")
+        return (0, 0, h)
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
         assert(renderer != None and x != None and y != None)
@@ -271,6 +342,8 @@ class RichText(RichTextObj):
                 layouted_elements.append(RichTextLinebreak())
                 layouted_elements[-1].x = current_x
                 layouted_elements[-1].y = current_y
+                layouted_elements[-1].font_family = self.default_font_family
+                layouted_elements[-1].px_size = self.px_size
                 current_line_elements += 1
                 add_line_break()
                 i += 1
@@ -386,6 +459,8 @@ class RichText(RichTextObj):
         i = 1
         while i < len(parts):
             self.fragments.append(RichTextLinebreak())
+            self.fragments[-1].font_family = self.default_font_family
+            self.fragments[-1].px_size = self.px_size
             self.fragments.append(RichTextFragment(
                 parts[i], self.default_font_family, False, False,
                 self.px_size))
@@ -432,6 +507,8 @@ class RichText(RichTextObj):
         at_block_start = True
         def add_line_break():
             new_fragments.append(RichTextLinebreak())
+            new_fragments[-1].font_family = self.default_font_family
+            new_fragments[-1].px_size = self.px_size
 
         def is_int(v):
             try:
@@ -456,6 +533,9 @@ class RichText(RichTextObj):
             if item.node_type == "element" and \
                     item.name.lower() == "b":
                 in_bold += 1
+            elif item.node_type == "element" and \
+                    item.name.lower() == "i":
+                in_italic += 1
             elif item.node_type == "element" and \
                     item.name.lower() == "small":
                 in_small += 1
@@ -501,6 +581,9 @@ class RichText(RichTextObj):
             if item.node_type == "element" and \
                     item.name.lower() == "b":
                 in_bold = max(0, in_bold - 1)
+            elif item.node_type == "element" and \
+                    item.name.lower() == "i":
+                in_bold = max(0, in_italic - 1)
             elif item.node_type == "element" and \
                     item.name.lower() == "small":
                 in_small = max(0, in_small - 1)

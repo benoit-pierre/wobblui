@@ -23,7 +23,6 @@ class WidgetBase(object):
             takes_text_input=False):
         self.type = "unknown"
         self._focusable = can_get_focus
-        self.padding = 8
         self.needs_redraw = True
         self._invisible = False
 
