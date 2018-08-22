@@ -1,5 +1,5 @@
 
-
+import html
 import sdl2 as sdl
 
 from wobblui.clipboard import set_clipboard_text,\
@@ -52,7 +52,7 @@ class TextEntry(Widget):
     def set_text(self, v):
         self.text = (v.replace("\r\n", "\n").\
             replace("\r", "\n").partition("\n")[0])
-        self.html = html.escape(text)
+        self.html = html.escape(self.text)
         self.text_obj.set_text(self.text)
         self.cursor_offset = min(len(self.text),
             self.cursor_offset)
@@ -87,6 +87,66 @@ class TextEntry(Widget):
     def update_window(self):
         super().update_window()
         self.needs_redraw = True
+
+    def mouse_offset_to_cursor_offset(self, x, y):
+        c = 0
+        while c < len(self.text):
+            (x1, y1, h) = self.text_obj.character_index_to_offset(c)
+            (x2, y2, h) = self.text_obj.character_index_to_offset(c + 1)
+            x1 += self.padding
+            x2 += self.padding
+            if x >= x1 and x < x2:
+                if abs(x1 - x) < abs(x2 - x):
+                    return c
+                else:
+                    return c + 1
+            if x < x1 and c == 0:
+                return c
+            if x > x2 and c == len(self.text) - 1:
+                return c + 1
+            c += 1
+        return 0
+
+    def end_mouse_drag(self, x, y):
+        self.process_mouse_drag(x, y)
+        self._mouse_dragging = False
+
+    def start_mouse_drag(self, x, y):
+        if not hasattr(self, "_mouse_dragging") or \
+                not self._mouse_dragging:
+            self._mouse_dragging = True
+            self._mouse_drag_start = x
+            self._mouse_drag_end = y
+            self._known_mouse_pos = -1
+        self.process_mouse_drag(x, y)
+
+    def process_mouse_drag(self, x, y):
+        if not hasattr(self, "_mouse_dragging") or \
+                not self._mouse_dragging:
+            return
+        start_pos = self.mouse_offset_to_cursor_offset(
+            self._mouse_drag_start, self._mouse_drag_end)
+        end_pos = self.mouse_offset_to_cursor_offset(
+            x, y)
+        if self._known_mouse_pos == end_pos:
+            return
+        self._known_mouse_pos = end_pos
+        if self.cursor_offset != start_pos:
+            self.cursor_offset = start_pos
+            self.needs_redraw = True
+        if self.selection_length != (end_pos - start_pos):
+            self.selection_length = (end_pos - start_pos)
+            self.needs_redraw = True
+
+    def on_mousedown(self, mouse_id, button, x, y):
+        if button == 1:
+            self.start_mouse_drag(x, y)
+
+    def on_mouseup(self, mouse_id, button, x, y):
+        self.end_mouse_drag(x, y)
+
+    def on_mousemove(self, mouse_id, x, y):
+        self.process_mouse_drag(x, y)
 
     def on_textinput(self, text, modifiers):
         if "ctrl" in modifiers:
@@ -147,11 +207,15 @@ class TextEntry(Widget):
             elif virtual_key == "a":
                 self.select_all()
             elif virtual_key == "v":
+                insert_text = get_clipboard_text()
+                if len(insert_text) == 0:
+                    return
                 self.del_selection()
                 self.text_obj.insert_text_at_offset(
-                    self.cursor_offset, get_clipboard_text())
+                    self.cursor_offset, insert_text)
                 self.text = self.text_obj.text
                 self.html = self.text_obj.html
+                self.cursor_offset += len(insert_text)
                 self.needs_relayout = True
                 self.needs_redraw = True
         elif "shift" in modifiers:
@@ -280,8 +344,6 @@ class TextEntry(Widget):
         (w, self._layout_height) = self.text_obj.layout(max_width=None)
 
     def get_natural_width(self):
-        if len(self.text_obj.text) == 0:
-            return 0
         return self.default_width + self.padding * 2
 
     def get_natural_height(self, given_width=None):
