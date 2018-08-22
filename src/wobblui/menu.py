@@ -14,6 +14,13 @@ class MenuSeparator(ListEntry):
         self.line_thickness = 1.0
         self.update_size()
 
+    def copy(self):
+        li = MenuSeparator(self.style)
+        li.max_width = self.max_width
+        li.width = self.width
+        li.needs_size_update = True
+        return li
+
     def draw(self, renderer, x, y, draw_selected=False,
             draw_hover=False,
             draw_keyboard_focus=False,
