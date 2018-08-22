@@ -9,7 +9,7 @@ class MenuSeparator(ListEntry):
         super().__init__("---", style,
             is_alternating=is_alternating)
         self.disabled = True
-        self.padding_horizontal = 15.0
+        self.padding_horizontal = 0.0
         self.padding_vertical = 3.0
         self.line_thickness = 1.0
         self.update_size()
@@ -31,6 +31,8 @@ class MenuSeparator(ListEntry):
         c = Color((0, 0, 0))
         if self.style != None:
             c = Color(self.style.get("widget_text"))
+            if self.style.has("widget_disabled_text"):
+                c = Color(self.style.get("widget_disabled_text"))
         draw_w = (round(self.width) - round(self.padding_horizontal
             * dpi_scale) * 2)
         draw_h = max(1, round(self.line_thickness * dpi_scale))
