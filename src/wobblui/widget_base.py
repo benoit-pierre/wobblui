@@ -327,7 +327,7 @@ class WidgetBase(object):
                     event_descends_into_child = True
                     break
             if not event_descends_into_child:
-                if self.focusable:
+                if self.focusable and not self.focused:
                     self.focus()
                 else:
                     p = self.parent
@@ -408,9 +408,6 @@ class WidgetBase(object):
                             internal_data=internal_data):
                         return True
                 else:
-                    if event_name == "mousedown" and \
-                            not self.focused:
-                        self.focus()
                     if not getattr(child, event_name)(mouse_id,
                             event_args[1],
                             rel_x - child.x, rel_y - child.y,
