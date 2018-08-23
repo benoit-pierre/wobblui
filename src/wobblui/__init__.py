@@ -10,7 +10,8 @@ from wobblui.keyboard import internal_update_text_events,\
     get_active_text_widget, get_modifiers, \
     internal_update_keystate_keydown, \
     internal_update_keystate_keyup
-from wobblui.timer import internal_trigger_check
+from wobblui.timer import internal_trigger_check,\
+    maximum_sleep_time
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
 
@@ -92,7 +93,11 @@ def sdl_key_map(key):
 def event_loop():
     event_loop_ms = 10
     while True:
-        time.sleep(event_loop_ms * 0.001)
+        max_sleep = maximum_sleep_time()
+        sleep_amount = event_loop_ms * 0.001
+        if max_sleep != None:
+            sleep_amount = max(0, min(sleep_amount, max_sleep))
+        time.sleep(sleep_amount)
         result = do_event_processing(ui_active=True)
         if result == "appquit":
             sys.exit(0)
@@ -103,10 +108,44 @@ def event_loop():
                 event_loop_ms = 10
         else:
             # No events. Take some time
-            if event_loop_ms < 300:
+            max_sleep = maximum_sleep_time()
+            if event_loop_ms < 500:
                 event_loop_ms = min(
                     event_loop_ms + 1,
-                    300)
+                    500)
+
+def ev_type(event):
+    ev_no = event.type
+    if ev_no == sdl.SDL_MOUSEBUTTONDOWN:
+        return "SDL_MOUSEBUTTONDOWN"
+    elif ev_no == sdl.SDL_MOUSEBUTTONUP:
+        return "sdl.SDL_MOUSEBUTTONUP"
+    elif ev_no == sdl.SDL_MOUSEMOTION:
+        return "sdl.SDL_MOUSEMOTION"
+    elif ev_no == sdl.SDL_WINDOWEVENT:
+        if event.window.event == sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
+            return "windowfocusgained"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_RESIZED:
+            return "windowresized"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_CLOSE:
+            return "windowclose"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_HIDDEN:
+            return "windowhidden"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_MINIMIZED:
+            return "windowminimized"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_RESTORED:
+            return "windowrestored"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_EXPOSED:
+            return "windowexposed"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_MAXIMIZED:
+            return "windowmaximized"
+        elif hasattr(sdl, "SDL_WINDOWEVENT_TAKE_FOCUS") and \
+                event.window.event == sdl.SDL_WINDOWEVENT_TAKE_FOCUS:
+            return "windowtakefocus"
+        else:
+            return "windowunknownevent-" +\
+                str(event.window.event)
+    return "unknown-" + str(ev_no)
 
 def do_event_processing(ui_active=True):
     if threading.current_thread() != threading.main_thread():

@@ -42,7 +42,7 @@ class Window(WidgetBase):
         self._sdl_window = None
         self._style = style
         super().__init__(is_container=True, can_get_focus=True)
-        global all_windows, SDL_initialized
+        global all_windows
         self._hidden = False
         self._width = width
         self._height = height

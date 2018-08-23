@@ -109,36 +109,10 @@ class Font(object):
     def get_average_letter_width(self):
         if self._avg_letter_width != None:
             return self._avg_letter_width
-        if not is_android():
-            test_str = "This is a test test."
-            (width, height) = self.render_size(test_str)
-            self._avg_letter_width = (width / float(len(test_str)))
-            return self._avg_letter_width
-        raise NotImplementedError("oopsies")
-
-    def get_qt_font_metrics(self):
-        if self._qt_metrics is None:
-            from PySide2 import QtCore, QtGui, QtWidgets
-            self._qt_metrics = QtGui.QFontMetrics(self.qt_font)
-        return self._qt_metrics
-
-    @property
-    def qt_font(self):
-        if self._qt_font != None:
-            return self._qt_font
-        from PySide2 import QtCore, QtGui, QtWidgets
-        f = QtGui.QFont()
-        f.setStyleHint(QtGui.QFont.AnyStyle, QtGui.QFont.PreferAntialias)
-        f.setFamily(self.font_family)
-        f.setPixelSize(self.pixel_size)
-        f.setBold(False)
-        f.setItalic(False)
-        if self.bold:
-            f.setBold(True)
-        if self.italic:
-            f.setItalic(True)
-        self._qt_font = f
-        return self._qt_font
+        test_str = "This is a test test."
+        (width, height) = self.render_size(test_str)
+        self._avg_letter_width = (width / float(len(test_str)))
+        return self._avg_letter_width
 
 class FontManager(object):
     def __init__(self):
@@ -223,26 +197,6 @@ class FontManager(object):
             self.font_by_sizedpistyle_cache[(
                 unified_draw_scale, display_dpi, style
                 )] = f
-
-            if False:
-                # Output some debug info for font family choice:
-                finfo = QtGui.QFontInfo(f.qt_font)
-                missing = False
-                if str(finfo.family()).lower() != style.font_family.lower() and \
-                        str(finfo.family()).lower() != \
-                        style.font_family.lower() + " [ukwn]":
-                    self.missing_fonts.add(style.font_family)
-                    missing = True
-                if not style.font_family in self.load_debug_info_shown:
-                    self.load_debug_info_shown[style.font_family] = True
-                    logdebug("requested font family '" + str(
-                        style.font_family) + "', got font family '" +
-                        str(finfo.family()) + "'",
-                        section="FontManager")
-                    if missing:
-                        logwarning("requested font is missing: " +
-                            str(style.font_family),
-                            section="FontManager")
         self.limit_cache()
 
 

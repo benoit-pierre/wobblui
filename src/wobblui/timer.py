@@ -31,6 +31,17 @@ class ScheduledEvent(object):
 
 scheduled_events = set()
 
+def maximum_sleep_time():
+    global scheduled_events
+    sleep_time = None
+    trigger_events = set()
+    for event in scheduled_events:
+        until = (event.time - time.monotonic())
+        if sleep_time == None:
+            sleep_time = until
+        sleep_time = min(sleep_time, max(0.1, until))
+    return sleep_time
+
 def internal_trigger_check():
     global scheduled_events
     trigger_events = set()

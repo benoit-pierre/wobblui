@@ -4,6 +4,7 @@ import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
 import tempfile
 
+from wobblui.sdlinit import initialize_sdl
 from wobblui.widget import Widget
 
 sdlimage_initialized = False
@@ -20,6 +21,7 @@ def stock_image(name):
 
 def image_to_sdl_surface(pil_image):
     global sdlimage_initialized
+    initialize_sdl()
     if not sdlimage_initialized:
         flags = sdlimage.IMG_INIT_JPG|sdlimage.IMG_INIT_PNG
         sdlimage.IMG_Init(flags)
@@ -42,6 +44,7 @@ def image_to_sdl_surface(pil_image):
     return sdl_image
 
 def image_to_sdl_texture(renderer, pil_image):
+    initialize_sdl()
     sdl_image = image_to_sdl_surface(pil_image)
     try:
         texture = sdl.SDL_CreateTextureFromSurface(renderer, sdl_image)
