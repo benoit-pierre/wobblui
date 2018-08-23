@@ -109,7 +109,7 @@ def register_global_shortcut(shortcut, func, connected_widget):
     registered_shortcuts.append([
         shortcut_parts, func, connected_widget_ref])
 
-def clean_global_shortcuts():
+def clean_global_shortcuts(clean_noparent_widgets=False):
     global registered_shortcuts
 
     # Clean out shortcuts that go to widgets no longer existing,
@@ -120,7 +120,8 @@ def clean_global_shortcuts():
             w = shortcut[2]()
             if w is None:
                 continue
-            if w.type != "window" and w.parent_window is None:
+            if w.type != "window" and clean_noparent_widgets and \
+                    w.parent_window is None:
                 # No longer added to a window. Remove this
                 continue
             if w.type == "window" and w.is_closed:
@@ -184,6 +185,7 @@ physical_keys_pressed = set()
 def internal_update_keystate_keydown(vkey, pkey,
         trigger_shortcuts=True):
     global virtual_keys_pressed, physical_keys_pressed
+    clean_global_shortcuts(clean_noparent_widgets=True)
     virtual_keys_pressed.add(vkey)
     physical_keys_pressed.add(pkey)
     if trigger_shortcuts:
