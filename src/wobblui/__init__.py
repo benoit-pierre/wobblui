@@ -2,6 +2,7 @@
 import ctypes
 import sdl2 as sdl
 import sys
+import threading
 import time
 import traceback
 
@@ -86,41 +87,84 @@ def event_loop():
     event_loop_ms = 10
     while True:
         time.sleep(event_loop_ms * 0.001)
-        events = []
-        while True:
-            ev = sdl.SDL_Event()
-            result = sdl.SDL_PollEvent(ctypes.byref(ev))
-            if result == 1:
-                events.append(ev)
-                continue
-            break
-        if len(events) == 0:
+        result = do_event_processing(ui_active=True)
+        if result == "appquit":
+            sys.exit(0)
+            return
+        if result is True:
+            # Had events. Remain responsive!
+            if event_loop_ms > 10:
+                event_loop_ms = 10
+        else:
+            # No events. Take some time
             if event_loop_ms < 300:
                 event_loop_ms = min(
                     event_loop_ms + 1,
                     300)
-            internal_trigger_check()
-            redraw_windows()
+
+def do_event_processing(ui_active=True):
+    if threading.current_thread() != threading.main_thread():
+        raise RuntimeError("UI events can't be processed " +
+            "from another thread")
+    events = []
+    while True:
+        ev = sdl.SDL_Event()
+        result = sdl.SDL_PollEvent(ctypes.byref(ev))
+        if result == 1:
+            events.append(ev)
             continue
-        else:
-            if event_loop_ms > 10:
-                event_loop_ms = 10
-        for event in events:
-            try:
-                if handle_event(event) is False:
-                    # App termination.
-                    return
-            except Exception as e:
-                print("*** ERROR IN EVENT HANDLER ***",
-                    file=sys.stderr, flush=True)
-                print(str(traceback.format_exc()))
-        redraw_windows(layout_only=True)
+        break
+    if len(events) == 0:
         internal_trigger_check()
         internal_update_text_events()
         redraw_windows()
+        return False
+    for event in events:
+        if not ui_active:
+            # Skip this event unless it is essential.
+            if (event.type != sdl.SDL_QUIT and
+                    (event.type != sdl.SDL_WINDOWEVENT or
+                    (event.window.event !=
+                        sdl.SDL_WINDOWEVENT_FOCUS_GAINED and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_FOCUS_LOST and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_RESIZED and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_CLOSE and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_HIDDEN and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_MINIMIZED and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_RESTORED and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_EXPOSED and
+                        event.window.event !=
+                        sdl.SDL_WINDOWEVENT_MAXIMIZED)) and
+                    event.type != sdl.SDL_APP_DIDENTERBACKGROUND and
+                    event.type != sdl.SDL_APP_WILLENTERBACKGROUND and
+                    event.type != sdl.SDL_APP_DIDENTERFOREGROUND and
+                    event.type != sdl.SDL_APP_WILLENTERFOREGROUND and
+                    event.type != sdl.SDL_MOUSEMOTION
+                    ):
+                continue
+        try:
+            if _handle_event(event) is False:
+                # App termination.
+                return "appquit"
+        except Exception as e:
+            print("*** ERROR IN EVENT HANDLER ***",
+                file=sys.stderr, flush=True)
+            print(str(traceback.format_exc()))
+    redraw_windows(layout_only=True)
+    internal_trigger_check()
+    internal_update_text_events()
+    redraw_windows()
+    return True
 
 mouse_ids_button_ids_pressed = set()
-def handle_event(event):
+def _handle_event(event):
     global mouse_ids_button_ids_pressed
     if event.type == sdl.SDL_QUIT:
         window = get_focused_window()
