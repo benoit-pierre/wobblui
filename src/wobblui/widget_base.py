@@ -363,8 +363,9 @@ class WidgetBase(object):
                     rel_x >= child.x and rel_y >= child.y and \
                     rel_x < child.x + child.width and \
                     rel_y < child.y + child.height and \
-                    not child.invisible and \
-                    (not child.disabled or event_name != "mousedown"):
+                    not child.effectively_invisible and \
+                    (not child.effectively_inactive or\
+                    event_name != "mousedown"):
                 # If we're in strict ordered mouse event mode, this
                 # widget will be treated as obscuring the next ones:
                 if check_widget_overlap:
@@ -645,14 +646,34 @@ class WidgetBase(object):
         self.needs_redraw = True
 
     @property
-    def focusable(self):
+    def effectively_invisible(self):
+        if self.invisible:
+            return True
+        p = self.parent
+        while p != None:
+            if p.invisible:
+                return True
+            p = p.parent
+        return False
+
+    @property
+    def effectively_inactive(self):
+        if self.type != "window" and \
+                hasattr(self, "parent_window") and \
+                self.parent_window is None:
+            return True
+        if self.disabled or self.invisible:
+            return True
         p = self.parent
         while p != None:
             if p.disabled or p.invisible:
-                return False
+                return True
             p = p.parent
-        return (self._focusable and not self.disabled and \
-            not self.invisible)
+        return False
+
+    @property
+    def focusable(self):
+        return (self._focusable and not self.effectively_inactive)
 
     @property
     def focused(self):

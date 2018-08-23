@@ -120,15 +120,22 @@ def clean_global_shortcuts(clean_noparent_widgets=False):
             w = shortcut[2]()
             if w is None:
                 continue
-            if w.type != "window" and clean_noparent_widgets and \
-                    w.parent_window is None:
-                # No longer added to a window. Remove this
-                continue
-            if w.type == "window" and w.is_closed:
-                # Closed window. Dump shortcut
-                continue
         new_registered_shortcuts.append(shortcut)
     registered_shortcuts = new_registered_shortcuts
+
+def shortcut_is_active(shortcut):
+    if shortcut[2] is None:
+        return True
+    w = shortcut[2]()
+    if w is None or w.effectively_inactive:
+        return False
+    if w.type != "window" and w.parent_window is None:
+        # Widget not visible in any window. --> nope
+        return False
+    if w.type == "window" and w.is_closed:
+        # Shortcut attached to closed window. --> nope
+        return False
+    return True
 
 def get_matching_shortcuts(keys):
     global registered_shortcuts
@@ -138,6 +145,8 @@ def get_matching_shortcuts(keys):
     keys = set(sanitize_shortcut_keys(keys))
     matching = []
     for shortcut in registered_shortcuts:
+        if not shortcut_is_active(shortcut):
+            continue
         key_pressed_set = keys
         check_key_sets = [set(shortcut[0])]
         def transform_set_to_all_variants(key_set):
@@ -185,7 +194,7 @@ physical_keys_pressed = set()
 def internal_update_keystate_keydown(vkey, pkey,
         trigger_shortcuts=True):
     global virtual_keys_pressed, physical_keys_pressed
-    clean_global_shortcuts(clean_noparent_widgets=True)
+    clean_global_shortcuts()
     virtual_keys_pressed.add(vkey)
     physical_keys_pressed.add(pkey)
     if trigger_shortcuts:
