@@ -97,9 +97,10 @@ def register_global_shortcut(shortcut, func, connected_widget):
     connected_widget_ref = None
     if connected_widget != None:
         connected_widget_ref = weakref.ref(connected_widget)
-    shortcut_parts = set(sanitize_shortcut_keys(set([
-        p.lower().strip() for p in shortcut.split("+")
-        if len(p.strip()) > 0])))
+    if type(shortcut) == str:
+        shortcut = [p.lower().strip() for p in shortcut.split("+")
+            if len(p.strip()) > 0]
+    shortcut_parts = set(sanitize_shortcut_keys(shortcut))
 
     # Clean out other old shortcuts:
     clean_global_shortcuts()
@@ -115,8 +116,8 @@ def clean_global_shortcuts():
     # or no longer being added to UI:
     new_registered_shortcuts = list()
     for shortcut in registered_shortcuts:
-        if registered_shortcuts[2] != None:
-            w = registered_shortcuts[2]()
+        if shortcut[2] != None:
+            w = shortcut[2]()
             if w is None:
                 continue
             if w.type != "window" and w.parent_window is None:
@@ -134,11 +135,47 @@ def get_matching_shortcuts(keys):
     if len(keys) == 0:
         return
     keys = set(sanitize_shortcut_keys(keys))
-    print("CHECK SHORTCUTS FOR: " + str(keys))
     matching = []
     for shortcut in registered_shortcuts:
         key_pressed_set = keys
-        check_key_sets = set(shorcut[0])
+        check_key_sets = [set(shortcut[0])]
+        def transform_set_to_all_variants(key_set):
+            if "ctrl" in key_set:
+                new_set = set(key_set)
+                new_set.discard("ctrl")
+                new_set2 = set(new_set)
+                new_set.add("lctrl")
+                new_set2.add("rctrl")
+                return [new_set, new_set2]
+            if "shift" in key_set:
+                new_set = set(key_set)
+                new_set.discard("shift")
+                new_set2 = set(new_set)
+                new_set.add("lshift")
+                new_set2.add("rshift")
+                return [new_set, new_set2]
+            if "alt" in key_set:
+                new_set = set(key_set)
+                new_set.discard("alt")
+                new_set2 = set(new_set)
+                new_set.add("lalt")
+                new_set2.add("ralt")
+                return [new_set, new_set2]
+            return None
+        transformed = True
+        while transformed:
+            transformed = False
+            new_check_sets = []
+            for check_set in check_key_sets:
+                variants = transform_set_to_all_variants(check_set)
+                if variants != None:
+                    transformed = True
+                    new_check_sets += list(variants)
+                else:
+                    new_check_sets.append(check_set)
+            check_key_sets = new_check_sets
+        if key_pressed_set in check_key_sets:
+            matching.append(shortcut)
     return matching
 
 virtual_keys_pressed = set()
@@ -152,7 +189,8 @@ def internal_update_keystate_keydown(vkey, pkey,
     if trigger_shortcuts:
         shortcuts = get_matching_shortcuts(virtual_keys_pressed)
         for shortcut in shortcuts:
-            shortcut[1]
+            if shortcut[1] != None:
+                shortcut[1]()
 
 def internal_update_keystate_keyup(vkey, pkey):
     global virtual_keys_pressed, physical_keys_pressed
