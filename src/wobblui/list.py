@@ -1,5 +1,6 @@
 
 import html
+import math
 
 from wobblui.color import Color
 from wobblui.event import Event
@@ -8,30 +9,76 @@ from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
 class ListEntry(object):
-    def __init__(self, html, style, is_alternating=False):
+    def __init__(self, html, style,
+            px_size_scaler=1.0,
+            extra_html_as_subtitle=None,
+            extra_html_as_subtitle_scale=0.7,
+            extra_html_at_right=None,
+            extra_html_at_right_scale=0.8, is_alternating=False):
         self._width = 0
-        self._layout_width = 0
         self.html = html
+        self.extra_html_at_right = extra_html_at_right
+        self.extra_html_at_right_scale = extra_html_at_right_scale
         self.disabled = False
         self.is_alternating = is_alternating
         self._style = style
-        self.y_offset = 0
         font_family = "Tex Gyre Heros"
         if style != None:
             font_family = style.get("widget_font_family")
-        px_size = 12
+        px_size = 12 * px_size_scaler
         if style != None:
-            px_size = style.get("widget_text_size")
+            px_size = round(style.get("widget_text_size") *
+                px_size_scaler)
+
+        # Main text:
         self.text_obj = RichText(font_family=font_family,
-            px_size=px_size,
+            px_size=round(px_size),
             draw_scale=style.dpi_scale)
         self.text_obj.set_html(html)
         self.text = self.text_obj.text
+
+        # Extra text at the right:
+        self.extra_html_at_right_x = 0
+        self.extra_html_at_right_y = 0
+        self.extra_html_at_right_w = 0
+        self.extra_html_at_right_h = 0
+        self.extra_html_at_right_obj = None
+        self.extra_html_at_right_padding = 0
+        if extra_html_at_right != None:
+            self.extra_html_at_right_padding = 35.0
+            self.extra_html_at_right_obj = RichText(
+                font_family=font_family,
+                px_size=round(extra_html_at_right_scale * px_size *
+                    px_size_scaler),
+                draw_scale=style.dpi_scale)
+            self.extra_html_at_right_obj.set_html(extra_html_at_right)
+
+        # Subtitle text:
+        self.subtitle_x = 0
+        self.subtitle_y = 0
+        self.subtitle_w = 0
+        self.subtitle_h = 0
+        self.extra_html_as_subtitle_obj = None
+        self.extra_html_as_subtitle_padding = 0.0
+        if extra_html_as_subtitle != None:
+            self.extra_html_as_subtitle_padding = 5.0
+            self.extra_html_as_subtitle_obj = RichText(
+                font_family=font_family,
+                px_size=round(extra_html_as_subtitle_scale * px_size *
+                    px_size_scaler),
+                draw_scale=style.dpi_scale)
+            self.extra_html_as_subtitle_obj.\
+                set_html(extra_html_as_subtitle)
+
         self._max_width = None
         self.need_size_update = True
         self.dpi_scale = 1.0
         if style != None:
             self.dpi_scale = style.dpi_scale
+
+    def __repr__(self):
+        return "<ListEntry text='" +\
+            str(self.text).replace("'", "'\"'\"'") + "'>"
 
     def draw(self, renderer, x, y, draw_selected=False,
             draw_hover=False,
@@ -66,17 +113,53 @@ class ListEntry(object):
             round(5.0 * self.dpi_scale) + x,
             round(self.vertical_padding * self.dpi_scale) + y,
             color=c)
+        if self.extra_html_as_subtitle_obj != None:
+            self.extra_html_as_subtitle_obj.draw(renderer,
+                round(5.0 * self.dpi_scale) +\
+                self.subtitle_x + x,
+                round(self.vertical_padding * self.dpi_scale) +\
+                self.subtitle_y +  y,
+                color=c)
+        if self.extra_html_at_right_obj != None:
+            #if self.style != None and \
+            #        self.style.has("widget_disabled_text"):
+            #    c = Color(self.style.get("widget_disabled_text"))
+            self.extra_html_at_right_obj.draw(renderer,
+                round(5.0 * self.dpi_scale) +\
+                self.extra_html_at_right_x + x,
+                round(self.vertical_padding * self.dpi_scale) +\
+                max(0, self.extra_html_at_right_y) + y,
+                color=c)
 
     def copy(self):
         li = ListEntry(self.html, self.style)
+        li.disabled = self.disabled
+        li.is_alternating = self.is_alternating
+        if self.text_obj != None:
+            li.text_obj = self.text_obj.copy()
+        if self.extra_html_at_right_obj != None:
+            li.extra_html_at_right_obj =\
+                self.extra_html_at_right_obj.copy()
+        if self.extra_html_as_subtitle_obj:
+            li.extra_html_as_subtitle_obj =\
+                self.extra_html_as_subtitle_obj.copy()
+        li.extra_html_at_right_padding =\
+            self.extra_html_at_right_padding
+        li.extra_html_as_subtitle_padding =\
+            self.extra_html_as_subtitle_padding
         li.max_width = self.max_width
         li.width = self.width
         li.needs_size_update = True
+        li.update_size()
         return li
 
     def get_natural_width(self):
         text_copy = self.text_obj.copy()
         (w, h) = text_copy.layout(max_width=None)
+        w += max(1, round(self.extra_html_at_right_padding * self.dpi_scale))
+        if self.extra_html_at_right_obj != None:
+            (w2, h2) = self.extra_html_at_right_obj.layout(max_width=None)
+            w += w2
         return (w + round(10.0 * self.dpi_scale))
 
     @property
@@ -134,15 +217,91 @@ class ListEntry(object):
         if mw != None:
             mw = min(self.width, mw) - padding * 2
         else:
-            mw = self.width
+            mw = max(1, self.width - padding * 2)
         is_empty = False
         if self.text_obj.text == "":
             is_empty = True
             self.text_obj.text = " "
-        (self.text_width, self.text_height) = self.text_obj.layout(
-            max_width=mw)
-        self._layout_width = round(self.text_width + padding)
-        self._height = round(self.text_height + padding_vertical * 2)
+        subtitle_w = 0
+        subtitle_h = 0
+        self.subtitle_x = 0
+        self.subtitle_y = 0
+        self.subtitle_w = 0
+        self.subtilte_h = 0
+        if self.extra_html_as_subtitle_obj != None:
+            (subtitle_w, subtitle_h) = self.extra_html_as_subtitle_obj.\
+                layout(max_width=mw)
+            self.subtitle_h = subtitle_h
+            self.subtitle_w = subtitle_w
+        self.extra_html_at_right_x = 0
+        self.extra_html_at_right_y = 0
+        if self.extra_html_at_right_obj != None:
+            (natural_w, natural_h) = self.text_obj.layout(
+                max_width=None)
+            (natural_w2, natural_h2) = self.\
+                extra_html_at_right_obj.layout(
+                max_width=None)
+            missing_space = max(0, math.ceil((natural_w +
+                self.extra_html_at_right_padding *
+                self.dpi_scale + natural_w2) - mw))
+            if mw < (natural_w * 0.5 +
+                    self.extra_html_at_right_padding * self.dpi_scale +
+                    natural_w2 * 0.5) and mw <= natural_w * 1.2 and \
+                    missing_space > 5.0 * self.dpi_scale:
+                # Put the extra HTML part below
+                (self.text_width, self.text_height) = \
+                    self.text_obj.layout(max_width=mw)
+                self.subtitle_y = self.text_height +\
+                    math.ceil(self.extra_html_as_subtitle_padding *
+                        self.dpi_scale)
+                self.extra_html_at_right_x = 0
+                self.extra_html_at_right_y = self.text_height +\
+                    math.ceil(self.extra_html_as_subtitle_padding * 2.0 *
+                    self.dpi_scale) +\
+                    self.subtitle_h
+                (self.extra_html_at_right_w, self.extra_html_at_right_h) =\
+                    self.extra_html_at_right_obj.layout(max_width=mw)
+                self._height = round(self.extra_html_at_right_y +
+                    self.extra_html_at_right_h + padding_vertical * 2)
+            else:
+                # Put extra HTML part to the right
+                right_side_fac = (float(natural_w2) / float(natural_w +
+                    natural_w2))
+                left_side_fac = (float(natural_w) / float(natural_w +
+                    natural_w2))
+                left_side_w = round(natural_w -
+                    missing_space * left_side_fac)
+                right_side_w = round(natural_w2 -
+                    missing_space * right_side_fac)
+                self.text_width = left_side_w
+                (ignore_w, self.text_height) = self.text_obj.layout(
+                    max_width=left_side_w)
+                self.subtitle_y = self.text_height +\
+                    math.ceil(self.extra_html_as_subtitle_padding *
+                        self.dpi_scale)
+                self.extra_html_at_right_y = 0
+                self.extra_html_at_right_x = self.text_width +\
+                    self.extra_html_as_subtitle_padding
+                (self.extra_html_at_right_w, self.extra_html_at_right_h) =\
+                    self.extra_html_at_right_obj.\
+                        layout(max_width=right_side_w)
+                self.extra_html_at_right_y = max(0,
+                    round((self.text_height -
+                    self.extra_html_at_right_h) / 2.0))
+                self.extra_html_at_right_x = mw -\
+                    self.extra_html_at_right_w - round(padding * 2)
+                self._height = round(max(self.subtitle_y +
+                    self.subtitle_h,
+                    self.extra_html_at_right_y +
+                    self.extra_html_at_right_h) + padding_vertical * 2)
+        else:
+            (self.text_width, self.text_height) = self.text_obj.layout(
+                max_width=mw)
+            self._height = round(self.text_height + padding_vertical * 2)
+            if self.extra_html_as_subtitle_obj != None:
+                self._height = round(max(self.text_height,
+                    self.subtitle_y +
+                    self.subtitle_h) + padding_vertical * 2)
         if is_empty:
             self.text_width = 0
             self.text_obj.text = ""
@@ -428,16 +587,23 @@ class ListBase(Widget):
                 (((i + 1) % 0) == 0)
             i += 1
 
-    def add(self, text):
-        self.add_html(html.escape(text))
+    def add(self, text, side_text=None, subtitle=None):
+        if side_text != None:
+            side_text = html.escape(side_text)
+        if subtitle != None:
+            subtitle = html.escape(subtitle)
+        self.add_html(html.escape(text), side_html=side_text,
+            subtitle_html=subtitle)
 
-    def add_html(self, html):
+    def add_html(self, html, side_html=None, subtitle_html=None):
         last_was_alternating = True
         if len(self._entries) > 0 and \
                 not self._entries[-1].is_alternating:
             last_was_alternating = False
         self._entries.append(ListEntry(html, self.style,
-            is_alternating=(not last_was_alternating)))
+            is_alternating=(not last_was_alternating),
+            extra_html_at_right=side_html,
+            extra_html_as_subtitle=subtitle_html))
         
 class List(ListBase):
     def __init__(self):

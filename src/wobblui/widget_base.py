@@ -137,6 +137,7 @@ class WidgetBase(object):
         self.mousedown = Event("mousedown", owner=self)
         self.mousewheel = Event("mousewheel", owner=self)
         self.stylechanged = Event("stylechanged", owner=self)
+        self.keyup = Event("keyup", owner=self)
         self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
         self.doubleclick = Event("doubleclick", owner=self)

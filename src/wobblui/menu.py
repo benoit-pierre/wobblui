@@ -1,7 +1,11 @@
 
+import weakref
+
 from wobblui.color import Color
 from wobblui.event import Event
 from wobblui.gfx import draw_rectangle
+from wobblui.keyboard import register_global_shortcut,\
+    shortcut_to_text
 from wobblui.list import ListBase, ListEntry
 
 class MenuSeparator(ListEntry):
@@ -85,9 +89,18 @@ class Menu(ListBase):
         self._entries[-1].disabled = True
         self.needs_relayout = True
 
-    def add(self, text, func_callback=None):
-        super().add(text)
+    def add(self, text, func_callback=None,
+            global_shortcut_func=None,
+            global_shortcut=[]):
+        side_text = None
+        if len(global_shortcut) > 0:
+            side_text = shortcut_to_text(global_shortcut)
+        super().add(text, side_text=side_text)
         self.callback_funcs.append(func_callback)
+        if len(global_shortcut) > 0 and \
+                global_shortcut_func != None:
+            register_global_shortcut(global_shortcut,
+                global_shortcut_func, self)
 
     def on_keydown(self, virtual_key, physical_key, modifiers):
         if virtual_key == "escape":

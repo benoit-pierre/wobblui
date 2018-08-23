@@ -1,9 +1,166 @@
 
+import functools
 import sdl2 as sdl
+import weakref
 
 from wobblui.widgetman import all_windows
 
+registered_shortcuts = list()
+
+def sanitize_shortcut_keys(shortcut_keys):
+    new_keys = []
+    for key in shortcut_keys:
+        key = key.lower().strip().replace("-", "").\
+            replace(" ", "")
+        if key.startswith("left"):
+            key = "l" + key[len("left"):]
+        elif key.startswith("right"):
+            key = "r" + key[len("right"):]
+        if key.endswith("control"):
+            key = key[:-len("control")] + "ctrl"
+        if not key in new_keys:
+            new_keys.append(key)
+    return new_keys
+
+def shortcut_to_text(keys):
+    if type(keys) == str:
+        keys = [key.strip() for key in keys.split("+")\
+            if len(key.strip()) > 0]
+    keys = sanitize_shortcut_keys(keys)
+    common_modifiers = [
+        "Ctrl", "LCtrl", "RCtrl",
+        "Shift", "LShift", "RShift",
+        "Alt", "LAlt", "RAlt",
+        "Super"]
+    final_keys = ["Return", "Enter", "Backspace"]
+    lowercase_modifiers = [
+        p.lower() for p in common_modifiers]
+    lowercase_final = [
+        p.lower() for p in final_keys]
+    def sort_shortcut(a, b):
+        if a.lower() in lowercase_final and \
+                not b.lower() in lowercase_final:
+            return 1
+        elif b.lower() in lowercase_final and \
+                not a.lower() in lowercase_final:
+            return -1
+        if a.lower() in lowercase_modifiers and \
+                not b.lower() in lowercase_modifiers:
+            return -1
+        elif not a.lower() in lowercase_modifiers and \
+                b.lower() in lowercase_modifiers:
+            return 1
+        if a.lower() in lowercase_modifiers and \
+                b.lower() in lowercase_modifiers:
+            return (lowercase_modifiers.index(a.lower()) -
+                lowercase_modifiers.index(b.lower()))
+        if a.lower() < b.lower():
+            return -1
+        else:
+            return 1
+    # Sort in commonly expected order:
+    sorted_keys = sorted(list(keys),
+        key=functools.cmp_to_key(sort_shortcut))
+    # Fix spelling details:
+    pretty_keys = []
+    for key in sorted_keys:
+        key = key.upper()
+        if key.lower() in lowercase_modifiers:
+            key = common_modifiers[lowercase_modifiers.\
+                index(key.lower())]
+            if key == "LCtrl":
+                key = "Left Control"
+            elif key == "RCtrl":
+                key = "Right Control"
+            elif key == "LAlt":
+                key = "Left Alt"
+            elif key == "RAlt":
+                key == "Right Alt"
+            elif key == "LShift":
+                key = "Left Shift"
+            elif key == "RShift":
+                key = "Right Shift"
+            elif key == "Ctrl":
+                key = "Control"
+        elif key.lower() in lowercase_final:
+            key = final_keys[lowercase_final.index(
+                key.lower())]
+        pretty_keys.append(key)
+    return " + ".join(pretty_keys)
+
+def register_global_shortcut(shortcut, func, connected_widget):
+    global registered_shortcuts
+    if func is None:
+        return
+
+    # Prepare info for shortcut:
+    connected_widget_ref = None
+    if connected_widget != None:
+        connected_widget_ref = weakref.ref(connected_widget)
+    shortcut_parts = set(sanitize_shortcut_keys(set([
+        p.lower().strip() for p in shortcut.split("+")
+        if len(p.strip()) > 0])))
+
+    # Clean out other old shortcuts:
+    clean_global_shortcuts()
+
+    # Add new shortcut:
+    registered_shortcuts.append([
+        shortcut_parts, func, connected_widget_ref])
+
+def clean_global_shortcuts():
+    global registered_shortcuts
+
+    # Clean out shortcuts that go to widgets no longer existing,
+    # or no longer being added to UI:
+    new_registered_shortcuts = list()
+    for shortcut in registered_shortcuts:
+        if registered_shortcuts[2] != None:
+            w = registered_shortcuts[2]()
+            if w is None:
+                continue
+            if w.type != "window" and w.parent_window is None:
+                # No longer added to a window. Remove this
+                continue
+            if w.type == "window" and w.is_closed:
+                # Closed window. Dump shortcut
+                continue
+        new_registered_shortcuts.append(shortcut)
+    registered_shortcuts = new_registered_shortcuts
+
+def get_matching_shortcuts(keys):
+    global registered_shortcuts
+    clean_global_shortcuts()
+    if len(keys) == 0:
+        return
+    keys = set(sanitize_shortcut_keys(keys))
+    print("CHECK SHORTCUTS FOR: " + str(keys))
+    matching = []
+    for shortcut in registered_shortcuts:
+        key_pressed_set = keys
+        check_key_sets = set(shorcut[0])
+    return matching
+
+virtual_keys_pressed = set()
+physical_keys_pressed = set()
+
+def internal_update_keystate_keydown(vkey, pkey,
+        trigger_shortcuts=True):
+    global virtual_keys_pressed, physical_keys_pressed
+    virtual_keys_pressed.add(vkey)
+    physical_keys_pressed.add(pkey)
+    if trigger_shortcuts:
+        shortcuts = get_matching_shortcuts(virtual_keys_pressed)
+        for shortcut in shortcuts:
+            shortcut[1]
+
+def internal_update_keystate_keyup(vkey, pkey):
+    global virtual_keys_pressed, physical_keys_pressed
+    virtual_keys_pressed.discard(vkey)
+    physical_keys_pressed.discard(pkey)
+
 def get_modifiers():
+    """ Get currently pressed modifier keys. """
     result = set()
     sdl_modstate = sdl.SDL_GetModState()
     if ((sdl_modstate & sdl.KMOD_LSHIFT) != 0 or

@@ -180,6 +180,15 @@ class RichText(object):
             self.fragments.append(RichTextFragment(
                 text, font_family, False, False, px_size))
 
+    def __repr__(self):
+        t = "<RichText html='"
+        if len(self.html) < 40:
+            t += self.html
+        else:
+            t += self.html[:40] + "..."
+        t += "'>"
+        return t
+
     def remove_char_before_offset(self, offset):
         c = offset - 1
         i = 0

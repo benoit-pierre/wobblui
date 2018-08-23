@@ -34,6 +34,7 @@ def get_window_by_sdl_id(sdl_id):
 class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,
             style=None):
+        self.type = "window"
         initialize_sdl()
         if style is None:
             style = AppStyleDark()

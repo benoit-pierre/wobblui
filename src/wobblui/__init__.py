@@ -7,7 +7,9 @@ import time
 import traceback
 
 from wobblui.keyboard import internal_update_text_events,\
-    get_active_text_widget, get_modifiers
+    get_active_text_widget, get_modifiers, \
+    internal_update_keystate_keydown, \
+    internal_update_keystate_keyup
 from wobblui.timer import internal_trigger_check
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
@@ -34,10 +36,14 @@ def sdl_vkey_map(key):
         return chr(ord("a") + (key - sdl.SDLK_a))
     if key == sdl.SDLK_KP_TAB or key == sdl.SDLK_TAB:
         return "tab"
-    if key == sdl.SDLK_LALT or key == sdl.SDLK_RALT:
-        return "alt"
-    if key == sdl.SDLK_LCTRL or key == sdl.SDLK_RCTRL:
-        return "ctrl"
+    if key == sdl.SDLK_LALT:
+        return "lalt"
+    if key == sdl.SDLK_RALT:
+        return "ralt"
+    if key == sdl.SDLK_LCTRL:
+        return "lctrl"
+    if key == sdl.SDLK_RCTRL:
+        return "rctrl"
     if key == sdl.SDLK_DOWN:
         return "down"
     if key == sdl.SDLK_UP:
@@ -148,6 +154,11 @@ def do_event_processing(ui_active=True):
                     event.type != sdl.SDL_APP_WILLENTERFOREGROUND and
                     event.type != sdl.SDL_MOUSEMOTION
                     ):
+                # Update keystate while avoiding global shortcuts:
+                if event.type == sdl.SDL_KEYDOWN or \
+                        event.type == sdl.SDL_KEYUP:
+                    _process_key_event(event, trigger_shortcuts=False)
+                # Skip regular processing of this event:
                 continue
         try:
             if _handle_event(event) is False:
@@ -162,6 +173,38 @@ def do_event_processing(ui_active=True):
     internal_update_text_events()
     redraw_windows()
     return True
+
+def _process_key_event(event, trigger_shortcuts=True):
+    virtual_key = sdl_vkey_map(event.key.keysym.sym)
+    physical_key = sdl_key_map(event.key.keysym.scancode)
+    shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
+        ((event.key.keysym.mod & sdl.KMOD_LSHIFT) != 0)
+    ctrl = ((event.key.keysym.mod & sdl.KMOD_RCTRL) != 0) or \
+        ((event.key.keysym.mod & sdl.KMOD_LCTRL) != 0)
+    alt = ((event.key.keysym.mod & sdl.KMOD_RALT) != 0) or \
+        ((event.key.keysym.mod & sdl.KMOD_LALT) != 0)
+    w = get_window_by_sdl_id(event.motion.windowID)
+    if w is None or w.is_closed:
+        return
+    if w.hidden:
+        w.set_hidden(False)
+    modifiers = set()
+    if shift:
+        modifiers.add("shift")
+    if ctrl:
+        modifiers.add("ctrl")
+    if alt:
+        modifiers.add("alt")
+    if event.type == sdl.SDL_KEYDOWN:
+        internal_update_keystate_keydown(virtual_key,
+            physical_key, trigger_shortcuts=trigger_shortcuts)
+        w.keydown(virtual_key, physical_key, modifiers)
+        if virtual_key.lower() == "return":
+            w.textinput("\n", get_modifiers())
+    else:
+        internal_update_keystate_keyup(virtual_key,
+            physical_key)
+        w.keyup(virtual_key, physical_key, modifiers)
 
 mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
@@ -247,30 +290,9 @@ def _handle_event(event):
         widget = get_active_text_widget()
         if widget != None and text != "\n" and text != "\r\n":
             widget.textinput(text, get_modifiers())
-    elif event.type == sdl.SDL_KEYDOWN:
-        virtual_key = sdl_vkey_map(event.key.keysym.sym)
-        physical_key = sdl_key_map(event.key.keysym.scancode)
-        shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
-            ((event.key.keysym.mod & sdl.KMOD_LSHIFT) != 0)
-        ctrl = ((event.key.keysym.mod & sdl.KMOD_RCTRL) != 0) or \
-            ((event.key.keysym.mod & sdl.KMOD_LCTRL) != 0)
-        alt = ((event.key.keysym.mod & sdl.KMOD_RALT) != 0) or \
-            ((event.key.keysym.mod & sdl.KMOD_LALT) != 0)
-        w = get_window_by_sdl_id(event.motion.windowID)
-        if w is None or w.is_closed:
-            return
-        if w.hidden:
-            w.set_hidden(False)
-        modifiers = set()
-        if shift:
-            modifiers.add("shift")
-        if ctrl:
-            modifiers.add("ctrl")
-        if alt:
-            modifiers.add("alt")
-        w.keydown(virtual_key, physical_key, modifiers)
-        if virtual_key.lower() == "return":
-            w.textinput("\n", get_modifiers())
+    elif event.type == sdl.SDL_KEYDOWN or \
+            event.type == sdl.SDL_KEYUP:
+        _process_key_event(event, trigger_shortcuts=True)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
                 sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
