@@ -293,21 +293,25 @@ class Window(WidgetBase):
         return list(reversed(self._children))
 
     def _internal_on_post_redraw(self, internal_data=None):
-        sdl.SDL_SetRenderTarget(self.renderer, None)
-        c = Color.white
-        if self.style != None:
-            c = Color(self.style.get("window_bg"))
-        sdl.SDL_SetRenderDrawColor(self.renderer, c.red,
-            c.blue, c.green, 255)
-        sdl.SDL_RenderClear(self.renderer)
+        # Work around double buffering issues by drawing twice:
+        i = 0
+        while i < 2:
+            sdl.SDL_SetRenderTarget(self.renderer, None)
+            c = Color.white
+            if self.style != None:
+                c = Color(self.style.get("window_bg"))
+            sdl.SDL_SetRenderDrawColor(self.renderer, c.red,
+                c.blue, c.green, 255)
+            sdl.SDL_RenderClear(self.renderer)
 
-        # Work around potential SDL bug / race condition:
-        # (Flickering window background)
-        draw_rectangle(self.renderer, 0, 0,
-            self.width, self.height, color=c)
-        if self.sdl_texture != None:
-            self.draw(0, 0)
-        sdl.SDL_RenderPresent(self.renderer)
+            # Work around potential SDL bug / race condition:
+            # (Flickering texture contents of window)
+            draw_rectangle(self.renderer, 0, 0,
+                self.width, self.height, color=c)
+            if self.sdl_texture != None:
+                self.draw(0, 0)
+            sdl.SDL_RenderPresent(self.renderer)
+            i += 1
 
     def shares_focus_group(self, other_obj):
         if not isinstance(other_obj, Window):
