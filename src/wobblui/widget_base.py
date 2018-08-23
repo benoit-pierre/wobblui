@@ -178,6 +178,15 @@ class WidgetBase(object):
             if self.parent != None:
                 self.parent.needs_relayout = True
             self.update()
+            def update_children(obj):
+                for child in obj.children:
+                    if child.focused:
+                        update_children(child)
+                        if self._invisible:
+                            child.unfocus()
+                        else:
+                            child.update()
+            update_children(self)
 
     @property
     def disabled(self):
@@ -626,6 +635,7 @@ class WidgetBase(object):
         for w_ref in all_widgets:
             w = w_ref()
             if w is None or not w.focused \
+                    or not w.focusable \
                     or not hasattr(w, "parent_window") \
                     or w.parent_window != window:
                 continue
@@ -636,6 +646,11 @@ class WidgetBase(object):
 
     @property
     def focusable(self):
+        p = self.parent
+        while p != None:
+            if p.disabled or p.invisible:
+                return False
+            p = p.parent
         return (self._focusable and not self.disabled and \
             not self.invisible)
 

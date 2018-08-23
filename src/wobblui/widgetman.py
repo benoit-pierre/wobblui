@@ -16,9 +16,9 @@ all_windows = list()
 
 def tab_sort(a, b):
     if a.focus_index is None and b.focus_index != None:
-        return 1
-    if b.focus_index is None and a.focus_index != None:
         return -1
+    if b.focus_index is None and a.focus_index != None:
+        return 1
     if a.focus_index != b.focus_index:
         return (a.focus_index - b.focus_index)
     return (a.added_order - b.added_order)
