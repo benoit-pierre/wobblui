@@ -24,11 +24,15 @@ class Font(object):
         self.pixel_size = pixel_size
         self.italic = italic
         self.bold = bold
-        self._qt_font = None
-        self._qt_metrics = None
         self._avg_letter_width = None
         self._sdl_font = None
-        
+
+    def __repr__(self):
+        return "<Font family='" + str(
+            self.font_family) + "' px_size=" +\
+            str(self.pixel_size) +\
+            " bold=" + str(self.bold) +\
+            " italic=" + str(self.italic) + ">"
 
     def __del__(self):
         if self._sdl_font != None:
@@ -127,7 +131,7 @@ class FontManager(object):
         self.load_debug_info_shown = dict()
         self.missing_fonts = dict()
         self.avg_letter_width_cache = dict()
-        self.cache_size = 50
+        self.cache_size = 20
 
     def limit_cache(self):
         if len(self.font_by_sizedpistyle_cache.values()) <= \

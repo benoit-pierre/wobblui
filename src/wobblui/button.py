@@ -35,6 +35,13 @@ class Button(Widget):
         if len(text) > 0:
             self.set_text(text)
 
+    def __del__(self):
+        if hasattr(super(), "__del__"):
+            super().__del__()
+        if hasattr(self, "contained_image_srf") and \
+                self.contained_image_srf != None:
+            sdl.SDL_FreeSurface(self.contained_image_srf)
+
     def internal_set_extra_image_render(self, func):
         self.extra_image_render_func = func
 
