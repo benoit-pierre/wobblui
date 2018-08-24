@@ -37,11 +37,6 @@ setuptools.setup(
     data_files = [("", ["LICENSE.md"])],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: zlib/libpng License",
-        "License :: OSI Approved :: MIT License",
-        "License :: OSI Approved :: BSD License",
-        "License :: OSI Approved :: SIL Open Font License",
-        "License :: GUST Font License",
         "Operating System :: OS Independent",
     ],
 )
