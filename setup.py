@@ -17,6 +17,10 @@ with open("src/wobblui/version.py") as fh:
                 v = v[1:-1]
             package_version = v
 
+with open("requirements.txt") as fh:
+    dependencies = [l.strip() for l in fh.read().replace("\r\n", "\n").\
+        split("\n") if len(l.strip()) > 0]
+
 setuptools.setup(
     name="wobblui",
     version=package_version,
@@ -31,6 +35,7 @@ setuptools.setup(
             "font/packaged-fonts/*.txt",
             "img/*.png"]
     },
+    install_requires=dependencies,
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/JonasT/wobblui",
