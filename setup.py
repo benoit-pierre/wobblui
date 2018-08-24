@@ -32,7 +32,7 @@ setuptools.setup(
     package_dir={'':'src'},
     package_data={
         "wobblui": ["font/packaged-fonts/*.ttf",
-            "font/packaged-fonts/*.txt",
+            "font/packaged-fonts/*.md",
             "img/*.png"]
     },
     install_requires=dependencies,

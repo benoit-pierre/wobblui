@@ -1,9 +1,15 @@
 
-The texgyre-* fonts in this directory originate from the Tex Gyre project.
-Apart from otf->ttf conversion, they are unaltered.
+Tex Gyre Fonts
+--------------
 
-License:
+The `texgyre-*` fonts in this directory originate from the Tex Gyre project.
+Apart from `otf->ttf` conversion, they are unaltered.
 
+*Website*: http://www.gust.org.pl/projects/e-foundry/tex-gyre
+
+*License*:
+
+```
 % This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %
@@ -32,4 +38,5 @@ License:
 % The latest version of the LaTeX Project Public License is in
 % http://www.latex-project.org/lppl.txt and version 1.3c or later
 % is part of all distributions of LaTeX version 2006/05/20 or later.
+```
 

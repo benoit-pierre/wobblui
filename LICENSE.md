@@ -1,11 +1,13 @@
 
-## Project license
+Project license
+===============
 
 The main source code of this project is provided under the following
 license terms:
 
 `zlib License`
 
+```
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
@@ -23,24 +25,25 @@ freely, subject to the following restrictions:
 2. Altered source versions must be plainly marked as such, and must not be
    misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
+```
 
-
-### Font files
+Font files
+----------
 
 Some packaged font files are under different licenses,
 the `SIL Open Font License` and `GUST Font License`.
-See the license files folder `src/wobblui/font/packaged-fonts`
-for details.
+See the license `.md` files in folder [src/wobblui/font/packaged-fonts/](
+src/wobblui/packaged-fonts/) for details.
 
-### Integrated External Code
-
-#### font tools
+font tools license
+------------------
 
 This project contains some modified code from fonttools
 under the following license:
 
 `MIT License`
 
+```
 Copyright (c) 2017 Just van Rossum
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -60,14 +63,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
 
-#### TTF Query License
+TTF Query License
+-----------------
 
 This project contains some modified code from TTF Query
 under the following license:
 
 `BSD-3-Clause`
 
+```
 Copyright (c) 2003, Michael C. Fletcher and Contributors
 All rights reserved.
 
@@ -99,4 +105,4 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 OF THE POSSIBILITY OF SUCH DAMAGE. 
-
+```
