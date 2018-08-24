@@ -90,29 +90,35 @@ def sdl_key_map(key):
         return "space"
     return str("scancode-" + str(key))
 
-def event_loop():
+def event_loop(app_cleanup_callback=None):
     event_loop_ms = 10
-    while True:
-        max_sleep = maximum_sleep_time()
-        sleep_amount = event_loop_ms * 0.001
-        if max_sleep != None:
-            sleep_amount = max(0, min(sleep_amount, max_sleep))
-        time.sleep(sleep_amount)
-        result = do_event_processing(ui_active=True)
-        if result == "appquit":
-            sys.exit(0)
-            return
-        if result is True:
-            # Had events. Remain responsive!
-            if event_loop_ms > 10:
-                event_loop_ms = 10
-        else:
-            # No events. Take some time
+    try:
+        while True:
             max_sleep = maximum_sleep_time()
-            if event_loop_ms < 500:
-                event_loop_ms = min(
-                    event_loop_ms + 1,
-                    500)
+            sleep_amount = event_loop_ms * 0.001
+            if max_sleep != None:
+                sleep_amount = max(0, min(sleep_amount, max_sleep))
+            time.sleep(sleep_amount)
+            result = do_event_processing(ui_active=True)
+            if result == "appquit":
+                if app_cleanup_callback != None:
+                    app_cleanup_callback()
+                sys.exit(0)
+                return
+            if result is True:
+                # Had events. Remain responsive!
+                if event_loop_ms > 10:
+                    event_loop_ms = 10
+            else:
+                # No events. Take some time
+                max_sleep = maximum_sleep_time()
+                if event_loop_ms < 500:
+                    event_loop_ms = min(
+                        event_loop_ms + 1,
+                        500)
+    except KeyboardInterrupt:
+        app_cleanup_callback()
+        return
 
 def ev_type(event):
     ev_no = event.type
@@ -200,7 +206,7 @@ def do_event_processing(ui_active=True):
                 # Skip regular processing of this event:
                 continue
         try:
-            if _handle_event(event) is False:
+            if _handle_event(event) is False and ui_active:
                 # App termination.
                 return "appquit"
         except Exception as e:
