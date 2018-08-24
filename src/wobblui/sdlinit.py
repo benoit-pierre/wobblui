@@ -15,6 +15,5 @@ def initialize_sdl():
     subsystems = sdl.SDL_WasInit(sdl.SDL_INIT_EVERYTHING)
     if not (subsystems & sdl.SDL_INIT_VIDEO):
         sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER)
-        sdlttf.TTF_Init()
 
 

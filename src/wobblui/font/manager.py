@@ -5,17 +5,21 @@ import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import time
 
-from applog import logdebug, logerror, loginfo, logwarning
-from osintegration import is_android
 from wobblui.color import Color
 import wobblui.font.info
 from wobblui.sdlinit import initialize_sdl
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
 
+ttf_was_initialized = False
 class Font(object):
     def __init__(self, font_family,
             pixel_size, italic=False, bold=False):
+        global ttf_was_initialized
+        if not ttf_was_initialized:
+            ttf_was_initialized = True
+            initialize_sdl()
+            sdlttf.TTF_Init()
         self.font_family = font_family
         self.pixel_size = pixel_size
         self.italic = italic
@@ -24,6 +28,7 @@ class Font(object):
         self._qt_metrics = None
         self._avg_letter_width = None
         self._sdl_font = None
+        
 
     def __del__(self):
         if self._sdl_font != None:

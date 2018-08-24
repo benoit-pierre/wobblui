@@ -5,7 +5,7 @@ import os
 import shutil
 import tempfile
 
-import osintegration
+from wobblui.sdlinit import initialize_sdl
 
 DEBUG_FONTINFO=False
 
@@ -37,6 +37,7 @@ def get_font_paths_by_name(name):
     if DEBUG_FONTINFO:
         print("get_font_paths_by_name: searching for '" +
             str(name) + "'")
+    initialize_sdl()
     name_variants = []
     name_variants.append(name.lower())
     name_variants.append(name.replace(" ", "").lower())
@@ -80,7 +81,8 @@ def get_font_paths_by_name(name):
         return candidates
 
     # Don't try other places on android:
-    if osintegration.is_android():
+    if sdl.SDL_GetPlatform().decode("utf-8",
+            "replace").lower() != "android":
         return []
 
     # Search system-wide:

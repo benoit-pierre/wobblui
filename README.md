@@ -1,6 +1,8 @@
 
 # wobblui - a python UI
 
+**EXPERIMENTAL - UNFINISHED PROJECT**
+
 This is a simple, self-contained UI framework for Python that uses
 `PySDL2` and `PIL` (python image library). It should work for any
 of the platforms where those two libraries are available.

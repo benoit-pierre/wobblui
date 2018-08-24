@@ -1,6 +1,11 @@
 
 ## Project license
 
+The main source code of this project is provided under the following
+license terms:
+
+`zlib License`
+
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
@@ -20,14 +25,21 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 
 
-### External Code
+### Font files
+
+Some packaged font files are under different licenses,
+the `SIL Open Font License` and `GUST Font License`.
+See the license files folder `src/wobblui/font/packaged-fonts`
+for details.
+
+### Integrated External Code
 
 #### font tools
 
 This project contains some modified code from fonttools
 under the following license:
 
-MIT License
+`MIT License`
 
 Copyright (c) 2017 Just van Rossum
 
@@ -53,6 +65,8 @@ SOFTWARE.
 
 This project contains some modified code from TTF Query
 under the following license:
+
+`BSD-3-Clause`
 
 Copyright (c) 2003, Michael C. Fletcher and Contributors
 All rights reserved.
