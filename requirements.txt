@@ -1,1 +1,2 @@
 PySDL2>=0.9.6
+Pillow
