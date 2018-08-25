@@ -191,10 +191,12 @@ class Window(WidgetBase):
         h = ctypes.c_int32()
         sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
             ctypes.byref(h))
-        self._width = w.value
-        self._height = h.value
-        self.resized()
-        self.needs_redraw = True 
+        if self._width != w.value or self._height != h.value:
+            self._width = w.value
+            self._height = h.value
+            self.resized()
+            self.needs_redraw = True
+            self.needs_relayout = True
 
     def get_style(self):
         return self._style

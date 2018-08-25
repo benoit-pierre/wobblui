@@ -22,6 +22,7 @@ def redraw_windows(layout_only=False):
         w = w_ref()
         if w is None or w.hidden:
             continue
+        w.update_to_real_sdlw_size()
         i = 0
         while i < 10:
             if not w.relayout_if_necessary():
