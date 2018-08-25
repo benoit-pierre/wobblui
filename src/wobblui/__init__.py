@@ -91,7 +91,7 @@ def sdl_key_map(key):
         return "space"
     return str("scancode-" + str(key))
 
-def event_loop(app_cleanup_callback=None):
+def event_loop(app_cleanup_callback=None, debug=False):
     event_loop_ms = 10
     try:
         while True:
@@ -100,7 +100,8 @@ def event_loop(app_cleanup_callback=None):
             if max_sleep != None:
                 sleep_amount = max(0, min(sleep_amount, max_sleep))
             time.sleep(sleep_amount)
-            result = do_event_processing(ui_active=True)
+            result = do_event_processing(ui_active=True,
+                debug=debug)
             if result == "appquit":
                 if app_cleanup_callback != None:
                     app_cleanup_callback()
@@ -121,7 +122,7 @@ def event_loop(app_cleanup_callback=None):
         app_cleanup_callback()
         return
 
-def ev_type(event):
+def sdl_event_name(event):
     ev_no = event.type
     if ev_no == sdl.SDL_MOUSEBUTTONDOWN:
         return "SDL_MOUSEBUTTONDOWN"
@@ -154,8 +155,18 @@ def ev_type(event):
                 str(event.window.event)
     return "unknown-" + str(ev_no)
 
+def debug_describe_event(event):
+    t = sdl_event_name(event)
+    if event.type == sdl.SDL_MOUSEBUTTONDOWN or \
+            event.type == sdl.SDL_MOUSEBUTTONUP:
+        t += "(which:" + str(event.button.which) +\
+            ",button:" + str(event.button.button) + ")"
+    elif event.type == sdl.SDL_MOUSEMOTION:
+        t += "(which:" + str(event.motion.which) + ")"
+    return t
+
 _last_clean_shortcuts_ts = None
-def do_event_processing(ui_active=True):
+def do_event_processing(ui_active=True, debug=False):
     global _last_clean_shortcuts_ts
     if threading.current_thread() != threading.main_thread():
         raise RuntimeError("UI events can't be processed " +
@@ -178,6 +189,9 @@ def do_event_processing(ui_active=True):
         redraw_windows()
         return False
     for event in events:
+        if debug:
+            print("wobblui.__init__.py: DEBUG: sdl event: " +
+                debug_describe_event(event))
         if not ui_active:
             # Skip this event unless it is essential.
             if (event.type != sdl.SDL_QUIT and

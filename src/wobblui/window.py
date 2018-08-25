@@ -114,15 +114,16 @@ class Window(WidgetBase):
         if close_window or sdl.SDL_GetPlatform().decode("utf-8",
                 "replace").lower() == "android":
             if self._renderer != None:
+                my_renderer = self._renderer
                 self._renderer = None
                 for child in self.children:
                     child.renderer_update()
-                sdl.SDL_DestroyRenderer(self._renderer)
+                sdl.SDL_DestroyRenderer(my_renderer)
             self._renderer = None
-            #if close_window:
-            sdl.SDL_DestroyWindow(self._sdl_window)
-            self._sdl_window = None
             if close_window:
+                if self._sdl_window != None:
+                    sdl.SDL_DestroyWindow(self._sdl_window)
+                self._sdl_window = None
                 self.is_closed = True
                 del(self._children)
                 self._children = []
