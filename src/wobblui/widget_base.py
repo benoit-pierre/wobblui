@@ -319,7 +319,7 @@ class WidgetBase(object):
 
     def _internal_on_mousewheel(self, mouse_id, x, y, internal_data=None):
         self._post_mouse_event_handling("mousewheel",
-            [mouse_id, x, y],
+            [mouse_id, float(x), float(y)],
             internal_data=internal_data)
 
     @property
@@ -366,10 +366,15 @@ class WidgetBase(object):
                     not hasattr(self, "get_mouse_pos"):
                 # Wheel with no parent window. bail out, that's useless
                 return
-            if hasattr(self, "get_mouse_pos"):
-                (x, y) = self.get_mouse_pos(event_args[0])
+            if internal_data != None:
+                # Mouse pos is provided in internal data:
+                x = internal_data[0]
+                y = internal_data[1]
             else:
-                (x, y) = self.parent_window.get_mouse_pos(event_args[0])
+                if hasattr(self, "get_mouse_pos"):
+                    (x, y) = self.get_mouse_pos(event_args[0])
+                else:
+                    (x, y) = self.parent_window.get_mouse_pos(event_args[0])
         elif event_name.startswith("touch"):
             mouse_id = -1
             x = event_args[0]
@@ -377,11 +382,19 @@ class WidgetBase(object):
         elif event_name.startswith("multitouch"):
             x = event_args[1]
             y = event_args[2]
+        if internal_data != None:
+            # Get absolute event coordinates if possible,
+            # to be independent of shifting around parents:
+            x = internal_data[0]
+            y = internal_data[1]
+        else:
+            x += self.abs_x
+            y += self.abs_y
 
         # Process starting point, hit point and overall
         # movement for touch gestures:
-        touch_hitpoint_check_x = x + self.abs_x
-        touch_hitpoint_check_y = y + self.abs_y
+        touch_hitpoint_check_x = x
+        touch_hitpoint_check_y = y
         treat_as_touch_start = False
         # Make sure all variables we're going to use exist:
         if not hasattr(self, "touch_start_x"):
@@ -391,30 +404,38 @@ class WidgetBase(object):
             self.touch_start_time = 0.0
             self.last_touch_x = None
             self.last_touch_y = None
+            self.touch_scrolling = False
         # Set touch start info:
         orig_touch_start_x = self.touch_start_x
         orig_touch_start_y = self.touch_start_y
+        diff_x = 0
+        diff_y = 0
         if event_name == "touchstart" or \
-                event_name.startswith("touch") and \
-                self.touch_start_x is None:
+                (event_name.startswith("touch") and \
+                self.touch_start_x is None):
             self.touch_max_ever_distance = 0.0
             self.touch_start_time = time.monotonic()
-            self.touch_start_x = x + self.abs_x
-            self.touch_start_y = y + self.abs_y
+            self.touch_start_x = x
+            self.touch_scrolling = False
+            self.touch_start_y = y
             orig_touch_start_x = self.touch_start_x
             orig_touch_start_y = self.touch_start_y
             self.last_touch_x = x
             self.last_touch_y = y
             treat_as_touch_start = True
+        elif event_name.startswith("touch"):
+            diff_x = (x - self.last_touch_x)
+            diff_y = (y - self.last_touch_y)
+            self.last_touch_x = x
+            self.last_touch_y = y
         # Update touch info during move & end events:
         if event_name == "touchmove" or \
                 event_name == "touchend":
             self.touch_max_ever_distance = max(
                 self.touch_max_ever_distance, float(
                 math.sqrt(math.pow(
-                x + self.abs_x - self.touch_start_x, 2) +
-                math.pow(y + self.abs_y
-                 - self.touch_start_y, 2))))
+                x - self.touch_start_x, 2) +
+                math.pow(y - self.touch_start_y, 2))))
             if self.touch_start_x != None:
                 touch_hitpoint_check_x = self.touch_start_x
                 touch_hitpoint_check_y = self.touch_start_y
@@ -422,21 +443,7 @@ class WidgetBase(object):
                 self.touch_start_x = None
                 self.touch_start_y = None
 
-        # Some final coordinates assembly:
-        coords_are_abs = False
-        if internal_data != None:
-            # Get absolute event coordinates if possible,
-            # to be independent of shifting around parents:
-            coords_are_abs = True
-            x = internal_data[0]
-            y = internal_data[1]
-            if event_name == "touchstart" or \
-                    (event_name.startswith("touch") and
-                    treat_as_touch_start):
-                self.touch_start_x = x
-                self.touch_start_y = y
-        assert(x != None)
-        assert(y != None)
+        # See what we want to use for the hit check for propagation:
         hit_check_x = x
         hit_check_y = y
         if event_name.startswith("touch"):
@@ -454,6 +461,7 @@ class WidgetBase(object):
                 orig_touch_start_y != None:
             if self.touch_max_ever_distance <\
                     40.0 * self.dpi_scale and \
+                    not self.touch_scrolling and \
                     self.touch_start_time + config.get(
                     "touch_longclick_time") > time.monotonic():
                 # Emulate a mouse click, but make sure it's not
@@ -486,10 +494,23 @@ class WidgetBase(object):
         # If our own widget doesn't handle touch, do the
         # fake scrolling here:
         if not self.has_native_touch_support and \
-                event_name == "touchend" and \
+                (event_name == "touchmove" or
+                event_name == "touchend") and \
                 orig_touch_start_x != None and \
                 orig_touch_start_y != None:
-            pass
+            if (abs(diff_x) >= 0.1 or abs(diff_y) >= 0.1) and (
+                    self.touch_scrolling or
+                    self.touch_max_ever_distance >
+                    40.0 * self.dpi_scale or \
+                    (self.touch_max_ever_distance >
+                    20.0 * self.dpi_scale and \
+                    self.touch_start_time + 0.7 > time.monotonic())):
+                self.touch_scrolling = True
+                scalar = 0.012
+                self.mousewheel(0,
+                    diff_x * scalar, diff_y * scalar,
+                    internal_data=[
+                    orig_touch_start_x, orig_touch_start_y])
 
         # See if we want to focus this widget:
         if event_name == "mousedown" or \
@@ -498,11 +519,8 @@ class WidgetBase(object):
                 treat_as_touch_start):
             event_descends_into_child = False
             for child in self.children:
-                rel_x = x
-                rel_y = y
-                if coords_are_abs:
-                    rel_x = x - self.abs_x
-                    rel_y = y - self.abs_y
+                rel_x = x - self.abs_x
+                rel_y = y - self.abs_y
                 if rel_x >= child.x and rel_y >= child.y and \
                         rel_x <= child.x + child.width and \
                         rel_y <= child.y + child.height and \
@@ -537,11 +555,8 @@ class WidgetBase(object):
                 # Either invalid child, or was already removed during
                 # processing of a previous child.
                 continue
-            rel_x = x
-            rel_y = y
-            if coords_are_abs:
-                rel_x = x - self.abs_x
-                rel_y = y - self.abs_y
+            rel_x = x - self.abs_x
+            rel_y = y - self.abs_y
             hit_check_rx = hit_check_x - self.abs_x
             hit_check_ry = hit_check_y - self.abs_y
             if not force_no_more_matches and \
@@ -628,7 +643,8 @@ class WidgetBase(object):
                             internal_data=internal_data):
                         return True
                 elif event_name == "mousewheel":
-                    if not child.mousewheel(mouse_id, wx,  wy,
+                    if not child.mousewheel(mouse_id, float(wx),
+                            float(wy),
                             internal_data=internal_data):
                         return True
                 else:

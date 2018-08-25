@@ -13,6 +13,7 @@ from wobblui.keyboard import internal_update_text_events,\
     clean_global_shortcuts
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
+from wobblui.uiconf import config
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
 
@@ -381,7 +382,8 @@ def _handle_event(event):
         if w.hidden:
             w.set_hidden(False)
         w.mousewheel(int(event.wheel.which),
-            float(x), float(y))
+            float(x) * config.get("mouse_wheel_speed_modifier"),
+            float(y) * config.get("mouse_wheel_speed_modifier"))
     elif event.type == sdl.SDL_MOUSEMOTION:
         sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):

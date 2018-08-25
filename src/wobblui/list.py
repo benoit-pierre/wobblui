@@ -403,7 +403,7 @@ class ListBase(Widget):
     def on_mousewheel(self, mouse_id, x, y):
         self.scroll_y_offset = max(0,
             self.scroll_y_offset -
-            round(y * 20.0 * self.dpi_scale))
+            y * 50.0 * self.dpi_scale)
         self.needs_redraw = True
 
     def on_mousemove(self, mouse_id, x, y):
@@ -446,9 +446,9 @@ class ListBase(Widget):
         entry_id = -1
         for entry in self._entries:
             entry_id += 1
-            if entry.y_offset < y + self.scroll_y_offset and \
+            if entry.y_offset < y + round(self.scroll_y_offset) and \
                     entry.y_offset + entry.height >\
-                    y + self.scroll_y_offset:
+                    y + round(self.scroll_y_offset):
                 return entry_id
         return -1
 
@@ -488,7 +488,7 @@ class ListBase(Widget):
                 entry.width = self.width - round(border_size * 2)
                 entry.y_offset = cy
                 entry.draw(self.renderer,
-                    cx, cy - self.scroll_y_offset,
+                    cx, cy - round(self.scroll_y_offset),
                     draw_selected=(
                     entry_id == self._selected_index and
                     entry_id != self._hover_index),
@@ -500,7 +500,7 @@ class ListBase(Widget):
 
             # Make sure scroll down offset is not too far:
             max_scroll_down = max(0, content_height - self.height)
-            if max_scroll_down < self.scroll_y_offset != 0:
+            if max_scroll_down < round(self.scroll_y_offset) != 0:
                 # Oops, scrolled down too far. Fix it and redraw:
                 self.scroll_y_offset = max_scroll_down
                 continue
