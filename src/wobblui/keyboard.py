@@ -102,14 +102,11 @@ def register_global_shortcut(shortcut, func, connected_widget):
             if len(p.strip()) > 0]
     shortcut_parts = set(sanitize_shortcut_keys(shortcut))
 
-    # Clean out other old shortcuts:
-    clean_global_shortcuts()
-
     # Add new shortcut:
     registered_shortcuts.append([
         shortcut_parts, func, connected_widget_ref])
 
-def clean_global_shortcuts(clean_noparent_widgets=False):
+def clean_global_shortcuts():
     global registered_shortcuts
 
     # Clean out shortcuts that go to widgets no longer existing,
@@ -119,6 +116,9 @@ def clean_global_shortcuts(clean_noparent_widgets=False):
         if shortcut[2] != None:
             w = shortcut[2]()
             if w is None:
+                continue
+            if hasattr(w, "parent_window") and w.type != "window" and \
+                    w.parent_window is None:
                 continue
         new_registered_shortcuts.append(shortcut)
     registered_shortcuts = new_registered_shortcuts

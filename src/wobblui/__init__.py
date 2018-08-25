@@ -9,7 +9,8 @@ import traceback
 from wobblui.keyboard import internal_update_text_events,\
     get_active_text_widget, get_modifiers, \
     internal_update_keystate_keydown, \
-    internal_update_keystate_keyup
+    internal_update_keystate_keyup, \
+    clean_global_shortcuts
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.window import all_windows, get_focused_window,\
@@ -153,10 +154,16 @@ def ev_type(event):
                 str(event.window.event)
     return "unknown-" + str(ev_no)
 
+_last_clean_shortcuts_ts = None
 def do_event_processing(ui_active=True):
+    global _last_clean_shortcuts_ts
     if threading.current_thread() != threading.main_thread():
         raise RuntimeError("UI events can't be processed " +
             "from another thread")
+    if _last_clean_shortcuts_ts is None:
+        _last_clean_shortcuts_ts = time.monotonic()
+    if _last_clean_shortcuts_ts + 1.0 < time.monotonic():
+        clean_global_shortcuts()
     events = []
     while True:
         ev = sdl.SDL_Event()

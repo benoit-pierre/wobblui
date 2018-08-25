@@ -347,13 +347,19 @@ class WidgetBase(object):
                         p.focus()
 
         # Pass on event to child widgets:
-        child_list = self.children
+        child_list = copy.copy(self.children)
         check_widget_overlap = False
         if hasattr(self, "get_children_in_strict_mouse_event_order"):
-            child_list = self.get_children_in_strict_mouse_event_order()
+            child_list = copy.copy(
+                self.get_children_in_strict_mouse_event_order())
             check_widget_overlap = True
         force_no_more_matches = False
         for child in child_list:
+            if child.parent != self or (child.type != "window" and
+                    child.parent_window is None):
+                # Either invalid child, or was already removed during
+                # processing of a previous child.
+                continue
             rel_x = x
             rel_y = y
             if coords_are_abs:
