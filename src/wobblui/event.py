@@ -1,6 +1,8 @@
 
 import sys
 
+DEBUG_EVENT=False
+
 class Event(object):
     def __init__(self, name, owner=None,
             special_pre_event_func=None,
@@ -39,7 +41,7 @@ class Event(object):
         self.funcs = new_funcs
 
     def native_widget_callback(self, *args,
-            internal_data=None):
+            internal_data=None, only_internal=False):
         if self.on_object != None and \
                 hasattr(self.on_object,
                 "_internal_on_" + str(self.name)):
@@ -49,7 +51,8 @@ class Event(object):
             if result is True:
                 return True
         if self.on_object != None and \
-                hasattr(self.on_object, "on_" + str(self.name)):
+                hasattr(self.on_object, "on_" + str(self.name)) and \
+                not only_internal:
             try:
                 result = getattr(self.on_object,
                     "on_" + str(self.name))(*args)
@@ -63,8 +66,9 @@ class Event(object):
         return False
 
     def __call__(self, *args, internal_data=None):
-        #print("EVENT TRIGGER: " + str(self.name) +
-        #    " ON " + str(self.on_object))
+        if DEBUG_EVENT:
+            print("EVENT TRIGGER: " + str(self.name) +
+                " ON " + str(self.on_object))
         if self._disabled:
             return True
         if self.special_pre_event_func != None:
@@ -88,11 +92,34 @@ class Event(object):
                 self.special_post_event_func()
         return True
 
-class DummyEvent(Event):
+class ForceDisabledDummyEvent(Event):
     def __init__(self, name, owner=None):
         super().__init__(name, owner=owner)
         self.disable()    
 
     def enable(self):
         return
+
+class InternalOnlyDummyEvent(Event):
+    def register(self, func):
+        raise TypeError("this type of event isn't supported " +
+            "by the event owner")
+
+    def __call__(self, *args, internal_data=None):
+        if DEBUG_EVENT:
+            print("EVENT TRIGGER: " + str(self.name) +
+                " ON " + str(self.on_object))
+        if self._disabled:
+            return True
+        if self.special_pre_event_func != None:
+            self.special_pre_event_func()
+        try:
+            if self.native_widget_callback(*args,
+                    internal_data=internal_data,
+                    only_internal=True):
+                return False
+        finally:
+            if self.special_post_event_func != None:
+                self.special_post_event_func()
+        return True
 

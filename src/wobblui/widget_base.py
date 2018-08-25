@@ -10,7 +10,8 @@ import traceback
 import weakref
 
 from wobblui.color import Color
-from wobblui.event import DummyEvent, Event
+from wobblui.event import Event, ForceDisabledDummyEvent,\
+    InternalOnlyDummyEvent
 from wobblui.gfx import draw_dashed_line
 from wobblui.keyboard import enable_text_events
 from wobblui.uiconf import config
@@ -20,7 +21,8 @@ from wobblui.widgetman import add_widget, all_widgets, \
 class WidgetBase(object):
     def __init__(self, is_container=False,
             can_get_focus=False,
-            takes_text_input=False):
+            takes_text_input=False,
+            has_native_touch_support=False):
         self.type = "unknown"
         self._focusable = can_get_focus
         self.needs_redraw = True
@@ -32,7 +34,9 @@ class WidgetBase(object):
         self.needs_relayout = True
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
-        self.last_mouse_click_with_time = dict()
+        self.last_mouse_click_with_time = dict()  # for double clicks
+        self.last_touch_was_inside = False
+        self.last_touch_was_pressed = False
         self._x = 0
         self._y = 0
         self._width = 64
@@ -133,6 +137,28 @@ class WidgetBase(object):
 
         self.parentchanged = Event("parentchanged", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
+        if has_native_touch_support:
+            self.has_native_touch_support = True
+            self.multitouchstart = Event("multitouchstart", owner=self)
+            self.multitouchmove = Event("multitouchmove", owner=self)
+            self.multitouchend = Event("multitouchend", owner=self)
+            self.touchstart = Event("touchstart", owner=self)
+            self.touchmove = Event("touchmove", owner=self)
+            self.touchend = Event("touchend", owner=self)
+        else:
+            self.multitouchstart = InternalOnlyDummyEvent(
+                "multitouchstart", owner=self)
+            self.multitouchmove = InternalOnlyDummyEvent(
+                "multitouchmove", owner=self)
+            self.multitouchend = InternalOnlyDummyEvent(
+                "multitouchend", owner=self)
+            self.touchstart = InternalOnlyDummyEvent(
+                "touchstart", owner=self)
+            self.touchmove = InternalOnlyDummyEvent(
+                "touchmove", owner=self)
+            self.touchend = InternalOnlyDummyEvent(
+                "touchend", owner=self)
+            self.has_native_touch_support = False
         self.mousemove = Event("mousemove", owner=self)
         self.mousedown = Event("mousedown", owner=self)
         self.mousewheel = Event("mousewheel", owner=self)
@@ -154,7 +180,7 @@ class WidgetBase(object):
             self.unfocus = Event("unfocus", owner=self,
                 allow_preventing_widget_callback_by_user_callbacks=False)
         else:
-            self.unfocus = DummyEvent("unfocus", owner=self)
+            self.unfocus = ForceDisabledDummyEvent("unfocus", owner=self)
         add_widget(self)
 
     def set_invisible(self, v):
@@ -242,6 +268,39 @@ class WidgetBase(object):
             self.parent.needs_relayout = True
             self.parent.needs_redraw = True
 
+    def _internal_on_multitouchstart(self, finger_id, x, y,
+            internal_data=None):
+        for child in children:
+            child.multitouchstart(finger_id, x, y,
+                internal_data=internal_data)
+
+    def _internal_on_multitouchmove(self, finger_id, x, y,
+            internal_data=None):
+        for child in children:
+            child.multitouchstart(finger_id, x, y,
+                internal_data=internal_data)
+
+    def _internal_on_multitouchend(self, finger_id, x, y,
+            internal_data=None):
+        for child in children:
+            child.multitouchstart(finger_id, x, y,
+                internal_data=internal_data)
+
+    def _internal_on_touchstart(self, x, y, internal_data=None):
+        self._post_mouse_event_handling("touchstart",
+            [x, y],
+            internal_data=internal_data)
+
+    def _internal_on_touchmove(self, x, y, internal_data=None):
+        self._post_mouse_event_handling("touchmove",
+            [x, y],
+            internal_data=internal_data)
+
+    def _internal_on_touchend(self, x, y, internal_data=None):
+        self._post_mouse_event_handling("touchend",
+            [x, y],
+            internal_data=internal_data)
+
     def _internal_on_mousedown(self, mouse_id, button, x, y,
             internal_data=None):
         self._post_mouse_event_handling("mousedown",
@@ -285,7 +344,9 @@ class WidgetBase(object):
             event_args, internal_data=None):
         # If we arrived here, the internal event wasn't prevented from
         # firing / propagate. Inform all children that are inside the
-        # mouse bounds:
+        # mouse bounds and propagate the event:
+
+        # First, extract relevant event parameters:
         wx = None
         wy = None
         x = None
@@ -309,21 +370,132 @@ class WidgetBase(object):
                 (x, y) = self.get_mouse_pos(event_args[0])
             else:
                 (x, y) = self.parent_window.get_mouse_pos(event_args[0])
+        elif event_name.startswith("touch"):
+            mouse_id = -1
+            x = event_args[0]
+            y = event_args[1]
+        elif event_name.startswith("multitouch"):
+            x = event_args[1]
+            y = event_args[2]
 
+        # Process starting point, hit point and overall
+        # movement for touch gestures:
+        touch_hitpoint_check_x = x + self.abs_x
+        touch_hitpoint_check_y = y + self.abs_y
+        treat_as_touch_start = False
+        # Make sure all variables we're going to use exist:
+        if not hasattr(self, "touch_start_x"):
+            self.touch_start_x = None
+            self.touch_start_y = None
+            self.touch_max_ever_distance = 0.0
+            self.touch_start_time = 0.0
+            self.last_touch_x = None
+            self.last_touch_y = None
+        # Set touch start info:
+        orig_touch_start_x = self.touch_start_x
+        orig_touch_start_y = self.touch_start_y
+        if event_name == "touchstart" or \
+                event_name.startswith("touch") and \
+                self.touch_start_x is None:
+            self.touch_max_ever_distance = 0.0
+            self.touch_start_time = time.monotonic()
+            self.touch_start_x = x + self.abs_x
+            self.touch_start_y = y + self.abs_y
+            orig_touch_start_x = self.touch_start_x
+            orig_touch_start_y = self.touch_start_y
+            self.last_touch_x = x
+            self.last_touch_y = y
+            treat_as_touch_start = True
+        # Update touch info during move & end events:
+        if event_name == "touchmove" or \
+                event_name == "touchend":
+            self.touch_max_ever_distance = max(
+                self.touch_max_ever_distance, float(
+                math.sqrt(math.pow(
+                x + self.abs_x - self.touch_start_x, 2) +
+                math.pow(y + self.abs_y
+                 - self.touch_start_y, 2))))
+            if self.touch_start_x != None:
+                touch_hitpoint_check_x = self.touch_start_x
+                touch_hitpoint_check_y = self.touch_start_y
+            if event_name == "touchend":
+                self.touch_start_x = None
+                self.touch_start_y = None
+
+        # Some final coordinates assembly:
         coords_are_abs = False
         if internal_data != None:
+            # Get absolute event coordinates if possible,
+            # to be independent of shifting around parents:
             coords_are_abs = True
             x = internal_data[0]
             y = internal_data[1]
-        inside_parent = False
-        if (coords_are_abs and x >= self.x and y >= self.y and
-                x < self.x + self.width and y < self.y + self.width) or \
-                (not coords_are_abs and x >= 0 and y >= 0 and
-                    x < self.width and y < self.width):
-            inside_parent = True
+            if event_name == "touchstart" or \
+                    (event_name.startswith("touch") and
+                    treat_as_touch_start):
+                self.touch_start_x = x
+                self.touch_start_y = y
+        assert(x != None)
+        assert(y != None)
+        hit_check_x = x
+        hit_check_y = y
+        if event_name.startswith("touch"):
+            hit_check_x = touch_hitpoint_check_x
+            hit_check_y = touch_hitpoint_check_y
+            if hit_check_x is None:  # fallback
+                hit_check_x = x
+                hit_check_y = y
+
+        # If our own widget doesn't handle touch, fire the
+        # fake clicks here:
+        if not self.has_native_touch_support and \
+                event_name == "touchend" and \
+                orig_touch_start_x != None and \
+                orig_touch_start_y != None:
+            if self.touch_max_ever_distance <\
+                    40.0 * self.dpi_scale and \
+                    self.touch_start_time + config.get(
+                    "touch_longclick_time") > time.monotonic():
+                # Emulate a mouse click, but make sure it's not
+                # propagated to children (since they would, if
+                # necessary, emulate their own mouse clicks as well
+                # from the already propagating touch event):
+                self._prevent_mouse_event_propagate = True
+                try:
+                    self.mousedown(0, 1,
+                        orig_touch_start_x - self.abs_x,
+                        orig_touch_start_y - self.abs_y,
+                        internal_data=[
+                            orig_touch_start_x,
+                            orig_touch_start_y])
+                    self.click(0, 1,
+                        orig_touch_start_x - self.abs_x,
+                        orig_touch_start_y - self.abs_y,
+                        internal_data=[
+                            orig_touch_start_x,
+                            orig_touch_start_y])
+                    self.mouseup(0, 1,
+                        orig_touch_start_x - self.abs_x,
+                        orig_touch_start_y - self.abs_y,
+                        internal_data=[
+                            orig_touch_start_x,
+                            orig_touch_start_y])
+                finally:
+                    self._prevent_mouse_event_propagate = False 
+
+        # If our own widget doesn't handle touch, do the
+        # fake scrolling here:
+        if not self.has_native_touch_support and \
+                event_name == "touchend" and \
+                orig_touch_start_x != None and \
+                orig_touch_start_y != None:
+            pass
 
         # See if we want to focus this widget:
-        if event_name == "mousedown":
+        if event_name == "mousedown" or \
+                event_name == "touchstart" or \
+                (event_name.startswith("touch") and
+                treat_as_touch_start):
             event_descends_into_child = False
             for child in self.children:
                 rel_x = x
@@ -332,8 +504,10 @@ class WidgetBase(object):
                     rel_x = x - self.abs_x
                     rel_y = y - self.abs_y
                 if rel_x >= child.x and rel_y >= child.y and \
-                        rel_x < child.x + child.width and \
-                        rel_y < child.y + child.height:
+                        rel_x <= child.x + child.width and \
+                        rel_y <= child.y + child.height and \
+                        child.focusable and \
+                        not child.effectively_inactive:
                     event_descends_into_child = True
                     break
             if not event_descends_into_child:
@@ -347,6 +521,9 @@ class WidgetBase(object):
                         p.focus()
 
         # Pass on event to child widgets:
+        if hasattr(self, "_prevent_mouse_event_propagate") and \
+                self._prevent_mouse_event_propagate is True:
+            return
         child_list = copy.copy(self.children)
         check_widget_overlap = False
         if hasattr(self, "get_children_in_strict_mouse_event_order"):
@@ -365,21 +542,52 @@ class WidgetBase(object):
             if coords_are_abs:
                 rel_x = x - self.abs_x
                 rel_y = y - self.abs_y
+            hit_check_rx = hit_check_x - self.abs_x
+            hit_check_ry = hit_check_y - self.abs_y
             if not force_no_more_matches and \
-                    rel_x >= child.x and rel_y >= child.y and \
-                    rel_x < child.x + child.width and \
-                    rel_y < child.y + child.height and \
+                    hit_check_rx >= child.x and \
+                    hit_check_ry >= child.y and \
+                    hit_check_rx < child.x + child.width and \
+                    hit_check_ry < child.y + child.height and \
                     not child.effectively_invisible and \
                     (not child.effectively_inactive or\
-                    event_name != "mousedown"):
+                    (event_name != "mousedown" and
+                    event_name != "touchstart" and
+                    event_name != "multitouchstart")):
                 # If we're in strict ordered mouse event mode, this
                 # widget will be treated as obscuring the next ones:
                 if check_widget_overlap:
                     force_no_more_matches = True
+
+                # --- Touch events ---
+                if event_name == "touchmove":
+                    child.last_touch_was_inside = True
+                    if not child.touchmove(
+                            rel_x - child.x, rel_y - child.y,
+                            internal_data=internal_data):
+                        return True
+                    continue
+                elif event_name == "touchstart":
+                    child.last_touch_was_pressed = True
+                    if not child.touchstart(
+                            rel_x - child.x, rel_y - child.y,
+                            internal_data=internal_data):
+                        return True
+                    continue
+                elif event_name == "touchend":
+                    child.last_touch_was_inside = False
+                    child.last_touch_was_pressed = False
+                    if not child.touchend(
+                            rel_x - child.x, rel_y - child.y,
+                            internal_data=internal_data):
+                        return True
+                    continue
+
+                # --- Only mouse events from here ---
                 # Track some side effects, to make sure e.g. mouse move
                 # events get followed up by one last outside-of-widget
                 # event when mouse leaves, or that mouse down changes
-                # the keyboard focus:
+                # the keyboard focus, or double-click:
                 if event_name == "mousemove":
                     child.last_mouse_move_was_inside = True
                 elif event_name == "mousedown":
@@ -388,7 +596,6 @@ class WidgetBase(object):
                 elif event_name == "mouseup" and \
                         (event_args[0], event_args[1]) in \
                         child.last_mouse_down_presses:
-                    # Special click event:
                     child.last_mouse_down_presses.discard(
                         (event_args[0], event_args[1]))
 
@@ -431,7 +638,18 @@ class WidgetBase(object):
                             internal_data=internal_data):
                         return True
             else:
-                if child.last_mouse_move_was_inside:
+                if event_name.startswith("touch") and \
+                        child.last_touch_was_inside:
+                    child.last_touch_was_inside = False
+                    if child.last_touch_was_pressed:
+                        if force_no_more_matches:
+                            child.touchmove(-5, -5)
+                        else:
+                            child.touchmove(
+                                rel_x - child.x, rel_y - child.y,
+                                internal_data=internal_data)
+                if event_name.startswith("mouse") and \
+                        child.last_mouse_move_was_inside:
                     child.last_mouse_move_was_inside = False
                     if force_no_more_matches:
                         # Need to use true outside fake coordinates
@@ -447,6 +665,12 @@ class WidgetBase(object):
                     child.last_mouse_down_presses.discard(
                         (event_args[0], event_args[1]))
                     child.mouseup(mouse_id, event_args[1],
+                        rel_x - child.x, rel_y - child.y,
+                        internal_data=internal_data)
+                elif event_name == "touchend" and \
+                        child.last_touch_was_pressed:
+                    child.last_touch_was_pressed = False
+                    child.touchend(
                         rel_x - child.x, rel_y - child.y,
                         internal_data=internal_data)
         # Done!

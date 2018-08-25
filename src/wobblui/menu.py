@@ -1,4 +1,5 @@
 
+import time
 import weakref
 
 from wobblui.color import Color
@@ -7,6 +8,8 @@ from wobblui.gfx import draw_rectangle
 from wobblui.keyboard import register_global_shortcut,\
     shortcut_to_text
 from wobblui.list import ListBase, ListEntry
+from wobblui.timer import schedule
+from wobblui.widget import Widget
 
 class MenuSeparator(ListEntry):
     def __init__(self, style, is_alternating=False):
@@ -107,3 +110,113 @@ class Menu(ListBase):
             self.focus_next()
             return True
         return super().on_keydown(virtual_key, physical_key, modifiers)
+
+class ContainerWithSlidingMenu(Widget):
+    def __init__(self):
+        super().__init__(can_get_focus=False,
+            is_container=True)
+        self.menu = Menu()
+        self.menu_slid_out_x = 0
+        self.is_opened = False
+        self.slide_animation_target = None
+        self.animation_callback_scheduled = False
+        self.needs_relayout = True
+        self.needs_redraw = True
+
+    def open_menu(self):
+        self.slide_animation_target = "open"
+
+    def close_menu(self):
+        self.slide_animation_target = "closed"
+
+    def schedule_animation(self):
+        if not self.animation_callback_scheduled:
+            self.animation_callback_scheduled = True
+            self_ref = weakref.ref(self)
+            start_ts = time.monotonic()
+            def anim_do():
+                self_value = self_ref()
+                if self_value is None:
+                    return
+                self_value.animation_callback_scheduled = False
+                self_value.animate(max(0.01, time.monotonic() - start_ts))
+            schedule(anim_do, 50)
+
+    def animate(self, passed_time):
+        if self.slide_animation_target is None:
+            return
+        target_x = None
+        if self.slide_animation_target == "open":
+            target_x = self.menu.width
+        elif self.slide_animation_target == "closed":
+            target_x = 0
+        else:
+            print('warning: unknown slide animation target: ' +
+                str(self.slide_animation_target), file=sys.stderr,
+                flush=True)
+            self.slide_animation_target = None
+            return
+        move = passed_time * 10.0
+        done = False
+        if target_x > self.menu_slid_out_x:
+            self.menu_slid_out_x += move
+            if self.menu_slid_out_x > target_x:
+                self.menu_slid_out_x = target_x
+                done = True
+        elif target_x < self.menu_slid_out_x:
+            self.menu_slid_out_x -= move
+            if self.menu_slid_out_x < target_x:
+                self.menu_slid_out_x = target_x
+                done = True
+        if done:
+            if self.slide_animation_target == "open":
+                self.is_opened = True
+            else:
+                self.is_opened = False
+            self.slide_animation_target = None
+        else:
+            self.schedule_animation()
+        self.needs_relayout = True
+        self.needs_redraw = True
+
+    def on_redraw(self):
+        self.draw_children()
+
+    def on_relayout(self):
+        self.menu.width = min(self.menu.get_natural_width(),
+            self.width)
+        self.menu.height = self.height
+        if not self.is_opened:
+            self.menu.x = min(0, round(-(self.menu.width + self.menu_slid_out_x)))
+        else:
+            self.menu_x = 0
+        self.menu.y = 0
+        if len(self._children) >= 1:
+            self._children[0].x = 0
+            self._children[0].y = 0
+            self._children[0].width = self.width
+            self._children[0].height = self.height
+
+    def add(self, obj_or_text, func_callback=None,
+            global_shortcut_func=None,
+            global_shortcut=[]):
+        if not isinstance(obj_or_text, str) and \
+                func_callback != None or \
+                len(global_shortcut) > 0:
+            raise ValueError("the provided value is not a string " +
+                "and therefore can't be added as menu entry, " +
+                "but function callback and/or global shortcut " +
+                "for a menu entry were specified") 
+        if not isinstance(obj_or_text, str):
+            if len(self._children) >= 1:
+                raise ValueError("only one layout child is supported")
+            super().add(obj_or_text)
+        else:
+            self.menu.add(obj_or_text, func_callback=func_callback,
+                global_shortcut_func=global_shortcut_func,
+                global_shortcut=global_shortcut)
+        self.needs_relayout = True
+        self.needs_redraw = True
+
+    
+

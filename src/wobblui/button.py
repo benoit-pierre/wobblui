@@ -6,7 +6,7 @@ import PIL.Image
 import sdl2 as sdl
 
 from wobblui.color import Color
-from wobblui.event import DummyEvent, Event
+from wobblui.event import ForceDisabledDummyEvent, Event
 from wobblui.gfx import draw_rectangle
 from wobblui.image import image_to_sdl_surface, stock_image
 from wobblui.richtext import RichText
@@ -20,7 +20,8 @@ class Button(Widget):
         if clickable:
             self.triggered = Event("triggered", owner=self)
         else:
-            self.triggered = DummyEvent("triggered", owner=self)
+            self.triggered = ForceDisabledDummyEvent(
+                "triggered", owner=self)
         self.with_border = (with_border is True)
         self.image_placement = image_placement
         self.image_color = Color.white

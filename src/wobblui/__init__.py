@@ -283,9 +283,12 @@ def loading_screen_fix():
         autoclass('org.kivy.android.PythonActivity').\
             mActivity.removeLoadingScreen()
 
+_debug_mouse_fakes_touch = False
+touch_pressed = False
 mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
-    global mouse_ids_button_ids_pressed
+    global mouse_ids_button_ids_pressed, touch_pressed, \
+        _debug_mouse_fakes_touch
     if event.type == sdl.SDL_QUIT:
         window = get_focused_window()
         if window != None and w.focused:
@@ -301,39 +304,57 @@ def _handle_event(event):
         sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.button.which == sdl_touch_mouseid:
-            # We handle this separately.
-            return
         w = get_window_by_sdl_id(event.button.windowID)
         if w is None or w.is_closed:
             return
         if w.hidden:
             w.set_hidden(False)
-        capture_enabled = (len(mouse_ids_button_ids_pressed) > 0)
+        capture_enabled = (len(mouse_ids_button_ids_pressed) > 0 or
+            touch_pressed)
         if event.type == sdl.SDL_MOUSEBUTTONDOWN:
-            mouse_ids_button_ids_pressed.add(
-                (int(event.button.which),
-                int(event.button.button)))
-            w.mousedown(int(event.button.which),
-                int(event.button.button),
-                float(event.button.x), float(event.button.y))
+            if event.button.which == sdl_touch_mouseid or \
+                    _debug_mouse_fakes_touch:
+                touch_pressed = True
+                w.touchstart(
+                    float(event.button.x), float(event.button.y))
+            else:
+                mouse_ids_button_ids_pressed.add(
+                    (int(event.button.which),
+                    int(event.button.button)))
+                w.mousedown(int(event.button.which),
+                    int(event.button.button),
+                    float(event.button.x), float(event.button.y),
+                    internal_data=[float(event.button.x),
+                    float(event.button.y)])
             if not capture_enabled:
                 sdl.SDL_CaptureMouse(sdl.SDL_TRUE)
         else:
-            w.mouseup(int(event.button.which),
-                int(event.button.button),
-                float(event.button.x), float(event.button.y))
-            mouse_ids_button_ids_pressed.discard(
-                (int(event.button.which),
-                int(event.button.button)))
+            if event.button.which == sdl_touch_mouseid or \
+                    _debug_mouse_fakes_touch:
+                touch_pressed = False
+                w.touchend(
+                    float(event.button.x), float(event.button.y),
+                    internal_data=[float(event.button.x),
+                    float(event.button.y)])
+            else:
+                w.mouseup(int(event.button.which),
+                    int(event.button.button),
+                    float(event.button.x), float(event.button.y),
+                    internal_data=[float(event.button.x),
+                    float(event.button.y)])
+                mouse_ids_button_ids_pressed.discard(
+                    (int(event.button.which),
+                    int(event.button.button)))
             if capture_enabled and \
-                    len(mouse_ids_button_ids_pressed) == 0:
+                    (len(mouse_ids_button_ids_pressed) == 0 and
+                    touch_pressed):
                 sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
     elif event.type == sdl.SDL_MOUSEWHEEL:
         sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.wheel.which == sdl_touch_mouseid:
+        if event.wheel.which == sdl_touch_mouseid or \
+                _debug_mouse_fakes_touch:
             # We handle this separately.
             return
         x = int(event.wheel.x)
@@ -352,16 +373,23 @@ def _handle_event(event):
         sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.motion.which == sdl_touch_mouseid:
-            # We handle this separately.
-            return
         w = get_window_by_sdl_id(event.motion.windowID)
         if w is None or w.is_closed:
             return
         if w.hidden:
             w.set_hidden(False)
-        w.mousemove(int(event.motion.which),
-            float(event.motion.x), float(event.motion.y))
+        if event.motion.which == sdl_touch_mouseid or \
+                _debug_mouse_fakes_touch:
+            if touch_pressed:
+                w.touchmove(float(event.motion.x),
+                    float(event.motion.y),
+                    internal_data=[float(event.motion.x),
+                        float(event.motion.y)])
+        else:
+            w.mousemove(int(event.motion.which),
+                float(event.motion.x), float(event.motion.y),
+                internal_data=[float(event.motion.x),
+                    float(event.motion.y)])
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
         widget = get_active_text_widget()
