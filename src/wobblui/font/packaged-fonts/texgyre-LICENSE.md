@@ -10,6 +10,24 @@ Apart from `otf->ttf` conversion, they are unaltered.
 *License*:
 
 ```
+TeX Gyre Adventor
+Authors: Bogus\l{}aw Jackowski, Janusz M. Nowacki, Piotr Pianowski, and Piotr Strzelczyk
+Copyright 2007--2018 for TeX Gyre extensions by B. Jackowski,
+J.M. Nowacki et al. (on behalf of TeX Users Groups). Vietnamese
+characters were added by Han The Thanh.
+
+TeX Gyre Heros
+Authors: Bogus\l{}aw Jackowski and Janusz M. Nowacki
+Copyright 2007--2009 for TeX Gyre extensions by B. Jackowski
+and J.M. Nowacki (on behalf of TeX Users Groups). Vietnamese
+characters were added by Han The Thanh.
+
+TeX Gyre Pagella
+Authors: Bogus\l{}aw Jackowski, Janusz M. Nowacki, Piotr Pianowski, and Piotr Strzelczyk
+Copyright 2007--2018 for TeX Gyre extensions by B. Jackowski,
+J.M. Nowacki et al. (on behalf of TeX Users Groups). Vietnamese
+characters were added by Han The Thanh.
+
 % This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %

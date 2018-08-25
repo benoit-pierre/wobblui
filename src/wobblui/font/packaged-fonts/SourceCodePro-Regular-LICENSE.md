@@ -9,7 +9,10 @@ The SourceCodePro-* fonts in this directory are fonts provided by Adobe.
 *License*:
 
 ```
-Copyright 2010, 2012 Adobe Systems Incorporated (http://www.adobe.com/), with Reserved Font Name 'Source'. All Rights Reserved. Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries.
+Copyright 2010, 2012 Adobe Systems Incorporated (http://www.adobe.com/),
+with Reserved Font Name 'Source'. All Rights Reserved.
+Source is a trademark of Adobe Systems Incorporated in the United States
+and/or other countries.
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 
 
