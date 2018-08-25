@@ -10,8 +10,9 @@ function, if you decide to implement one)
 Basic drawing
 -------------
 
-As soon as an `on_redraw()` is implemented, your widget will already
-work! In `on_redraw`, access `self.width` and `self.height` to get
+As soon as an `on_redraw()` is implemented on your widget class,
+your widget will already show up!
+In `on_redraw`, access `self.width` and `self.height` to get
 the canvas size, and then use `wobblui.gfx` functions to draw your
 widget in the given dimensions. Then, if you use `.add()` to add
 your widget to a window or layout container, it should already
@@ -33,7 +34,7 @@ To handle any keyboard input, you need to implement an
 As soon as that is done, just implement `on_keydown` to
 get key events when your widget is in focus.
 
-Proper Natural Size
+Proper natural size
 --------------------
 
 To make your widget resize to any desired default size,
@@ -41,7 +42,7 @@ implement `get_natural_width()` and `get_natural_height()`.
 However, you need to follow the layout rules in the section
 `Layout Rules` below, or things will break!
 
-Layout Rules
+Layout rules
 ------------
 
 Any custom widget must follow these rules to not cause feedback loops or
