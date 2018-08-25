@@ -7,21 +7,34 @@ To implement a custom widget, write a custom class derived from
 (Don't forget to call `super().__init__` in your `__init__`
 function, if you decide to implement one)
 
-As soon as an `on_redraw()` is implemented accessing `self.width`
-and `self.height` for the canvas (use `wobblui.gfx` functions for
-drawing), your widget will already display and work in layouts
-correctly! Just `.add()` your widget to any layout container
-and it should work fine.
+Basic drawing
+-------------
+
+As soon as an `on_redraw()` is implemented, your widget will already
+work! In `on_redraw`, access `self.width` and `self.height` to get
+the canvas size, and then use `wobblui.gfx` functions to draw your
+widget in the given dimensions. Then, if you use `.add()` to add
+your widget to a window or layout container, it should already
+display nicely!
+
+Mouse handling
+--------------
 
 To handle any mouse input, implement/override the according
 event functions like `on_mousedown`, `on_mousemove`, ... on
 your widget class.
+
+Keyboard input
+--------------
 
 To handle any keyboard input, you need to implement an
 `__init__` function that passes `can_get_focus=True` to
 `super().__init__` to enable keyboard focus for your widget.
 As soon as that is done, just implement `on_keydown` to
 get key events when your widget is in focus.
+
+Proper Natural Size
+--------------------
 
 To make your widget resize to any desired default size,
 implement `get_natural_width()` and `get_natural_height()`.
@@ -42,7 +55,7 @@ timer event or similar may cause a change in natural size). Most importantly,
 the `relayout()` event being triggered multiple times with no other events
 other than `redraw()` in between must not result in a different natural size.
 
-**2. Lowest natural height with no width restriction**
+**2. Given no width restriction, natural height must be at its lowest**
 
 A call to `get_natural_height(given_width=None)` must return an equal or
 smaller value than `get_natural_height(given_width=v)` with `v` being
