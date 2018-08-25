@@ -298,11 +298,10 @@ def _handle_event(event):
         return
     elif event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
-        sdl_touch_mouseid = -1
+        sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.button.which == sdl_touch_mouseid or \
-                event.button.which == 4294967295:
+        if event.button.which == sdl_touch_mouseid:
             # We handle this separately.
             return
         w = get_window_by_sdl_id(event.button.windowID)
@@ -331,11 +330,10 @@ def _handle_event(event):
                     len(mouse_ids_button_ids_pressed) == 0:
                 sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
     elif event.type == sdl.SDL_MOUSEWHEEL:
-        sdl_touch_mouseid = -1
+        sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.wheel.which == sdl_touch_mouseid or \
-                event.wheel.which == 4294967295:
+        if event.wheel.which == sdl_touch_mouseid:
             # We handle this separately.
             return
         x = int(event.wheel.x)
@@ -351,11 +349,10 @@ def _handle_event(event):
         w.mousewheel(int(event.wheel.which),
             float(x), float(y))
     elif event.type == sdl.SDL_MOUSEMOTION:
-        sdl_touch_mouseid = -1
+        sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.motion.which == sdl_touch_mouseid or \
-                event.motion.which == 4294967295:
+        if event.motion.which == sdl_touch_mouseid:
             # We handle this separately.
             return
         w = get_window_by_sdl_id(event.motion.windowID)
