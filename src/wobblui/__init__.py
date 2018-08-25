@@ -301,7 +301,8 @@ def _handle_event(event):
         sdl_touch_mouseid = -1
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.button.which == sdl_touch_mouseid:
+        if event.button.which == sdl_touch_mouseid or \
+                event.button.which == 4294967295:
             # We handle this separately.
             return
         w = get_window_by_sdl_id(event.button.windowID)
@@ -333,7 +334,8 @@ def _handle_event(event):
         sdl_touch_mouseid = -1
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.wheel.which == sdl_touch_mouseid:
+        if event.wheel.which == sdl_touch_mouseid or \
+                event.wheel.which == 4294967295:
             # We handle this separately.
             return
         x = int(event.wheel.x)
@@ -352,7 +354,8 @@ def _handle_event(event):
         sdl_touch_mouseid = -1
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
             sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        if event.motion.which == sdl_touch_mouseid:
+        if event.motion.which == sdl_touch_mouseid or \
+                event.motion.which == 4294967295:
             # We handle this separately.
             return
         w = get_window_by_sdl_id(event.motion.windowID)
