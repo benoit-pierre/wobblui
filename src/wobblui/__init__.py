@@ -258,6 +258,17 @@ def _process_key_event(event, trigger_shortcuts=True):
             physical_key)
         w.keyup(virtual_key, physical_key, modifiers)
 
+def loading_screen_fix():
+    if sdl.SDL_GetPlatform().decode(
+            "utf-8", "replace").lower() == "android":
+        # Hide python-for-android loading screen:
+        try:
+            from jnius import autoclass
+        except ImportError:
+            return
+        autoclass('org.kivy.android.PythonActivity').\
+            mActivity.removeLoadingScreen()
+
 mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
     global mouse_ids_button_ids_pressed
@@ -348,6 +359,7 @@ def _handle_event(event):
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
                 sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
+            loading_screen_fix()
             w = get_window_by_sdl_id(event.window.windowID)
             if w != None and not w.focused and not w.is_closed:
                 w.focus()
@@ -391,6 +403,7 @@ def _handle_event(event):
                 sdl.SDL_WINDOWEVENT_EXPOSED or
                 event.window.event ==
                 sdl.SDL_WINDOWEVENT_MAXIMIZED):
+            loading_screen_fix()
             w = get_window_by_sdl_id(event.window.windowID)
             if w != None and w.hidden and not w.is_closed:
                 w.set_hidden(False)
@@ -411,5 +424,7 @@ def _handle_event(event):
             w = w_ref()
             if w != None and not w.is_closed:
                 w.internal_app_reopen()
+    elif (event.type == sdl.SDL_APP_DIDENTERFOREGROUND):
+        loading_screen_fix()
     return True
 

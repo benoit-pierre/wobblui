@@ -3,9 +3,28 @@ import copy
 import html
 from html.parser import unescape
 import re
-import wordinfo
 
 from stringhelpers import quote_string_lit
+
+def is_punctuation(c):
+    if (c in set([
+            ",", ".", "!", "?", ";", ":",
+            "-", "–", #endash,
+            "—", #emdash,
+            "‘", "’", "”", "“", "\"", "'",
+            "(", ")", "[", "]", "~",
+            "*", "#", "%", "^", "=",
+            "{", "}", "+", "$", "&",
+            "<", ">", "/", "\\", "@"])):
+        return True
+    if ord(c) <= 127:
+        return False
+    return None
+
+def is_whitespace(c):
+    return c in set([
+        " ", "\n", "\t", "\r"])
+
 
 class TextNode(object):
     def __init__(self, text):
@@ -333,7 +352,7 @@ def linkify_html(html_text, linkify_with_blank_target=True):
                     k += len("://")
                     continue
                 elif text[k] != "%" and \
-                        wordinfo.is_punctuation(text[k]) and \
+                        is_punctuation(text[k]) and \
                         text[k] != "." and text[k] != "/" and \
                         text[k] != "-":
                     if not had_dot:
@@ -356,22 +375,22 @@ def linkify_html(html_text, linkify_with_blank_target=True):
                             return k
                         else:
                             return None
-                elif wordinfo.is_whitespace(text[k]):
+                elif is_whitespace(text[k]):
                     if not confirmed_url:
                         return None
                     if bracket_nesting != None and \
                             text[k] == " " and \
-                            not wordinfo.is_punctuation(text[k - 1]):
+                            not is_punctuation(text[k - 1]):
                         k += 1
                         continue
                     if bracket_nesting != None:
-                        if k > 0 and wordinfo.is_punctuation(text[k - 1]):
+                        if k > 0 and is_punctuation(text[k - 1]):
                             k -= 1
                     return k
                 elif text[k] == "." and bracket_nesting is None:
                     if k == 0 or k == len(text) - 1 or \
-                            wordinfo.is_whitespace(text[k + 1]) or \
-                            wordinfo.is_punctuation(text[k + 1]):
+                            is_whitespace(text[k + 1]) or \
+                            is_punctuation(text[k + 1]):
                         if confirmed_url:
                             return k
                         return None
@@ -384,8 +403,8 @@ def linkify_html(html_text, linkify_with_blank_target=True):
                             if len(text) == k + 1 + len(common_ending):
                                 return len(text)
                             c = text[k + 1 + len(common_ending)]
-                            if wordinfo.is_whitespace(c) or \
-                                    wordinfo.is_punctuation(c) or \
+                            if is_whitespace(c) or \
+                                    is_punctuation(c) or \
                                     c == "/":
                                 if c != "/":
                                     return (k + 1 + len(common_ending))
