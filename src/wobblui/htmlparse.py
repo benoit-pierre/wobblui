@@ -4,8 +4,6 @@ import html
 from html.parser import unescape
 import re
 
-from stringhelpers import quote_string_lit
-
 def is_punctuation(c):
     if (c in set([
             ",", ".", "!", "?", ";", ":",
@@ -43,7 +41,7 @@ class TextNode(object):
         inner = self.content
         if len(inner) > 200:
             inner = inner[:100] + "..." + inner[-90:]
-        return quote_string_lit(inner)
+        return "'" + inner.replace("'", "'\"'\"'") + "'"
 
 class HTMLElement(object):
     def __init__(self, html, attributes):
@@ -115,7 +113,7 @@ class HTMLElement(object):
         inner = self.serialize(prettify=False)
         if len(inner) > 200:
             inner = inner[:100] + "..." + inner[-90:]
-        return quote_string_lit(inner)
+        return "'" + inner.replace("'", "'\"'\"'") + "'"
 
 def parse_tag(html):
     is_self_closing = False
