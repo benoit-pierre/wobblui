@@ -105,6 +105,12 @@ def event_loop(app_cleanup_callback=None, debug=False):
             if result == "appquit":
                 if app_cleanup_callback != None:
                     app_cleanup_callback()
+                # Get __del__ processed on as many things as possible
+                # to allow them to wrap up things cleanly:
+                import gc; gc.collect()
+                time.sleep(0.05)
+                gc.collect()
+                time.sleep(0.05)
                 sys.exit(0)
                 return
             if result is True:
@@ -118,9 +124,16 @@ def event_loop(app_cleanup_callback=None, debug=False):
                     event_loop_ms = min(
                         event_loop_ms + 1,
                         500)
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as e:
         app_cleanup_callback()
-        return
+
+        # Get __del__ processed on as many things as possible
+        # to allow them to wrap up things cleanly:
+        import gc; gc.collect()
+        time.sleep(0.05)
+        gc.collect()
+        time.sleep(0.05)
+        raise e
 
 def sdl_event_name(event):
     ev_no = event.type
