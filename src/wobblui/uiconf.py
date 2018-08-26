@@ -16,6 +16,8 @@ class Conf(object):
             return False
         if value == "debug_source_events":
             return False
+        if value == "debug_file_dialog":
+            return False
         if value == "doubleclick_time":
             return 0.4
         if value == "mouse_wheel_speed_modifier":

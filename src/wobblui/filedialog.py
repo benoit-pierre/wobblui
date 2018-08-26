@@ -12,6 +12,7 @@ from wobblui.image import stock_image
 from wobblui.label import Label
 from wobblui.list import List
 from wobblui.topbar import Topbar
+from wobblui.uiconf import config
 from wobblui.widget import Widget
 
 class FileOrDirChooserDialog(Widget):
@@ -19,6 +20,11 @@ class FileOrDirChooserDialog(Widget):
             cancel_text="Cancel",
             choose_nonexisting=False, outer_padding=15.0,
             start_directory=None, file_filter="*"):
+        self.debug = (config.get("debug_file_dialog") is True)
+        if self.debug:
+            print("wobblui.filedialog " + str(id(self)) + ": " +
+                "dialog initializing " +
+                "with start_directory=" + str(start_directory))
         self.choose_dir = choose_dir
         self.window_to_add = window
         self.show_hidden = False
@@ -27,9 +33,6 @@ class FileOrDirChooserDialog(Widget):
             can_get_focus=False)
         self.outer_padding = outer_padding
         self.start_directory = start_directory
-        if start_directory == None:
-            start_directory = self.suggest_start_dir()
-        self.current_path = start_directory
         self.listing_data = None
         self.file_filter = file_filter
         topbar = Topbar()
@@ -82,7 +85,9 @@ class FileOrDirChooserDialog(Widget):
 
     def select_item(self):
         item_index = self.contents_list.selected_index
-        if self.listing_data is None or item_index < 0 or \
+        if self.listing_data is None or \
+                self.list_data == "error" or \
+                item_index < 0 or \
                 item_index >= len(self.listing_data):
             return
         info = self.listing_data[item_index]
@@ -100,11 +105,22 @@ class FileOrDirChooserDialog(Widget):
             self.run_callback(result)
 
     def run(self, done_callback):
+        if self.debug:
+            print("wobblui.filedialog " + str(id(self)) +
+                ": run() called")
         def filter_func(widget):
             if not widget.has_as_parent(self) and \
                     widget != self:
                 return False
             return True
+        start_directory = self.start_directory
+        if start_directory == None:
+            start_directory = self.suggest_start_dir()
+        self.current_path = start_directory
+        if self.debug:
+            print("wobblui.filedialog " + str(id(self)) + ": " +
+                "dialog start path is now: " +
+                str(self.current_path))
         self.window_to_add.add(self)
         self.active = True
         self.width = self.parent_window.width
@@ -121,25 +137,49 @@ class FileOrDirChooserDialog(Widget):
         raise TypeError("cannot add widgets to file dialog")
 
     def refresh(self):
+        if self.debug:
+            print("wobblui.filedialog " + str(id(self)) + ": " +
+                "refreshing dialog with path: " +
+                str(self.current_path))
         try:
-            new_listing_data = [(f, os.path.isdir(os.path.join(
-                self.current_path, f))) for f in \
+            new_listing_data = [[f, None] for f in \
                 os.listdir(self.current_path)]
-        except (OSError, PermissionError):
-            new_listing_data = None
+            for item in new_listing_data:
+                try:
+                    item[1] = os.path.isdir(os.path.join(
+                        self.current_path, item[0]))
+                except (OSError, PermissionError) as e:
+                    if self.debug:
+                        print("wobblui.filedialog " +
+                            str(id(self)) + ": " +
+                            "error getting isdir for '" +
+                            str(f) + "': " + str(e))
+            if self.debug:
+                print("wobblui.filedialog " + str(id(self)) + ": " +
+                    "listing obtained is: " +
+                    str(new_listing_data))
+        except (OSError, PermissionError) as e:
+            if self.debug:
+                print("wobblui.filedialog " + str(id(self)) + ": " +
+                    "failed to obtain listing: " +
+                    str(e))
+            new_listing_data = "error"
         if new_listing_data != self.listing_data:
+            if self.debug:
+                print("wobblui.filedialog " + str(id(self)) + ": " +
+                    "rebuilding list contents")
             self.contents_list.clear()
             self.listing_data = new_listing_data
-            if self.listing_data is None:
+            if self.listing_data == "error":
                 self.contents_list.add_html("<b>Failed to access " +
                     "this folder.</b>")
             elif len(self.listing_data) == 0:
                 self.contents_list.add_html("<i>(Empty)</i>")
             else:
                 def sort_items(a, b):
-                    if a[1] and not b[1]:
+                    if a[1] == True and b[1] != True:
                         return -1
-                    elif not a[1] and b[1]:
+                    elif a[1] != True and b[1] == True:
                         return 1
                     if (a[0].lower() > b[0].lower()):
                         return 1
