@@ -38,7 +38,8 @@ class FileOrDirChooserDialog(Widget):
         vbox = VBox()
         nav_hbox = HBox()
         self.location_label = Label("")
-        nav_hbox.add(self.location_label, expand=True)
+        nav_hbox.add(self.location_label, expand=True,
+            shrink=True)
         self.up_button = Button("To Parent Folder...")
         self.up_button.set_image(stock_image("outandup"),
             scale_to_width=25.0)
