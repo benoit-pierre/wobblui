@@ -34,11 +34,16 @@ class Event(object):
         self.funcs = list()
 
     def unregister(self, func):
+        found = False
         new_funcs = []
         for f in self.funcs:
             if f != func:
                 new_funcs.append(f)
+            else:
+                found = True
         self.funcs = new_funcs
+        if not found:
+            raise ValueError("function was not registered")
 
     def native_widget_callback(self, *args,
             internal_data=None, only_internal=False):
