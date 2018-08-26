@@ -320,7 +320,7 @@ def _handle_event(event):
         config.get("mouse_fakes_touch_events") is True)
     if event.type == sdl.SDL_QUIT:
         window = get_focused_window()
-        if window != None and w.focused:
+        if window != None and window.focused:
             window.unfocus()
         for w_ref in all_windows:
             w = w_ref()
