@@ -5,6 +5,7 @@ import math
 from wobblui.color import Color
 from wobblui.event import Event
 from wobblui.gfx import draw_dashed_line, draw_rectangle
+from wobblui.perf import Perf
 from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
@@ -109,6 +110,7 @@ class ListEntry(object):
                 c = Color(self.style.get("selected_text"))
             if self.disabled and self.style.has("widget_disabled_text"):
                 c = Color(self.style.get("widget_disabled_text"))
+        Perf.start("List_text_draw")
         self.text_obj.draw(renderer,
             round(5.0 * self.dpi_scale) + x,
             round(self.vertical_padding * self.dpi_scale) + y,
@@ -130,6 +132,7 @@ class ListEntry(object):
                 round(self.vertical_padding * self.dpi_scale) +\
                 max(0, self.extra_html_at_right_y) + y,
                 color=c)
+        Perf.end("List_text_draw")
 
     def copy(self):
         li = ListEntry(self.html, self.style)

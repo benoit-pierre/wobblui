@@ -1,6 +1,7 @@
 
 import sys
 
+from wobblui.perf import Perf
 from wobblui.uiconf import config
 
 DEBUG_EVENT=False
@@ -77,28 +78,40 @@ class Event(object):
         if config.get("debug_events") is True:
             print("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
-        if self._disabled:
-            return True
-        if self.special_pre_event_func != None:
-            self.special_pre_event_func()
+        perf_name = None
+        if self.name == "redraw":
+            perf_name = "Event_redraw_" + (
+                str(self.on_object.__class__.__name__)
+                if self.on_object != None else
+                "<no_associated_object>")
+            Perf.start(perf_name)
         try:
-            if self.widget_must_get_event:
-                if self.native_widget_callback(*args,
-                        internal_data=internal_data):
-                    return False
-            for f in self.funcs:
-                result = f(*args)
-                if result is True:
-                    return False
-            if not self.widget_must_get_event:
-                if self.native_widget_callback(*args,
-                        internal_data=internal_data):
-                    return False
+            # All of this is perfed:
+            if self._disabled:
+                return True
+            if self.special_pre_event_func != None:
+                self.special_pre_event_func()
+            try:
+                if self.widget_must_get_event:
+                    if self.native_widget_callback(*args,
+                            internal_data=internal_data):
+                        return False
+                for f in self.funcs:
+                    result = f(*args)
+                    if result is True:
+                        return False
+                if not self.widget_must_get_event:
+                    if self.native_widget_callback(*args,
+                            internal_data=internal_data):
+                        return False
+                return True
+            finally:
+                if self.special_post_event_func != None:
+                    self.special_post_event_func()
             return True
         finally:
-            if self.special_post_event_func != None:
-                self.special_post_event_func()
-        return True
+            # Stop perf measurement.
+            Perf.end(perf_name)
 
 class ForceDisabledDummyEvent(Event):
     def __init__(self, name, owner=None):
