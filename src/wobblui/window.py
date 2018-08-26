@@ -8,9 +8,10 @@ import weakref
 from wobblui.color import Color
 from wobblui.event import Event
 from wobblui.gfx import draw_rectangle
-from wobblui.widget_base import all_widgets, WidgetBase
+from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
+from wobblui.widget_base import all_widgets, WidgetBase
 from wobblui.widgetman import all_windows
 
 def get_focused_window():
@@ -86,8 +87,13 @@ class Window(WidgetBase):
                 sdl.SDL_DestroyRenderer(self._renderer)
                 self.renderer = None
         if self._renderer is None:
-            self._renderer = \
-                sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
+            if not is_android():
+                self._renderer = \
+                    sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
+            else:
+                self._renderer = \
+                    sdl.SDL_CreateRenderer(self._sdl_window, -1,
+                        sdl.SDL_RENDERER_SOFTWARE)
             self.needs_redraw = True
         self.update_to_real_sdlw_size()
         for child in self.children:
