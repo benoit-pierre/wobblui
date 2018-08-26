@@ -94,6 +94,7 @@ class ListEntry(object):
             draw_hover=False,
             draw_keyboard_focus=False,
             draw_no_bg=False):
+        Perf.start('fullitem')
         self.update_size()
         no_bg = draw_no_bg
         c = Color((200, 200, 200))
@@ -142,7 +143,8 @@ class ListEntry(object):
                 round(self.vertical_padding * self.dpi_scale) +\
                 max(0, self.extra_html_at_right_y) + y,
                 color=c)
-        Perf.end("List_text_draw")
+        Perf.stop("List_text_draw")
+        Perf.stop('fullitem')
 
     def copy(self):
         li = ListEntry(self.html, self.style)
@@ -225,6 +227,7 @@ class ListEntry(object):
     def update_size(self):
         if not self.need_size_update:
             return
+        print("UPDATING ENTRY SIZE")
         self.need_size_update = False
         padding = max(0, round(5.0 * self.dpi_scale))
         padding_vertical = max(0,
@@ -356,9 +359,6 @@ class ListBase(Widget):
         if self._hover_index == entry_index:
             self._selected_index = -1
         self.needs_redraw = True
-
-    def on_relayout(self):
-        self.update_style_info()
 
     def clear(self):
         self._entries = []
@@ -496,79 +496,98 @@ class ListBase(Widget):
                 return entry_id
         return -1
 
+    def on_relayout(self):
+        # Update the entry positions:
+        border_size = max(1, round(1.0 * self.dpi_scale))
+        if not self.render_as_menu:
+            border_size = 0
+        cy = 0
+        for entry in self._entries:
+            entry.style = self.style
+            entry.width = self.width - round(border_size * 2)
+            entry.y_offset = cy
+            if not self.fixed_one_line_entries:
+                cy += round(entry.height)
+            else:
+                cy += self.usual_entry_height
+
     def do_redraw(self):
+        Perf.start("list_innerdraw")
         content_height = 0
         max_scroll_down = 0
-        while True:
-            # Draw border if a menu:
-            border_size = max(1, round(1.0 * self.dpi_scale))
-            if not self.render_as_menu:
-                border_size = 0
-            c = Color.black
-            if self.style != None and self.style.has("border"):
-                c = Color(self.style.get("border"))
-            if border_size > 0:
-                draw_rectangle(self.renderer, 0, 0,
-                    self.width, self.height, color=c)
+
+        Perf.start("sectiona")
+
+        # Get height of content:
+        if not self.fixed_one_line_entries:
+            for entry in self._entries:
+                content_height += round(entry.height)
+        else:
+            content_height = round(len(self._entries) *\
+                self.usual_entry_height) 
+
+        # Make sure scroll down offset is in a valid range:
+        max_scroll_down = max(0, content_height - self.height)
+        self.scroll_y_offset = max(0, min(self.scroll_y_offset,
+            max_scroll_down))
+
+        # Draw border if a menu:
+        border_size = max(1, round(1.0 * self.dpi_scale))
+        if not self.render_as_menu:
+            border_size = 0
+        c = Color.black
+        if self.style != None and self.style.has("border"):
+            c = Color(self.style.get("border"))
+        if border_size > 0:
+            draw_rectangle(self.renderer, 0, 0,
+                self.width, self.height, color=c)
                
-            # Draw background: 
-            c = Color.white
-            if self.style != None:
-                c = Color(self.style.get("inner_widget_bg"))
-                if self.render_as_menu and self.style.has("button_bg"):
-                    c = Color(self.style.get("button_bg"))
-            draw_rectangle(self.renderer, border_size, border_size,
-                self.width - border_size * 2,
-                self.height - border_size * 2,
-                color=c)
+        # Draw background: 
+        c = Color.white
+        if self.style != None:
+            c = Color(self.style.get("inner_widget_bg"))
+            if self.render_as_menu and self.style.has("button_bg"):
+                c = Color(self.style.get("button_bg"))
+        draw_rectangle(self.renderer, border_size, border_size,
+            self.width - border_size * 2,
+            self.height - border_size * 2,
+            color=c)
 
-            # Draw items:
-            skip_start_items = 0
-            if self.fixed_one_line_entries:
-                skip_start_items = math.floor(
-                    round(self.scroll_y_offset) /
-                    self.usual_entry_height)
-            cx = border_size
-            cy = border_size + skip_start_items * self.usual_entry_height
-            entry_id = -1 + skip_start_items
-            for entry in self._entries[skip_start_items:]:
-                entry_id += 1
-                entry.style = self.style
-                entry.width = self.width - round(border_size * 2)
-                entry.y_offset = cy
-                entry.draw(self.renderer,
-                    cx, cy - round(self.scroll_y_offset),
-                    draw_selected=(
-                    entry_id == self._selected_index and
-                    (entry_id != self._hover_index or
-                    not self.render_as_menu)),
-                    draw_hover=(self.render_as_menu and
-                    entry_id == self._hover_index),
-                    draw_no_bg=self.render_as_menu)
-                if not self.fixed_one_line_entries:
-                    cy += round(entry.height)
-                else:
-                    cy += self.usual_entry_height
-                if self.fixed_one_line_entries and cy > self.height +\
-                        self.scroll_y_offset:
-                    break
-                content_height = max(content_height, cy)
-            if self.fixed_one_line_entries:
-                # Since we skipped things, correct content_height value:
-                content_height = round(len(self._entries) *\
-                    self.usual_entry_height)
+        Perf.stop("sectiona")
+        Perf.start("sectionb")
 
-            # Make sure scroll down offset is not too far:
-            max_scroll_down = max(0, content_height - self.height)
-            if max_scroll_down < round(self.scroll_y_offset) != 0:
-                # Oops, scrolled down too far. Fix it and redraw:
-                self.scroll_y_offset = max_scroll_down
-                continue
-            break
+        # Draw items:
+        skip_start_items = 0
+        if self.fixed_one_line_entries:
+            skip_start_items = math.floor(
+                round(self.scroll_y_offset) /
+                self.usual_entry_height)
+        cx = border_size
+        cy = border_size
+        entry_id = -1 + skip_start_items
+        for entry in self._entries[skip_start_items:]:
+            entry_id += 1
+            entry.draw(self.renderer,
+                cx,
+                cy + entry.y_offset - round(self.scroll_y_offset),
+                draw_selected=(
+                entry_id == self._selected_index and
+                (entry_id != self._hover_index or
+                not self.render_as_menu)),
+                draw_hover=(self.render_as_menu and
+                entry_id == self._hover_index),
+                draw_no_bg=self.render_as_menu)
+            if self.fixed_one_line_entries and \
+                    entry.y_offset > self.height +\
+                    self.scroll_y_offset:
+                break
 
         # Draw keyboard focus line if we have the focus:
+        Perf.start("list_keyboardfocus")
         if self.focused:
             self.draw_keyboard_focus(0, 0, self.width, self.height)
+        Perf.stop("list_keyboardfocus")
+        Perf.stop("sectionb")
 
         # Draw scroll bar:
         if max_scroll_down > 0:
@@ -599,6 +618,7 @@ class ListBase(Widget):
                 self.scrollbar_width - 2 * border_width,
                 self.scrollbar_height - 2 * border_width,
                 color=c)
+        Perf.stop("list_innerdraw")
 
     def get_natural_width(self):
         border_size = max(1, round(1.0 * self.dpi_scale))

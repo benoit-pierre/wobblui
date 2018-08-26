@@ -5,8 +5,10 @@ import sdl2 as sdl
 from wobblui.color import Color
 from wobblui.font.manager import font_manager
 
+_rect = sdl.SDL_Rect()
 def draw_rectangle(renderer, x, y, w, h, color=None,
         filled=True, unfilled_border_thickness=1.0):
+    global _rect
     if color is None:
         color = Color("#aaa")
     if not filled:
@@ -24,20 +26,16 @@ def draw_rectangle(renderer, x, y, w, h, color=None,
             x + w - min(border, w), y, h, border,
             color=color, filled=True)
         return
-    rect = sdl.SDL_Rect()
-    rect.x = max(0, round(x))
-    rect.y = max(0, round(y))
-    rect.w = round(abs(w) + min(0, x))
-    rect.h = round(abs(h) + min(0, y))
-    if rect.w <= 0 or rect.h <= 0:
+    _rect.x = max(0, round(x))
+    _rect.y = max(0, round(y))
+    _rect.w = round(abs(w) + min(0, x))
+    _rect.h = round(abs(h) + min(0, y))
+    if _rect.w <= 0 or _rect.h <= 0:
         return
     sdl.SDL_SetRenderDrawColor(renderer,
         round(color.red), round(color.green),
         round(color.blue), 255)
-    if filled:
-        sdl.SDL_RenderFillRect(renderer, rect)
-    else:
-        sdl.SDL_RenderDrawRect(renderer, rect)
+    sdl.SDL_RenderFillRect(renderer, _rect)
 
 def draw_dashed_line(renderer, x1, y1, x2, y2, color=None,
         dash_length=7.0, thickness=3.0):
@@ -59,6 +57,10 @@ def draw_dashed_line(renderer, x1, y1, x2, y2, color=None,
         start_v = v
 
     # Draw dashed line:
+    x = round(x1 - thickness / 2.0)
+    y = round(y1 - thickness / 2.0)
+    w = round(thickness)
+    h = round(thickness)
     curr_v = start_v
     while curr_v < end_v:
         if dash_length != None:
@@ -66,10 +68,6 @@ def draw_dashed_line(renderer, x1, y1, x2, y2, color=None,
                 min(dash_length, end_v - curr_v))
         else:
             next_dash_length = math.floor(curr_v - end_v)
-        x = round(x1 - thickness / 2.0)
-        y = round(y2 - thickness / 2.0)
-        w = round(thickness)
-        h = round(thickness)
         if vertical:
             y = round(curr_v)
             h = next_dash_length

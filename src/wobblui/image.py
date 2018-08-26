@@ -1,8 +1,9 @@
 
+import ctypes
+import io
 import os
 import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
-import tempfile
 
 from wobblui.sdlinit import initialize_sdl
 from wobblui.widget import Widget
@@ -26,13 +27,22 @@ def image_to_sdl_surface(pil_image):
         flags = sdlimage.IMG_INIT_JPG|sdlimage.IMG_INIT_PNG
         sdlimage.IMG_Init(flags)
     sdl_image = None
-    (fd, path) = tempfile.mkstemp(prefix="wobblui-image-")
-    try:
-        os.close(fd)
-        pil_image.save(path, format="PNG")
-        sdl_image = sdlimage.IMG_Load(path.encode("utf-8", "replace"))
-    finally:
-        os.remove(path)
+
+    # Write image to ctypes buffer:
+    bytes_obj = io.BytesIO()
+    pil_image.save(bytes_obj, format="PNG")
+    bytes_value = bytearray(bytes_obj.getvalue())
+    if len(bytes_value) == 0:
+        raise RuntimeError("saved image unexpectedly empty")
+    ctypes_bytes = (ctypes.c_uint8 * len(bytes_value)).\
+        from_buffer(bytes_value)
+
+    # Create SDL RW Ops and load with SDL_Image from that:
+    rwops = sdl.SDL_RWFromMem(ctypes.byref(ctypes_bytes),
+        len(bytes_value))
+    sdl_image = sdlimage.IMG_Load_RW(rwops, 1)
+
+    # Handle error:
     if sdl_image is None:
         err_msg = sdlimage.IMG_GetError()
         try:

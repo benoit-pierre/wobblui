@@ -21,7 +21,7 @@ class Perf(object):
         cls.lock.release()
 
     @classmethod
-    def end(cls, name):
+    def stop(cls, name):
         now = time.monotonic()
         cls.lock.acquire()
         if not name in cls.perf_start_times or \

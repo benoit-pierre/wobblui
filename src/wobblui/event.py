@@ -111,7 +111,7 @@ class Event(object):
             return True
         finally:
             # Stop perf measurement.
-            Perf.end(perf_name)
+            Perf.stop(perf_name)
 
 class ForceDisabledDummyEvent(Event):
     def __init__(self, name, owner=None):
