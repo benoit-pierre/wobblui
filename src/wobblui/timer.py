@@ -33,7 +33,7 @@ class ScheduledEvent(object):
         except Exception as e:
             print("*** ERROR IN SCHEDULED TIMER FUNCTION ***",
                 file=sys.stderr, flush=True)
-            print(str(traceback.format_exc())
+            print(str(traceback.format_exc()))
 
 scheduled_events = set()
 

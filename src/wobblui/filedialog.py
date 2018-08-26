@@ -97,7 +97,7 @@ class FileOrDirChooserDialog(Widget):
     def select_item(self):
         item_index = self.contents_list.selected_index
         if self.listing_data is None or \
-                self.list_data == "error" or \
+                self.listing_data == "error" or \
                 item_index < 0 or \
                 item_index >= len(self.listing_data):
             return
