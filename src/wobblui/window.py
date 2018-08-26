@@ -50,6 +50,7 @@ class Window(WidgetBase):
         self.shown = Event("shown", owner=self)
         self.closing = Event("closing", owner=self)
         self.destroyed = Event("destroyed", owner=self)
+        self.modal_filter = None
         self.is_closed = False
         self._title = title
         self.next_reopen_width = width
@@ -197,6 +198,16 @@ class Window(WidgetBase):
             self.resized()
             self.needs_redraw = True
             self.needs_relayout = True
+
+    def set_modal_filter(self, func):
+        if self.modal_filter != None and func != None:
+            raise RuntimeError("cannot set modal filter, " +
+                "already one set")
+        self.modal_filter = func
+        focused_widget = WidgetBase.get_focused_widget_by_window(self)
+        if focused_widget != None and not focused_widget.focusable:
+            focused_widget.unfocus()
+            self.focus_update()
 
     def get_style(self):
         return self._style
