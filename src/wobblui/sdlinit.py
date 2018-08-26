@@ -9,8 +9,8 @@ def initialize_sdl():
         return
     sdl_init_done = True
 
-    sdl.SDL_SetHintWithPriority(sdl.SDL_HINT_ORIENTATIONS,
-        "LandscapeLeft LandscapeRight Portrait PortraitUpsideDown",
+    sdl.SDL_SetHintWithPriority(b"SDL_HINT_ORIENTATIONS",
+        b"LandscapeLeft LandscapeRight Portrait PortraitUpsideDown",
         sdl.SDL_HINT_OVERRIDE)
 
     sdl.SDL_SetHintWithPriority(
