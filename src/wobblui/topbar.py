@@ -31,8 +31,8 @@ class Topbar(Widget):
         else:
             super().remove(item, error_if_not_present=error_if_not_present)
 
-    def add_to_top(self, child, expand=True):
-        self.topbar_box.add(child, expand=expand)
+    def add_to_top(self, child, expand=True, shrink=False):
+        self.topbar_box.add(child, expand=expand, shrink=shrink)
         self.topbar_box.height = self.topbar_box.get_natural_height()
         self.needs_relayout = True
         self.needs_redraw = True
