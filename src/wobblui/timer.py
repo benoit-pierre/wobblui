@@ -1,5 +1,6 @@
 
 import time
+import traceback
 import uuid
 
 class ScheduledEvent(object):
@@ -27,7 +28,12 @@ class ScheduledEvent(object):
         return False
 
     def __call__(self):
-        self.func()
+        try:
+            self.func()
+        except Exception as e:
+            print("*** ERROR IN SCHEDULED TIMER FUNCTION ***",
+                file=sys.stderr, flush=True)
+            print(str(traceback.format_exc())
 
 scheduled_events = set()
 
