@@ -24,10 +24,12 @@ class Button(Widget):
                 "triggered", owner=self)
         self.with_border = (with_border is True)
         self.image_placement = image_placement
-        self.image_color = Color.white
+        self._image_color = Color.white
         self.contained_image = None
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None
+        self.contained_image_srf = None
+        self.contained_image_texture = None
         self.text_layout_width = None
         self.extra_image_render_func = None
         self.border = 5.0
@@ -42,8 +44,23 @@ class Button(Widget):
         if hasattr(self, "contained_image_srf") and \
                 self.contained_image_srf != None:
             sdl.SDL_FreeSurface(self.contained_image_srf)
+        if hasattr(self, "contained_image_texture") and \
+                self.contained_image_texture != None:
+            sdl.SDL_DestroyTexture(self.contained_image_texture)
+            self.contained_image_texture = None
+
+    def update_renderer(self):
+        if self.contained_image_texture != None:
+            sdl.SDL_DestroyTexture(self.contained_image_texture)
+            self.contained_image_texture = None
 
     def internal_set_extra_image_render(self, func):
+        """ Allows setting an extra function that runs right
+            before the actual image renders. It will be passed
+            the 4 parameters: x, y, w, h - corresponding to
+            the draw rectangle of the image that is rendered on
+            top right after. Can be used for a surrounding
+            shape. """
         self.extra_image_render_func = func
 
     def on_keydown(self, key, physical_key, modifiers):
@@ -71,6 +88,12 @@ class Button(Widget):
         self.contained_image = pil_image_or_path
         assert(scale != None)
         self.contained_image_scale = scale
+        if self.contained_image_srf != None:
+            sdl.SDL_FreeSurface(self.contained_image_srf)
+            self.contained_image_srf = None
+        if self.contained_image_texture != None:
+            sdl.SDL_DestroyTexture(self.contained_image_texture)
+            self.contained_image_texture = None
         self.contained_image_srf = image_to_sdl_surface(pil_image_or_path)
 
     def set_image_color(self, color):
@@ -92,11 +115,22 @@ class Button(Widget):
     def set_text(self, text):
         self.set_html(html.escape(text))
 
-    def __del__(self):
-        if hasattr(self, "contained_image_srf"):
-            if self.contained_image_srf != None:
-                sdl.SDL_FreeSurface(self.contained_image_srf)
-            self.contained_image_srf = None
+    @property
+    def image_color(self):
+        return self._image_color
+
+    @image_color.setter
+    def image_color(self, v):
+        if v.red != self._image_color.red or \
+                v.green != self._image_color.green or \
+                v.blue != self._image_color.blue:
+            self.update_texture_color()
+
+    def update_texture_color(self):
+        if self.contained_image_texture != None:
+            sdl.SDL_SetTextureColorMod(self.contained_image_texture,
+                self.image_color.red, self.image_color.green,
+                self.image_color.blue)
 
     def do_redraw(self):
         if self.renderer is None:
@@ -122,8 +156,11 @@ class Button(Widget):
         extra_size = max(0, full_available_size - used_up_size)
         offset_x += max(0, math.floor(extra_size / 2.0))
         if self.contained_image != None:
-            tex = sdl.SDL_CreateTextureFromSurface(self.renderer,
-                self.contained_image_srf)
+            if self.contained_image_texture is None:
+                self.contained_image_texture =\
+                    sdl.SDL_CreateTextureFromSurface(self.renderer,
+                        self.contained_image_srf)
+                self.update_texture_color()
             tg = sdl.SDL_Rect()
             tg.x = offset_x
             tg.y = round(self.border_size)
@@ -133,11 +170,8 @@ class Button(Widget):
                 self.contained_image_scale * self.dpi_scale * 1.0)
             if self.extra_image_render_func != None:
                 self.extra_image_render_func(tg.x, tg.y, tg.w, tg.h)
-            sdl.SDL_SetTextureColorMod(tex,
-                self.image_color.red, self.image_color.green,
-                self.image_color.blue)
-            sdl.SDL_RenderCopy(self.renderer, tex, None, tg)
-            sdl.SDL_DestroyTexture(tex)
+            sdl.SDL_RenderCopy(self.renderer,
+                self.contained_image_texture, None, tg)
             offset_x += tg.w + round(self.border_size * 0.7)
         if self.contained_richtext_obj != None:
             c = Color.white
@@ -222,6 +256,9 @@ class HoverCircleImageButton(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None):
         super().__init__(with_border=False, clickable=True)
         self.image_path = image_path
+        self.circle_srf = None
+        self.circle_tex = None
+        self.circle_img = None
         color = Color.white
         self.set_image(image_path, scale=scale,
             scale_to_width=scale_to_width)
@@ -235,25 +272,32 @@ class HoverCircleImageButton(Button):
         if hasattr(self, "circle_srf") and self.circle_srf != None:
             sdl.SDL_FreeSurface(self.circle_srf)
             self.circle_srf = None
+        if hasattr(self, "circle_tex") and self.circle_tex != None:
+            sdl.SDL_DestroyTexture(self.circle_tex)
+            self.circle_tex = None
         super().__del__()
 
-    def render_circle(self, x, y, w, h):
-        if not hasattr(self, "circle_img") or self.circle_img is None:
-            self.circle_img = PIL.Image.open(stock_image("hovercircle"))
-        if not hasattr(self, "circle_srf") or self.circle_srf is None:
-            self.circle_srf = image_to_sdl_surface(self.circle_img)
+    def update_texture(self):
+        if self.circle_tex != None:
+            sdl.SDL_DestroyTexture(self.circle_tex)
+            self.circle_tex = None
 
-        tex = sdl.SDL_CreateTextureFromSurface(self.renderer,
-            self.circle_srf)
+    def render_circle(self, x, y, w, h):
+        if self.circle_img is None:
+            self.circle_img = PIL.Image.open(stock_image("hovercircle"))
+        if self.circle_srf is None:
+            self.circle_srf = image_to_sdl_surface(self.circle_img)
+        if self.circle_tex is None:
+            self.circle_tex = sdl.SDL_CreateTextureFromSurface(
+                self.renderer, self.circle_srf)
+            sdl.SDL_SetTextureColorMod(self.circle_tex,
+                self.circle_r, self.circle_g, self.circle_b)
         tg = sdl.SDL_Rect()
         tg.x = x
         tg.y = y
         tg.w = w
         tg.h = h
-        sdl.SDL_SetTextureColorMod(tex,
-            self.circle_r, self.circle_g, self.circle_b)
-        sdl.SDL_RenderCopy(self.renderer, tex, None, tg)
-        sdl.SDL_DestroyTexture(tex)
+        sdl.SDL_RenderCopy(self.renderer, self.circle_tex, None, tg)
 
 class ImageWithLabel(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,

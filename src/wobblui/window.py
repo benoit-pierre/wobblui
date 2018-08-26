@@ -35,6 +35,7 @@ def get_window_by_sdl_id(sdl_id):
 class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,
             style=None):
+        self._renderer = None
         self.type = "window"
         initialize_sdl()
         if style is None:
@@ -84,7 +85,13 @@ class Window(WidgetBase):
                 sdl.SDL_WINDOW_RESIZABLE)
             unhide = True
             if self._renderer != None:
-                sdl.SDL_DestroyRenderer(self._renderer)
+                old_renderer = self._renderer
+                self._renderer = None
+                for child in self.children:
+                    child.renderer_update()
+                    if child.parent == self:
+                        child.internal_override_parent(None)
+                sdl.SDL_DestroyRenderer(old_renderer)
                 self.renderer = None
         if self._renderer is None:
             self._renderer = \
@@ -327,6 +334,9 @@ class Window(WidgetBase):
                 self.draw(0, 0)
             sdl.SDL_RenderPresent(self.renderer)
             i += 1
+
+    def get_renderer(self):
+        return self._renderer
 
     def shares_focus_group(self, other_obj):
         if not isinstance(other_obj, Window):

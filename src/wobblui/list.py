@@ -16,8 +16,9 @@ class ListEntry(object):
             extra_html_as_subtitle_scale=0.7,
             extra_html_at_right=None,
             extra_html_at_right_scale=0.8, is_alternating=False):
+        self._cached_natural_width = None
         self._width = 0
-        self.html = html
+        self._html = html
         self.extra_html_at_right = extra_html_at_right
         self.extra_html_at_right_scale = extra_html_at_right_scale
         self.disabled = False
@@ -36,7 +37,7 @@ class ListEntry(object):
             px_size=round(px_size),
             draw_scale=style.dpi_scale)
         self.text_obj.set_html(html)
-        self.text = self.text_obj.text
+        self._text = self.text_obj.text
 
         # Extra text at the right:
         self.extra_html_at_right_x = 0
@@ -77,6 +78,14 @@ class ListEntry(object):
         if style != None:
             self.dpi_scale = style.dpi_scale
 
+    @property
+    def text(self):
+        return self._text
+
+    @property
+    def html(self):
+        return self._html
+
     def __repr__(self):
         return "<ListEntry text='" +\
             str(self.text).replace("'", "'\"'\"'") + "'>"
@@ -89,11 +98,12 @@ class ListEntry(object):
         no_bg = draw_no_bg
         c = Color((200, 200, 200))
         if self.style != None:
-            if not self.is_alternating:
-                c = Color(self.style.get("inner_widget_bg") or
-                    not self.style.has("inner_widget_alternating_bg"))
-            else:
-                c = Color(self.style.get("inner_widget_alternating_bg"))
+            if not draw_hover and not draw_selected:
+                if not self.is_alternating:
+                    c = Color(self.style.get("inner_widget_bg") or
+                        not self.style.has("inner_widget_alternating_bg"))
+                else:
+                    c = Color(self.style.get("inner_widget_alternating_bg"))
             if draw_hover:
                 no_bg = False
                 c = Color(self.style.get("hover_bg"))
@@ -153,17 +163,19 @@ class ListEntry(object):
         li.max_width = self.max_width
         li.width = self.width
         li.needs_size_update = True
-        li.update_size()
         return li
 
     def get_natural_width(self):
+        if self._cached_natural_width != None:
+            return self._cached_natural_width
         text_copy = self.text_obj.copy()
         (w, h) = text_copy.layout(max_width=None)
-        w += max(1, round(self.extra_html_at_right_padding * self.dpi_scale))
         if self.extra_html_at_right_obj != None:
+            w += max(1, round(self.extra_html_at_right_padding * self.dpi_scale))
             (w2, h2) = self.extra_html_at_right_obj.layout(max_width=None)
             w += w2
-        return (w + round(10.0 * self.dpi_scale))
+        self._cached_natural_width = (w + round(10.0 * self.dpi_scale))
+        return self._cached_natural_width
 
     @property
     def width(self):
@@ -190,6 +202,7 @@ class ListEntry(object):
     @style.setter
     def style(self, v):
         if self._style != v:
+            self._cached_natural_width = None
             self.need_size_update = True
             self._style = v
 

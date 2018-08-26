@@ -49,7 +49,6 @@ class WidgetBase(object):
         self.is_container = is_container
         self._children = []
         self._parent = None
-        self._renderer = None
         self._disabled = False
         self_ref = weakref.ref(self)
         self.sdl_texture = None
@@ -1014,11 +1013,8 @@ class WidgetBase(object):
     def set_focus_index(self, index):
         self.focus_index = index
 
-    def set_sdl_renderer(self, renderer):
-        self._renderer = renderer
-
     def get_renderer(self):
-        return self._renderer
+        return None
 
     def draw_keyboard_focus(self, x, y, width, height):
         focus_border_thickness = 1.0
