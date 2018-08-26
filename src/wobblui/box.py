@@ -88,7 +88,7 @@ class Box(Widget):
         remaining_space = (self.height - child_space -
             round(self.box_surrounding_padding * self.dpi_scale * 2))
         if self.horizontal:
-            remaining_space = max(0, self.width - child_space -
+            remaining_space = (self.width - child_space -
                 round(self.box_surrounding_padding * self.dpi_scale * 2))
         expanding = True
         space_per_item = 0
@@ -241,6 +241,16 @@ class Box(Widget):
         elif len(self.children) == 0:
             return 0
         else:
+            # Relayout at given width:
+            relayout_at = given_width
+            if relayout_at == None:
+                relayout_at = self.get_natural_width()
+            old_width = self.width
+            old_needs_redraw = self.needs_redraw
+            self.width = relayout_at
+            self.on_relayout()
+
+            # See how large everything turned out at this given width:
             found_children = False
             max_h = 0
             for child in self._children:
@@ -248,12 +258,19 @@ class Box(Widget):
                     continue
                 found_children = True
                 max_h = max(max_h, child.get_natural_height(
-                    given_width=None))  # horizontal box doesn't
-                                        # support compression right now
+                    given_width=child.width))
             max_h += round(self.box_surrounding_padding *
                 self.dpi_scale * 2)
+
+            # Return to old layout:
+            self.width = old_width
+            self.on_relayout()
+            self.needs_relayout = False
+            self.needs_redraw = old_needs_redraw
+
             if not found_children:
-                return 0
+                return (self.box_surrounding_padding *
+                    self.dpi_scale * 2)
             return max_h
 
     def add(self, item, expand=True, shrink=False):
