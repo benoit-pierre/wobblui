@@ -21,9 +21,10 @@ class Box(Widget):
             stretch_children_on_secondary_axis=True):
         super().__init__(is_container=True)
         self.stretch_children_on_secondary_axis =\
-            stretch_children_on_secondary_axis=True
+            stretch_children_on_secondary_axis
         self.horizontal = (horizontal is True)
         self.expand_info = dict()
+        self.shrink_info = dict()
         self.item_padding = 5.0
         self.box_surrounding_padding =\
             max(0, box_surrounding_padding)
@@ -63,6 +64,7 @@ class Box(Widget):
 
         # Adjust size along box axis:
         expand_widget_count = 0
+        shrink_widget_count = 0
         child_space = 0
         child_id = -1
         for child in self._children:
@@ -74,6 +76,8 @@ class Box(Widget):
                 item_padding = 0
             if self.expand_info[child_id]:
                 expand_widget_count += 1
+            if self.shrink_info[child_id]:
+                shrink_widget_count += 1
             if self.horizontal:
                 child.width = child.get_natural_width()
                 child_space += child.width + item_padding
@@ -81,15 +85,20 @@ class Box(Widget):
                 child.height = child.\
                     get_natural_height(given_width=child.width)
                 child_space += child.height + item_padding
-        remaining_space = max(0, self.height - child_space -
+        remaining_space = (self.height - child_space -
             round(self.box_surrounding_padding * self.dpi_scale * 2))
         if self.horizontal:
             remaining_space = max(0, self.width - child_space -
                 round(self.box_surrounding_padding * self.dpi_scale * 2))
+        expanding = True
         space_per_item = 0
-        if expand_widget_count > 0:
+        if expand_widget_count > 0 and remaining_space > 0:
             space_per_item = math.floor(
                 remaining_space / expand_widget_count)
+        elif shrink_widget_count > 0 and remaining_space < 0:
+            expanding = False
+            space_per_item = math.ceil(
+                remaining_space / shrink_widget_count)
         child_id = -1
         cx = round(self.box_surrounding_padding * self.dpi_scale)
         cy = round(self.box_surrounding_padding * self.dpi_scale)
@@ -99,10 +108,17 @@ class Box(Widget):
                 continue
             assigned_w = max(1, math.ceil(child.width))
             assigned_h = max(1, math.ceil(child.height))
-            if self.expand_info[child_id] and self.horizontal:
+            if expanding and self.expand_info[child_id] and self.horizontal:
                 assigned_w += space_per_item
-            elif self.expand_info[child_id] and not self.horizontal:
+            elif not expanding and self.shrink_info[child_id] and \
+                    self.horizontal:
+                assigned_w = max(1, assigned_w + space_per_item)
+            elif expanding and self.expand_info[child_id] and \
+                    not self.horizontal:
                 assigned_h += space_per_item
+            elif not expanding and self.expand_info[child_id] and \
+                    not self.horizontal:
+                assigned_h = max(1, assigned_h + space_per_item)
             if expand_widget_count == 1 and \
                     not self.got_visible_child_after_index(child_id):
                 # Make sure to use up all remaining space:
@@ -129,16 +145,16 @@ class Box(Widget):
             else:
                 cy += assigned_h + item_padding
 
-        # Adjust items again on the non-box axis for horizontal items if
+        # Adjust items again on the non-box axis for horizontal layouts if
         # they are naturally scaled (not stretched), since their new width
-        # can change their natural height::
+        # can change their natural height:
         if self.horizontal and not self.stretch_children_on_secondary_axis:
             for item in self._children:
                 iheight = self.height -\
                     round(self.box_surrounding_padding *
                     2 * self.dpi_scale)
                 iheight = min(iheight,
-                    item.get_natural_height(item.width))
+                    item.get_natural_height(given_width=item.width))
                 item.height = iheight
 
         # Update placement if not fully stretched on secondary axis:
@@ -240,9 +256,10 @@ class Box(Widget):
                 return 0
             return max_h
 
-    def add(self, item, expand=True):
+    def add(self, item, expand=True, shrink=False):
         super().add(item, trigger_resize=False)
         self.expand_info[len(self._children) - 1] = expand
+        self.shrink_info[len(self._children) - 1] = shrink
         if self.horizontal:
             item.width = item.get_natural_width()
             item.height = item.get_natural_height()
