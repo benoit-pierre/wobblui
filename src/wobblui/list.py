@@ -445,8 +445,7 @@ class ListBase(Widget):
 
     def on_doubleclick(self, mouse_id, button, x, y):
         self.set_selection_by_mouse_pos(x, y)
-        if not self.triggered_by_single_click:
-            self.triggered()
+        self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
         self.set_selection_by_mouse_pos(x, y)
