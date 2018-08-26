@@ -11,6 +11,7 @@ from wobblui.gfx import draw_rectangle
 from wobblui.image import stock_image
 from wobblui.label import Label
 from wobblui.list import List
+from wobblui.osinfo import is_android
 from wobblui.topbar import Topbar
 from wobblui.uiconf import config
 from wobblui.widget import Widget
@@ -67,6 +68,15 @@ class FileOrDirChooserDialog(Widget):
         vbox.add(buttons_row, expand=False)
         topbar.add(vbox)
         super().add(topbar)
+
+    def can_access_dir(self, path):
+        try:
+            if not os.path.exists(path):
+                return False
+            contents = os.listdir(path)
+            return True
+        except (OSError, PermissionError):
+            return False
 
     def stop_run(self):
         self.active = False
@@ -248,14 +258,17 @@ class FileOrDirChooserDialog(Widget):
 
     def suggest_start_dir(self):
         d = os.path.abspath(os.path.expanduser("~"))
-        if os.path.exists(d):
+        if not is_android() and os.path.exists(d):
             return d
         elif platform.system().lower() == "windows":
             return "C:\\"
+        elif is_android() and not self.can_access_dir("/sdcard/") and \
+                self.can_access_dir("/storage/emulated/0/"):
+            return "/storage/emluated/0/"
+        elif is_android():
+            return "/home/"
         elif os.path.exists("/home"):
             return "/home"
-        elif os.path.exists("/sdcard"): # android
-            return "/sdcard"
         else:
             return "/"
 
