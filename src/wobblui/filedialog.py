@@ -35,6 +35,7 @@ class FileOrDirChooserDialog(Widget):
         self.outer_padding = outer_padding
         self.start_directory = start_directory
         self.listing_data = None
+        self.listing_path = None
         self.file_filter = file_filter
         topbar = Topbar()
         topbar.add_to_top(Label("Choose a " +
@@ -174,15 +175,17 @@ class FileOrDirChooserDialog(Widget):
                     "failed to obtain listing: " +
                     str(e))
             new_listing_data = "error"
-        if new_listing_data != self.listing_data:
+        if self.listing_path != self.current_path and \
+                new_listing_data != self.listing_data:
             if self.debug:
                 print("wobblui.filedialog " + str(id(self)) + ": " +
                     "rebuilding list contents")
             self.contents_list.clear()
+            self.listing_path = self.current_path
             self.listing_data = new_listing_data
             if self.listing_data == "error":
                 self.contents_list.add_html("<b>Failed to access " +
-                    "this folder.</b>")
+                    "folder contents.</b>")
             elif len(self.listing_data) == 0:
                 self.contents_list.add_html("<i>(Empty)</i>")
             else:
@@ -265,8 +268,11 @@ class FileOrDirChooserDialog(Widget):
         elif is_android() and not self.can_access_dir("/sdcard/") and \
                 self.can_access_dir("/storage/emulated/0/"):
             return "/storage/emluated/0/"
+        elif is_android() and not self.can_access_dir("/sdcard/") and \
+                self.can_access_dir(d):
+            return d
         elif is_android():
-            return "/home/"
+            return "/sdcard/"
         elif os.path.exists("/home"):
             return "/home"
         else:
