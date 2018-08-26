@@ -1,6 +1,8 @@
 
 import sys
 
+from wobblui.uiconf import config
+
 DEBUG_EVENT=False
 
 class Event(object):
@@ -71,7 +73,8 @@ class Event(object):
         return False
 
     def __call__(self, *args, internal_data=None):
-        if DEBUG_EVENT:
+        global config
+        if config.get("debug_events") is True:
             print("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
         if self._disabled:
@@ -111,7 +114,8 @@ class InternalOnlyDummyEvent(Event):
             "by the event owner")
 
     def __call__(self, *args, internal_data=None):
-        if DEBUG_EVENT:
+        global config
+        if config.get("debug_events") is True:
             print("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
         if self._disabled:

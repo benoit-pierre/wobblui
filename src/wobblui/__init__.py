@@ -98,7 +98,7 @@ def sdl_key_map(key):
         return "space"
     return str("scancode-" + str(key))
 
-def event_loop(app_cleanup_callback=None, debug=False):
+def event_loop(app_cleanup_callback=None):
     event_loop_ms = 10
     try:
         while True:
@@ -107,8 +107,7 @@ def event_loop(app_cleanup_callback=None, debug=False):
             if max_sleep != None:
                 sleep_amount = max(0, min(sleep_amount, max_sleep))
             time.sleep(sleep_amount)
-            result = do_event_processing(ui_active=True,
-                debug=debug)
+            result = do_event_processing(ui_active=True)
             if result == "appquit":
                 if app_cleanup_callback != None:
                     app_cleanup_callback()
@@ -145,11 +144,13 @@ def event_loop(app_cleanup_callback=None, debug=False):
 def sdl_event_name(event):
     ev_no = event.type
     if ev_no == sdl.SDL_MOUSEBUTTONDOWN:
-        return "SDL_MOUSEBUTTONDOWN"
+        return "mousebuttondown"
     elif ev_no == sdl.SDL_MOUSEBUTTONUP:
-        return "sdl.SDL_MOUSEBUTTONUP"
+        return "mousebuttonup"
     elif ev_no == sdl.SDL_MOUSEMOTION:
-        return "sdl.SDL_MOUSEMOTION"
+        return "mousemotion"
+    elif ev_no == sdl.SDL_MOUSEWHEEL:
+        return "mousewheel"
     elif ev_no == sdl.SDL_WINDOWEVENT:
         if event.window.event == sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
             return "windowfocusgained"
@@ -180,13 +181,21 @@ def debug_describe_event(event):
     if event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
         t += "(which:" + str(event.button.which) +\
-            ",button:" + str(event.button.button) + ")"
+            ",button:" + str(event.button.button) +\
+            ",x:" + str(event.motion.x) +\
+            ",y:" + str(event.motion.y) +")"
     elif event.type == sdl.SDL_MOUSEMOTION:
-        t += "(which:" + str(event.motion.which) + ")"
+        t += "(which:" + str(event.motion.which) +\
+            ",x:" + str(event.motion.x) +\
+            ",y:" + str(event.motion.y) + ")"
+    elif event.type == sdl.SDL_MOUSEWHEEL:
+        t += "(which:" + str(event.wheel.which) +\
+            ",x:" + str(event.wheel.x) +\
+            ",y:" + str(event.wheel.y) + ")"
     return t
 
 _last_clean_shortcuts_ts = None
-def do_event_processing(ui_active=True, debug=False):
+def do_event_processing(ui_active=True):
     global _last_clean_shortcuts_ts
     if threading.current_thread() != threading.main_thread():
         raise RuntimeError("UI events can't be processed " +
@@ -209,7 +218,7 @@ def do_event_processing(ui_active=True, debug=False):
         redraw_windows()
         return False
     for event in events:
-        if debug:
+        if config.get("debug_source_events") is True:
             print("wobblui.__init__.py: DEBUG: sdl event: " +
                 debug_describe_event(event))
         if not ui_active:
@@ -303,12 +312,12 @@ def loading_screen_fix():
         autoclass('org.kivy.android.PythonActivity').\
             mActivity.removeLoadingScreen()
 
-_debug_mouse_fakes_touch = False
 touch_pressed = False
 mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
-    global mouse_ids_button_ids_pressed, touch_pressed, \
-        _debug_mouse_fakes_touch
+    global mouse_ids_button_ids_pressed, touch_pressed
+    _debug_mouse_fakes_touch = (
+        config.get("mouse_fakes_touch_events") is True)
     if event.type == sdl.SDL_QUIT:
         window = get_focused_window()
         if window != None and w.focused:
