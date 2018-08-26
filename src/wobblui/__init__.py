@@ -22,16 +22,21 @@ def redraw_windows(layout_only=False):
         w = w_ref()
         if w is None or w.hidden:
             continue
-        w.update_to_real_sdlw_size()
-        i = 0
-        while i < 10:
-            if not w.relayout_if_necessary():
-                break
-            i += 1
-        if i == 10:
-            print("WARNING: a widget appears to be causing a " +
-                "relayout() loop", file=sys.stderr, flush=True)
-        w.redraw_if_necessary()
+        try:
+            w.update_to_real_sdlw_size()
+            i = 0
+            while i < 10:
+                if not w.relayout_if_necessary():
+                    break
+                i += 1
+            if i == 10:
+                print("WARNING: a widget appears to be causing a " +
+                    "relayout() loop", file=sys.stderr, flush=True)
+            w.redraw_if_necessary()
+        except Exception as e:
+            print("*** ERROR HANDLING WINDOW ***",
+                file=sys.stderr, flush=True)
+            print(str(traceback.format_exc()))
 
 def sdl_vkey_map(key):
     if key >= sdl.SDLK_0 and key <= sdl.SDLK_9:
