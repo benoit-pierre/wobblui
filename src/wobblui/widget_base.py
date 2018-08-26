@@ -22,7 +22,8 @@ class WidgetBase(object):
     def __init__(self, is_container=False,
             can_get_focus=False,
             takes_text_input=False,
-            has_native_touch_support=False):
+            has_native_touch_support=False,
+            generate_double_click_for_touches=False):
         self.type = "unknown"
         self._focusable = can_get_focus
         self.needs_redraw = True
@@ -37,6 +38,8 @@ class WidgetBase(object):
         self.last_mouse_click_with_time = dict()  # for double clicks
         self.last_touch_was_inside = False
         self.last_touch_was_pressed = False
+        self.generate_double_click_for_touches =\
+            generate_double_click_for_touches
         self._x = 0
         self._y = 0
         self._width = 64
@@ -476,12 +479,20 @@ class WidgetBase(object):
                         internal_data=[
                             orig_touch_start_x,
                             orig_touch_start_y])
-                    self.click(0, 1,
-                        orig_touch_start_x - self.abs_x,
-                        orig_touch_start_y - self.abs_y,
-                        internal_data=[
-                            orig_touch_start_x,
-                            orig_touch_start_y])
+                    if not self.generate_double_click_for_touches:
+                        self.click(0, 1,
+                            orig_touch_start_x - self.abs_x,
+                            orig_touch_start_y - self.abs_y,
+                            internal_data=[
+                                orig_touch_start_x,
+                                orig_touch_start_y])
+                    else:
+                        self.doubleclick(0, 1,
+                            orig_touch_start_x - self.abs_x,
+                            orig_touch_start_y - self.abs_y,
+                            internal_data=[
+                                orig_touch_start_x,
+                                orig_touch_start_y])
                     self.mouseup(0, 1,
                         orig_touch_start_x - self.abs_x,
                         orig_touch_start_y - self.abs_y,
@@ -908,6 +919,12 @@ class WidgetBase(object):
                 hasattr(self, "parent_window") and \
                 self.parent_window is None:
             return True
+        if self.type != "window" and \
+                hasattr(self, "parent_window") and \
+                self.parent_window != None and \
+                self.parent_window.modal_filter != None and \
+                self.parent_window.modal_filter(self) is False:
+            return True
         if self.disabled or self.invisible:
             return True
         p = self.parent
@@ -916,6 +933,12 @@ class WidgetBase(object):
                 return True
             p = p.parent
         return False
+
+    def has_as_parent(self, other_widget):
+        p = self.parent
+        while p != None and p != other_widget:
+            p = p.parent
+        return (p == other_widget)
 
     @property
     def focusable(self):

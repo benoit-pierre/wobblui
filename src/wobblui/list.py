@@ -221,7 +221,7 @@ class ListEntry(object):
         is_empty = False
         if self.text_obj.text == "":
             is_empty = True
-            self.text_obj.text = " "
+            self.text_obj.set_text(" ")
         subtitle_w = 0
         subtitle_h = 0
         self.subtitle_x = 0
@@ -304,18 +304,31 @@ class ListEntry(object):
                     self.subtitle_h) + padding_vertical * 2)
         if is_empty:
             self.text_width = 0
-            self.text_obj.text = ""
+            self.text_obj.set_text("")
 
 class ListBase(Widget):
-    def __init__(self, render_as_menu=False):
-        super().__init__(is_container=False, can_get_focus=True)
+    def __init__(self, render_as_menu=False,
+            fixed_one_line_entries=False):
+        super().__init__(is_container=False, can_get_focus=True,
+            generate_double_click_for_touches=True)
         self.triggered = Event("triggered", owner=self)
         self.triggered_by_single_click = False
         self._entries = []
         self._selected_index = -1
         self._hover_index = -1
         self.scroll_y_offset = 0
+        self.usual_entry_height = None
         self.render_as_menu = render_as_menu
+        self.fixed_one_line_entries = fixed_one_line_entries
+        self.update_style_info()
+
+    def on_stylechanged(self):
+        self.update_style_info()
+
+    def update_style_info(self):
+        entry = ListEntry("", self.style)
+        self.usual_entry_height = entry.height
+        del(entry)
 
     def set_disabled(self, entry_index, state):
         new_state = (state is True)
@@ -327,6 +340,17 @@ class ListBase(Widget):
         if self._hover_index == entry_index:
             self._selected_index = -1
         self.needs_redraw = True
+
+    def on_relayout(self):
+        self.update_style_info()
+
+    def clear(self):
+        self._entries = []
+        self._selected_index = -1
+        self._hover_index = -1
+        self.scroll_y_offset = 0
+        self.needs_redraw = True
+        self.needs_relayout = True
 
     @property
     def hover_index(self):
@@ -443,6 +467,11 @@ class ListBase(Widget):
         if y < 0 or y >= self.height:
             return -1
 
+        if self.fixed_one_line_entries:
+            offset = y + round(self.scroll_y_offset)
+            match = math.floor(offset / float(self.usual_entry_height))
+            return max(-1, min(match, len(self._entries) - 1))
+
         entry_id = -1
         for entry in self._entries:
             entry_id += 1
@@ -479,10 +508,15 @@ class ListBase(Widget):
                 color=c)
 
             # Draw items:
+            skip_start_items = 0
+            if self.fixed_one_line_entries:
+                skip_start_items = math.floor(
+                    round(self.scroll_y_offset) /
+                    self.usual_entry_height)
             cx = border_size
-            cy = border_size
-            entry_id = -1
-            for entry in self._entries:
+            cy = border_size + skip_start_items * self.usual_entry_height
+            entry_id = -1 + skip_start_items
+            for entry in self._entries[skip_start_items:]:
                 entry_id += 1
                 entry.style = self.style
                 entry.width = self.width - round(border_size * 2)
@@ -491,12 +525,23 @@ class ListBase(Widget):
                     cx, cy - round(self.scroll_y_offset),
                     draw_selected=(
                     entry_id == self._selected_index and
-                    entry_id != self._hover_index),
+                    (entry_id != self._hover_index or
+                    not self.render_as_menu)),
                     draw_hover=(self.render_as_menu and
                     entry_id == self._hover_index),
                     draw_no_bg=self.render_as_menu)
-                cy += round(entry.height)
+                if not self.fixed_one_line_entries:
+                    cy += round(entry.height)
+                else:
+                    cy += self.usual_entry_height
+                if self.fixed_one_line_entries and cy > self.height +\
+                        self.scroll_y_offset:
+                    break
                 content_height = max(content_height, cy)
+            if self.fixed_one_line_entries:
+                # Since we skipped things, correct content_height value:
+                content_height = round(len(self._entries) *\
+                    self.usual_entry_height)
 
             # Make sure scroll down offset is not too far:
             max_scroll_down = max(0, content_height - self.height)
@@ -555,6 +600,10 @@ class ListBase(Widget):
         border_size = max(1, round(1.0 * self.dpi_scale))
         if not self.render_as_menu:
             border_size = 0
+        if self.fixed_one_line_entries:
+            return max(12 * self.dpi_scale,
+                round(self.usual_entry_height *\
+                len(self._entries))) + border_size * 2
         h = 0
         if given_width != None:
             h = 0
@@ -596,6 +645,9 @@ class ListBase(Widget):
             subtitle_html=subtitle)
 
     def add_html(self, html, side_html=None, subtitle_html=None):
+        if subtitle_html != None and self.fixed_one_line_entries:
+            raise ValueError("cannot use subtitle when list is " +
+                "forced to simple one-line entries")
         last_was_alternating = True
         if len(self._entries) > 0 and \
                 not self._entries[-1].is_alternating:
@@ -606,6 +658,7 @@ class ListBase(Widget):
             extra_html_as_subtitle=subtitle_html))
         
 class List(ListBase):
-    def __init__(self):
-        super().__init__(render_as_menu=False)
+    def __init__(self, fixed_one_line_entries=False):
+        super().__init__(render_as_menu=False,
+            fixed_one_line_entries=fixed_one_line_entries)
 
