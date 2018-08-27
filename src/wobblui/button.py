@@ -14,7 +14,7 @@ from wobblui.widget import Widget
 
 class Button(Widget):
     def __init__(self, text="", with_border=True, clickable=True,
-            image_placement="left"):
+            image_placement="left", text_scale=1.0):
         super().__init__(is_container=False,
             can_get_focus=clickable)
         if clickable:
@@ -31,12 +31,18 @@ class Button(Widget):
         self.contained_image_srf = None
         self.contained_image_texture = None
         self.text_layout_width = None
+        self.text_scale = text_scale
+        self._html = ""
         self.extra_image_render_func = None
         self.border = 5.0
         if with_border:
             self.border = 15.0
         if len(text) > 0:
             self.set_text(text)
+
+    @property
+    def html(self):
+        return self._html
 
     def __del__(self):
         if hasattr(super(), "__del__"):
@@ -100,14 +106,26 @@ class Button(Widget):
         self.image_color = color
         self.update()
 
+    @html.setter
+    def html(self, v):
+        self.set_html(v)
+
     def set_html(self, html):
+        self._html = html
+        self.update_font_object()
+
+    def on_stylechanged(self):
+        self.update_font_object()
+
+    def update_font_object(self):
         font_family = self.style.get("widget_font_family")
-        px_size = self.style.get("widget_text_size")
+        px_size = round(self.style.get("widget_text_size") *
+            self.text_scale)
         self.contained_richtext_obj = RichText(
             font_family=font_family,
             px_size=px_size,
             draw_scale=self.dpi_scale)
-        self.contained_richtext_obj.set_html(html)
+        self.contained_richtext_obj.set_html(self.html)
         (self.text_layout_width,
             self.text_layout_height) = \
             self.contained_richtext_obj.layout()
@@ -299,34 +317,4 @@ class HoverCircleImageButton(Button):
         tg.w = w
         tg.h = h
         sdl.SDL_RenderCopy(self.renderer, self.circle_tex, None, tg)
-
-class ImageWithLabel(Button):
-    def __init__(self, image_path, scale=None, scale_to_width=None,
-            color_with_text_color=False):
-        super().__init__(with_border=False, clickable=False,
-            image_placement="left")
-        self.original_image = image_path
-        color = Color.white
-        if color_with_text_color:
-            color = Color(self.style.get("widget_text"))
-            if self.style.has("saturated_widget_text"):
-                color = Color(self.style.get("saturated_widget_text"))
-        self.color_with_text_color = color_with_text_color
-        self.set_image(image_path, scale=scale,
-            scale_to_width=scale_to_width)
-        self.set_image_color(color)
-
-    def do_redraw(self):
-        if self.color_with_text_color:
-            color = Color(self.style.get("widget_text"))
-            if self.style.has("saturated_widget_text"):
-                color = Color(self.style.get("saturated_widget_text"))
-            self.image_color = color
-        super().do_redraw()
-
-class LoadingLabel(ImageWithLabel):
-    def __init__(self, html):
-        super().__init__(stock_image("hourglass"), scale_to_width=100,
-            color_with_text_color=True)
-        self.set_html(html)
 

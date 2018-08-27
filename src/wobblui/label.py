@@ -1,7 +1,9 @@
 
 import sdl2 as sdl
 
+from wobblui.button import Button
 from wobblui.color import Color
+from wobblui.image import stock_image
 from wobblui.richtext import RichText
 from wobblui.scrollbarwidget import ScrollbarDrawingWidget
 from wobblui.widget import Widget
@@ -151,4 +153,35 @@ class Label(ScrollbarDrawingWidget):
         self.text_obj.set_html(t)
         self.needs_relayout = True
         self.needs_redraw = True
+
+class ImageWithLabel(Button):
+    def __init__(self, image_path, scale=None, scale_to_width=None,
+            color_with_text_color=False):
+        super().__init__(with_border=False, clickable=False,
+            image_placement="left", text_scale=1.2)
+        self.original_image = image_path
+        color = Color.white
+        if color_with_text_color:
+            color = Color(self.style.get("widget_text"))
+            if self.style.has("saturated_widget_text"):
+                color = Color(self.style.get("saturated_widget_text"))
+        self.color_with_text_color = color_with_text_color
+        self.set_image(image_path, scale=scale,
+            scale_to_width=scale_to_width)
+        self.set_image_color(color)
+
+    def do_redraw(self):
+        if self.color_with_text_color:
+            color = Color(self.style.get("widget_text"))
+            if self.style.has("saturated_widget_text"):
+                color = Color(self.style.get("saturated_widget_text"))
+            self.image_color = color
+        super().do_redraw()
+
+class LoadingLabel(ImageWithLabel):
+    def __init__(self, html):
+        super().__init__(stock_image("hourglass"), scale_to_width=100,
+            color_with_text_color=True)
+        self.set_html(html)
+
 

@@ -1,6 +1,5 @@
 
 import copy
-import html
 from html.parser import unescape as python_html_unescape
 import re
 
@@ -27,6 +26,7 @@ def is_whitespace(c):
         " ", "\n", "\t", "\r"])
 
 def html_escape(t):
+    import html
     return html.escape(t).replace("\u00A0", "&nbsp;")
 
 class TextNode(object):
