@@ -532,7 +532,7 @@ class RichText(object):
                     "br", "div", "p",
                     "table"]) or (
                     el.name.lower()[:1] == "h" and
-                    is_int(el_name[1:])):
+                    is_int(el.name[1:])):
                 return True
             return False
 
