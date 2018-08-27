@@ -1,4 +1,5 @@
 
+import copy
 import html
 import math
 
@@ -19,6 +20,7 @@ class ListEntry(object):
             extra_html_at_right_scale=0.8, is_alternating=False):
         self._cached_natural_width = None
         self._width = 0
+        self.style = style
         self._html = html
         self.extra_html_at_right = extra_html_at_right
         self.extra_html_at_right_scale = extra_html_at_right_scale
@@ -28,15 +30,21 @@ class ListEntry(object):
         font_family = "Tex Gyre Heros"
         if style != None:
             font_family = style.get("widget_font_family")
-        px_size = 12 * px_size_scaler
-        if style != None:
-            px_size = round(style.get("widget_text_size") *
-                px_size_scaler)
+        self.px_size_scaler = px_size_scaler
+        self.update_text_objects()
+
+    def update_text_objects(self):
+        dpi_scale = 1.0
+        px_size = 12 * self.px_size_scaler
+        if self.style != None:
+            px_size = round(self.style.get("widget_text_size") *
+                self.px_size_scaler)
+            dpi_scale = self.style.dpi_scale
 
         # Main text:
         self.text_obj = RichText(font_family=font_family,
             px_size=round(px_size),
-            draw_scale=style.dpi_scale)
+            draw_scale=dpi_scale)
         self.text_obj.set_html(html)
         self._text = self.text_obj.text
 
@@ -51,9 +59,8 @@ class ListEntry(object):
             self.extra_html_at_right_padding = 35.0
             self.extra_html_at_right_obj = RichText(
                 font_family=font_family,
-                px_size=round(extra_html_at_right_scale * px_size *
-                    px_size_scaler),
-                draw_scale=style.dpi_scale)
+                px_size=round(extra_html_at_right_scale * px_size),
+                draw_scale=dpi_scale)
             self.extra_html_at_right_obj.set_html(extra_html_at_right)
 
         # Subtitle text:
@@ -67,17 +74,14 @@ class ListEntry(object):
             self.extra_html_as_subtitle_padding = 5.0
             self.extra_html_as_subtitle_obj = RichText(
                 font_family=font_family,
-                px_size=round(extra_html_as_subtitle_scale * px_size *
-                    px_size_scaler),
-                draw_scale=style.dpi_scale)
+                px_size=round(extra_html_as_subtitle_scale * px_size),
+                draw_scale=dpi_scale)
             self.extra_html_as_subtitle_obj.\
                 set_html(extra_html_as_subtitle)
 
         self._max_width = None
         self.need_size_update = True
-        self.dpi_scale = 1.0
-        if style != None:
-            self.dpi_scale = style.dpi_scale
+        self.dpi_scale = dpi_scale
 
     @property
     def text(self):
@@ -148,24 +152,8 @@ class ListEntry(object):
         Perf.stop('fullitem')
 
     def copy(self):
-        li = ListEntry(self.html, self.style)
-        li.disabled = self.disabled
-        li.is_alternating = self.is_alternating
-        if self.text_obj != None:
-            li.text_obj = self.text_obj.copy()
-        if self.extra_html_at_right_obj != None:
-            li.extra_html_at_right_obj =\
-                self.extra_html_at_right_obj.copy()
-        if self.extra_html_as_subtitle_obj:
-            li.extra_html_as_subtitle_obj =\
-                self.extra_html_as_subtitle_obj.copy()
-        li.extra_html_at_right_padding =\
-            self.extra_html_at_right_padding
-        li.extra_html_as_subtitle_padding =\
-            self.extra_html_as_subtitle_padding
-        li.max_width = self.max_width
-        li.width = self.width
-        li.needs_size_update = True
+        li = copy.copy(self)
+        li.update_text_objects()
         return li
 
     def get_natural_width(self):
