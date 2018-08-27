@@ -73,6 +73,12 @@ class Color(object, metaclass=BaseColors):
             self.red, self.green, self.blue)) + ">"
 
     @property
+    def brightness(self):
+        return max(0.0, min(1.0, (max(0, min(255, self.red)) +
+            max(0, min(255, self.blue)) +
+            max(0, min(255, self.green))) / (255.0 * 3.0)))
+
+    @property
     def html(self):
         def tohex(v):
             t = "{:x}".format(max(0, min(255, int(v))))
@@ -83,4 +89,10 @@ class Color(object, metaclass=BaseColors):
             tohex(self.green) +\
             tohex(self.blue)
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return other.red == self.red and \
+            other.green == self.green and \
+            other.blue == self.blue 
 

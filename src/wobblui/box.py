@@ -116,7 +116,7 @@ class Box(Widget):
             elif expanding and self.expand_info[child_id] and \
                     not self.horizontal:
                 assigned_h += space_per_item
-            elif not expanding and self.expand_info[child_id] and \
+            elif not expanding and self.shrink_info[child_id] and \
                     not self.horizontal:
                 assigned_h = max(1, assigned_h + space_per_item)
             if expand_widget_count == 1 and \

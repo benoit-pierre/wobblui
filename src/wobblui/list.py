@@ -7,6 +7,7 @@ from wobblui.event import Event
 from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.perf import Perf
 from wobblui.richtext import RichText
+from wobblui.scrollbarwidget import ScrollbarDrawingWidget
 from wobblui.widget import Widget
 
 class ListEntry(object):
@@ -326,7 +327,7 @@ class ListEntry(object):
             self.text_width = 0
             self.text_obj.set_text("")
 
-class ListBase(Widget):
+class ListBase(ScrollbarDrawingWidget):
     def __init__(self, render_as_menu=False,
             fixed_one_line_entries=False,
             triggered_by_single_click=False):
@@ -596,34 +597,8 @@ class ListBase(Widget):
         Perf.stop("sectionb")
 
         # Draw scroll bar:
-        if max_scroll_down > 0:
-            scroll_percent = max(0.0, min(1.0,
-                self.scroll_y_offset / float(max_scroll_down)))
-            self.scrollbar_height = round(20.0 * self.dpi_scale)
-            self.scrollbar_y = round((self.height -
-                self.scrollbar_height) * scroll_percent)
-            self.scrollbar_width = round(8.0 * self.dpi_scale)
-            self.scrollbar_x = self.width - self.scrollbar_width
-            c = Color.white
-            if self.style != None:
-                c = Color(self.style.get("border"))
-            draw_rectangle(self.renderer,
-                self.scrollbar_x,
-                self.scrollbar_y,
-                self.scrollbar_width, self.scrollbar_height,
-                color=c)
-            c = Color.black
-            if self.style != None:
-                c = Color(self.style.get("selected_bg"))
-                if self.style.has("scrollbar_knob_fg"):
-                    c = Color(self.style.get("scrollbar_knob_fg"))
-            border_width = max(1, round(1 * self.dpi_scale))
-            draw_rectangle(self.renderer,
-                self.scrollbar_x + 1 * border_width,
-                self.scrollbar_y + 1 * border_width,
-                self.scrollbar_width - 2 * border_width,
-                self.scrollbar_height - 2 * border_width,
-                color=c)
+        self.draw_scrollbar(content_height, self.height,
+            self.scroll_y_offset)
         Perf.stop("list_innerdraw")
 
     def get_natural_width(self):

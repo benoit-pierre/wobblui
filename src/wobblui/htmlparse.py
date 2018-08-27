@@ -1,8 +1,11 @@
 
 import copy
 import html
-from html.parser import unescape
+from html.parser import unescape as python_html_unescape
 import re
+
+def unescape(t):
+    return python_html_unescape(t)
 
 def is_punctuation(c):
     if (c in set([
@@ -23,6 +26,8 @@ def is_whitespace(c):
     return c in set([
         " ", "\n", "\t", "\r"])
 
+def html_escape(t):
+    return html.escape(t).replace("\u00A0", "&nbsp;")
 
 class TextNode(object):
     def __init__(self, text):
@@ -443,10 +448,10 @@ def linkify_html(html_text, linkify_with_blank_target=True):
                             text_el = TextNode(new_el.content[:i])
                             result.append(text_el)
                         result.append(parse("<a href='" +
-                            html.escape(clean_link(
+                            html_escape(clean_link(
                             new_el.content[i:i + url_len])).
                             replace("'", "&apos;") +
-                            "'" + blank_addition + ">" + html.escape(
+                            "'" + blank_addition + ">" + html_escape(
                             new_el.content[i:i + url_len]) +
                             "</a>")[0])
                         i += url_len

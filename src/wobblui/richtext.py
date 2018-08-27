@@ -3,10 +3,27 @@ import copy
 import ctypes
 import html
 import sdl2 as sdl
+import string
 
 from wobblui.color import Color
+import wobblui.cssparse as cssparse
 import wobblui.htmlparse as htmlparse
 from wobblui.font.manager import font_manager
+
+class TagInfo(object):
+    def __init__(self, tag_name, is_block=False):
+        self.name = tag_name.lower()
+        self.is_block = is_block
+
+    def __eq__(self, other):
+        if not isinstance(other, TagInfo) or\
+                not hasattr(other, "name") or \
+                not hasattr(other, "is_block"):
+            return False
+        if other.is_block == self.is_block and \
+                other.name == self.name:
+            return True
+        return False
 
 class RichTextObj(object):
     def __init__(self):
@@ -19,6 +36,9 @@ class RichTextObj(object):
         self.font_family = "Sans Serif"
         self.px_size = 12
         self.draw_scale = 1.0
+
+    def copy(self):
+        return copy.copy(self)
 
     def character_index_to_offset(self, c):
         if c == 0:
@@ -53,21 +73,72 @@ class RichTextObj(object):
 
 class RichTextFragment(RichTextObj):
     def __init__(self, text, font_family, bold, italic,
-            px_size):
+            px_size, surrounding_tags=[],
+            force_text_color=None):
         super().__init__()
+        self.forced_text_color = None
+        if force_text_color != None:
+            self.forced_text_color = Color(force_text_color)
         self.text = text
         self.font_family = font_family
         self.bold = bold
+        self.surrounding_tags = copy.copy(surrounding_tags)
         self.italic = italic
         self.px_size = px_size
         self.align = None
         self.draw_scale = 1.0
 
+    def has_block_tag(self):
+        for tag in self.surrounding_tags:
+            if tag.is_block:
+                return True
+        return False
+
+    def ensure_surrounding_tag(self, tag_name, is_block=False):
+        if self.surrounded_in_tag_name(tag_name):
+            return
+        self.surrounding_tags.append(
+            TagInfo(tag_name, is_block=is_block))
+
+    def remove_surrounding_tag(self, tag_name):
+        if not self.surrounded_in_tag_name(tag_name):
+            return
+        new_surrounding_tags = []
+        for tag in self.surrounding_tags:
+            if tag.name.lower() != tag_name.lower():
+                new_surrounding_tags.append(tag)
+        self.surrounding_tags = new_surrounding_tags
+
+    def surrounded_in_heading(self):
+        def is_digits(v):
+            i = 0
+            while i < len(v):
+                if ord(v[i]) < ord("0") or \
+                        ord(v[i]) > ord("9"):
+                    return False
+                i += 1
+            return len(v) > 0
+        for tag in self.surrounding_tags:
+            if tag.name.lower()[0] == "h" and \
+                    is_digits(tag.name[1:]):
+                return True
+        return False
+
+    def surrounded_in_tag_name(self, tag_name):
+        for tag in self.surrounding_tags:
+            if tag.name.lower() == tag_name.lower():
+                return True
+        return False
+
     def __repr__(self):
         t = "<RichTextFragment '" +\
-            str(self.text).replace("'", "'\"'\"'") +\
-            "' x:" + str(self.x) +\
-            " y: " + str(self.y) + ">"
+            str(self.text).replace("'", "'\"'\"'") + "'"
+        if self.x != None or self.y != None:
+            t += " x:" + str(self.x) +\
+                " y: " + str(self.y)
+        if self.forced_text_color != None:
+            t += " color: " + str(self.forced_text_color.html)
+        t += " px_size=" + str(self.px_size) + ">"
         return t
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
@@ -76,6 +147,8 @@ class RichTextFragment(RichTextObj):
         if draw_scale is None:
             draw_scale = self.draw_scale
         font = self.get_font(draw_scale=draw_scale)
+        if self.forced_text_color != None:
+            color = self.forced_text_color
         tex = font.render_text_as_sdl_texture(renderer,
             self.text, color=color)
         w = ctypes.c_int32()
@@ -87,15 +160,19 @@ class RichTextFragment(RichTextObj):
         tg.y = round(y)
         tg.w = w.value
         tg.h = h.value
-        sdl.SDL_SetRenderDrawColor(renderer,
-            round(color.red), round(color.green),
-            round(color.blue), 255)
+        sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+        #if self.forced_text_color is None:
+        #    sdl.SDL_SetTextureColorMod(tex,
+        #        round(color.red), round(color.green),
+        #        round(color.blue))
+        #else:
+        #    sdl.SDL_SetTextureColorMod(tex,
+        #        round(self.forced_text_color.red),
+        #        round(self.forced_text_color.green),
+        #        round(self.forced_text_color.blue))
         sdl.SDL_RenderCopy(renderer,
             tex, None, tg)
         sdl.SDL_DestroyTexture(tex)
-
-    def copy(self):
-        return copy.copy(self)
 
     def get_width(self):
         return self.get_width_up_to_length(len(self.text))
@@ -123,17 +200,74 @@ class RichTextFragment(RichTextObj):
         if obj.font_family != self.font_family or \
                 obj.bold != self.bold or \
                 obj.italic != self.italic or \
+                obj.forced_text_color != self.forced_text_color or \
                 round(obj.px_size * 10.0) != round(self.px_size * 10.0):
             return False
         return True
 
-    @property
-    def html(self):
-        t = html.escape(self.text)
-        if self.bold:
-            t = "<b>" + t + "</b>"
+    def to_html(self, previous_richtext_obj=None,
+            next_richtext_obj=None):
+        t = htmlparse.html_escape(self.text)
+        if self.bold and not self.surrounded_in_heading():
+            self.ensure_surrounding_tag("b")
+        else:
+            self.remove_surrounding_tag("b")
         if self.italic:
-            t = "<i>" + t + "</i>"
+            self.ensure_surrounding_tag("i")
+        else:
+            self.remove_surrounding_tag("i")
+
+        def previous_obj_forced_color():
+            if previous_richtext_obj is None or \
+                    not hasattr(previous_richtext_obj,
+                    "forced_text_color"):
+                return None
+            return previous_richtext_obj.forced_text_color
+        def next_obj_forced_color():
+            if next_richtext_obj is None or \
+                    not hasattr(next_richtext_obj,
+                    "forced_text_color"):
+                return None
+            return next_richtext_obj.forced_text_color
+        def next_has_tag(tag):
+            if next_richtext_obj is None or \
+                    not hasattr(next_richtext_obj,
+                        "surrounding_tags") or \
+                    not tag in next_richtext_obj.\
+                        surrounding_tags:
+                return False
+            return True
+        def previous_has_tag(tag):
+            if previous_richtext_obj is None or \
+                    not hasattr(previous_richtext_obj,
+                        "surrounding_tags") or \
+                    not tag in previous_richtext_obj.\
+                        surrounding_tags:
+                return False
+            return True
+
+        # Update virtual color <span> nesting:
+        if self.forced_text_color != None:
+            if previous_richtext_obj == None or \
+                    previous_obj_forced_color() != self.forced_text_color:
+                t = "<span style='color:" +\
+                    Color(self.forced_text_color).html + "'>" + t
+            if next_richtext_obj == None or \
+                    next_obj_forced_color() != self.forced_text_color:
+                t = t + "</span>"
+
+        # Update element nesting:
+        serialized_opening_tags = []
+        serialized_closing_tags = []
+        for tag in self.surrounding_tags:
+            if not next_has_tag(tag):
+                serialized_closing_tags.append("</" + tag.name + ">")
+            if not previous_has_tag(tag):
+                serialized_opening_tags.append("<" + tag.name + ">")
+        for tag in reversed(serialized_opening_tags):
+            t = tag + t
+        for tag in reversed(serialized_closing_tags):
+            t += tag
         return t
 
     @property
@@ -163,10 +297,30 @@ class RichTextLinebreak(RichTextObj):
     def __init__(self):
         super().__init__()
         self.text = "\n"
-        self.html = "<br/>"
 
-    def copy(self):
-        return RichTextLinebreak()
+    def __repr__(self):
+        t = "<RichTextLinebreak x:" + str(self.x) +\
+            " y: " + str(self.y) + ">"
+        return t
+
+    def to_html(self, previous_richtext_obj=None,
+            next_richtext_obj=None):
+        if hasattr(previous_richtext_obj,
+                "has_block_tag") and \
+                previous_richtext_obj.has_block_tag():
+            # This is a visual line break after a block ->
+            # omit.
+            return ""
+        if hasattr(previous_richtext_obj,
+                "has_block_tag") and \
+                not previous_richtext_obj.has_block_tag() and\
+                hasattr(next_richtext_obj,
+                "has_block_tag") and \
+                next_richtext_obj.has_block_tag():
+            # This is a visual line break after inline/before
+            # block element. -> omit
+            return ""
+        return "<br/>"
 
 class RichText(object):
     def __init__(self, text="", font_family="Tex Gyre Heros",
@@ -478,8 +632,16 @@ class RichText(object):
     @property
     def html(self):
         t = ""
+        i = -1
         for fragment in self.fragments:
-            t += fragment.html
+            i += 1
+            prev_fragment = None
+            next_fragment = None
+            if i > 0:
+                prev_fragment = self.fragments[i - 1]
+            if i < len(self.fragments) - 1:
+                next_fragment = self.fragments[i + 1]
+            t += fragment.to_html(prev_fragment, next_fragment)
         return t
 
     @property
@@ -508,16 +670,22 @@ class RichText(object):
         self.fragments = simple_fragments
 
     def set_html(self, html):
-        new_fragments = []
-        in_small = 0
-        in_bold = 0
-        in_italic = 0
-        line_empty = True
-        at_block_start = True
+        state = {
+            "fragments": [],
+            "in_small": 0,
+            "in_bold": 0,
+            "in_italic": 0,
+            "in_headings": [],
+            "line_empty_or_not_inline": True,
+            "after_explicit_linebreak": False,
+            "at_block_start": True,
+            "text_color_nesting": [],
+            "at_block_end": False,
+        }
         def add_line_break():
-            new_fragments.append(RichTextLinebreak())
-            new_fragments[-1].font_family = self.default_font_family
-            new_fragments[-1].px_size = self.px_size
+            state["fragments"].append(RichTextLinebreak())
+            state["fragments"][-1].font_family = self.default_font_family
+            state["fragments"][-1].px_size = self.px_size
 
         def is_int(v):
             try:
@@ -536,36 +704,57 @@ class RichText(object):
                 return True
             return False
 
+        def last_fragment_is_line_break():
+            if len(state["fragments"]) > 0 and \
+                    isinstance(state["fragments"][-1], RichTextLinebreak):
+                return True
+            return False
+
         def visit_item(item):
-            nonlocal new_fragments, in_bold, in_italic, \
-                line_empty, at_block_start, in_small
+            text_color = cssparse.element_text_color(item)
+            effective_color = text_color
+            if text_color != None:
+                state["text_color_nesting"].append(text_color)
+            elif len(state["text_color_nesting"]) > 0:
+                effective_color = state["text_color_nesting"][-1]
+
+            if is_block(item) and item.name.lower() != "br":
+                # If this is after a non-empty inline item,
+                # do line break:
+                if not state["line_empty_or_not_inline"] \
+                        and not state["at_block_end"]:
+                    add_line_break()
+                state["after_explicit_linebreak"] = False
+                state["line_empty_or_not_inline"] = True
+                state["at_block_start"] = True
+                state["at_block_end"] = False
             if item.node_type == "element" and \
                     item.name.lower() == "b":
-                in_bold += 1
+                state["in_bold"] += 1
             elif item.node_type == "element" and \
                     item.name.lower() == "i":
-                in_italic += 1
+                state["in_italic"] += 1
             elif item.node_type == "element" and \
                     item.name.lower() == "small":
-                in_small += 1
+                state["in_small"] += 1
+            elif item.node_type == "element" and \
+                    len(item.name) > 1 and \
+                    item.name.lower()[0] == "h" and \
+                    is_int(item.name[1:]):
+                state["in_headings"].append(item.name.lower())
             elif item.node_type == "element" and \
                     item.name.lower() == "br":
-                if not at_block_start or not line_empty:
-                    add_line_break()
-                line_empty = True
-                at_block_start = False
-            elif is_block(item):
-                if not line_empty:
-                    add_line_break()
-                line_empty = True
-                at_block_start = True
+                add_line_break()
+                state["after_explicit_linebreak"] = True
+                state["line_empty_or_not_inline"] = True
             elif item.node_type == "text":
-                font = self.default_font_family
-                bold = (in_bold > 0)
-                italic = (in_italic > 0)
-                small = (in_small > 0)
+                state["font"] = self.default_font_family
+                state["bold"] = (state["in_bold"] > 0)
+                state["italic"] = (state["in_italic"] > 0)
+                state["in_small"] = (state["in_small"] > 0)
                 text = item.content
-                if at_block_start:
+                if state["at_block_start"] or \
+                        state["after_explicit_linebreak"]:
                     while text.startswith("\n") or \
                             text.startswith("\r"):
                         text = text[1:]
@@ -573,36 +762,82 @@ class RichText(object):
                     replace("\r", " ")
                 while text.find("  ") >= 0:
                     text = text.replace("  ", " ")
-                if at_block_start and len(text.strip()) == 0:
+                if (state["at_block_start"] or
+                        state["after_explicit_linebreak"]) \
+                        and len(text.strip(string.whitespace)) == 0:
                     text = ""
                 if len(text) > 0:
                     fac = 1.0
-                    if small:
+                    surrounding_tags = []
+                    if len(state["in_headings"]) > 0:
+                        for heading in state["in_headings"]:
+                            surrounding_tags.append(
+                                TagInfo(heading,
+                                    is_block=True))
+                            if heading == "h1":
+                                fac *= 2.5
+                            elif heading == "h2":
+                                fac *= 2.0
+                            elif heading == "h3":
+                                fac *= 1.5
+                            elif heading == "h4":
+                                fac *= 1.2
+                    if state["in_small"] > 0:
                         fac = 0.75
-                    new_fragments.append(RichTextFragment(
-                        text, font,
-                        bold, italic, self.px_size * fac))
-                    line_empty = False
-                    at_block_start = False
+                        surrounding_tags.append(TagInfo("small",
+                            is_block=False))
+                    state["fragments"].append(RichTextFragment(
+                        text, state["font"],
+                        state["bold"] or len(state["in_headings"]) > 0,
+                        state["italic"], self.px_size * fac,
+                        surrounding_tags=surrounding_tags,
+                        force_text_color=effective_color))
+                    state["after_explicit_linebreak"] = False
+                    state["line_empty_or_not_inline"] = False
+                    state["at_block_start"] = False
+                    state["at_block_end"] = False
+
         def leave_item(item):
-            nonlocal in_bold, in_italic, line_empty,\
-                at_block_start, in_small
+            text_color = cssparse.element_text_color(item)
+            if text_color != None:
+                assert(len(state["text_color_nesting"]) > 0)
+                state["text_color_nesting"] =\
+                    state["text_color_nesting"][:-1]
+
             if item.node_type == "element" and \
                     item.name.lower() == "b":
-                in_bold = max(0, in_bold - 1)
+                state["in_bold"] = max(0, state["in_bold"] - 1)
             elif item.node_type == "element" and \
                     item.name.lower() == "i":
-                in_italic = max(0, in_italic - 1)
+                state["in_italic"] = max(0, state["in_italic"] - 1)
             elif item.node_type == "element" and \
                     item.name.lower() == "small":
-                in_small = max(0, in_small - 1)
-            if is_block(item):
-                if not line_empty:
+                state["in_small"] = max(0, state["in_small"] - 1)
+            elif item.node_type == "element" and \
+                    len(item.name) > 1 and \
+                    item.name.lower()[0] == "h" and \
+                    is_int(item.name[1:]):
+                state["in_headings"] = state["in_headings"][:-1]
+            if is_block(item) and item.name.lower() != "br":
+                if not state["line_empty_or_not_inline"]:
                     add_line_break()
-                at_block_start = True
-                line_empty = False
+                state["at_block_end"] = True
+                state["at_block_start"] = False
+                state["after_explicit_linebreak"] = False
+                state["at_block_start"] = True
+                state["line_empty_or_not_inline"] = False
+            elif not state["line_empty_or_not_inline"]:
+                # Something inline happened, no longer at block start:
+                state["at_block_start"] = False
+                state["at_block_end"] = False
         htmlparse.depth_first_walker(html, visit_item,
             visit_out_callback=leave_item)
-        self.fragments = new_fragments
+        self.fragments = state["fragments"]
         self.simplify()
+
+def test_process_html(html):
+    obj = RichText()
+    obj.set_html(html)
+    return obj.html
+
 

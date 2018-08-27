@@ -77,7 +77,7 @@ class Font(object):
     def render_text_as_sdl_texture(self, renderer, text, color=None):
         font = self.get_sdl_font()
         if color != None:
-            c = sdl.SDL_Color(color.red, color.blue, color.green)
+            c = sdl.SDL_Color(color.red, color.green, color.blue)
         else:
             c = sdl.SDL_Color(0, 0, 0)
         try:
