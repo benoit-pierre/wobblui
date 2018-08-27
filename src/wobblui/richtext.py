@@ -149,7 +149,7 @@ class RichTextFragment(RichTextObj):
         font = self.get_font(draw_scale=draw_scale)
         if self.forced_text_color != None:
             color = self.forced_text_color
-        tex = font.render_text_as_sdl_texture(renderer,
+        tex = font.get_cached_rendered_sdl_texture(renderer,
             self.text, color=color)
         w = ctypes.c_int32()
         h = ctypes.c_int32()
@@ -172,7 +172,6 @@ class RichTextFragment(RichTextObj):
         #        round(self.forced_text_color.blue))
         sdl.SDL_RenderCopy(renderer,
             tex, None, tg)
-        sdl.SDL_DestroyTexture(tex)
 
     def get_width(self):
         return self.get_width_up_to_length(len(self.text))

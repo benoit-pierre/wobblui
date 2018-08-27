@@ -11,6 +11,12 @@ from wobblui.sdlinit import initialize_sdl
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
 
+from wobblui.cache import KeyValueCache
+from wobblui.color import Color
+
+rendered_words_cache = KeyValueCache(size=500,
+    destroy_func=lambda x: sdl.SDL_DestroyTexture(x))
+
 ttf_was_initialized = False
 class Font(object):
     def __init__(self, font_family,
@@ -26,6 +32,12 @@ class Font(object):
         self.bold = bold
         self._avg_letter_width = None
         self._sdl_font = None
+
+    @staticmethod
+    def clear_global_cache(self):
+        for v in rendered_words_cache:
+            sdl.SDL_DestroyTexture(v)
+        rendered_words_cache.clear()
 
     def __repr__(self):
         return "<Font family='" + str(
@@ -55,9 +67,18 @@ class Font(object):
                 str(sdlttf.TTF_GetError().decode("utf-8", "replace")))
         return (int(width.value), int(height.value))
 
+
+    def _render_size(self, text):
+        return GlobalFontDrawer.render_size(self, text)
+
+    def _old_draw_at(self, renderer, text, x, y, color=Color.black):
+        GlobalFontDrawer.draw_with_font(renderer, self,
+            text, x, y, color=color)
+
     def draw_at(self, renderer, text, x, y, color=Color.black):
-        tex = self.render_text_as_sdl_texture(renderer, text,
+        tex = self.get_cached_rendered_sdl_texture(renderer, text,
             color=Color.white)
+        assert(tex != None)
         w = ctypes.c_int32()
         h = ctypes.c_int32()
         w.value = 0
@@ -72,9 +93,15 @@ class Font(object):
         sdl.SDL_SetTextureColorMod(tex,
             color.red, color.green, color.blue)
         sdl.SDL_RenderCopy(renderer, tex, None, tg)
-        sdl.SDL_DestroyTexture(tex)
 
-    def render_text_as_sdl_texture(self, renderer, text, color=None):
+    def get_cached_rendered_sdl_texture(self, renderer, text, color=None):
+        global rendered_words_cache
+        key = str((self.font_family, self.italic, self.bold,
+            self.pixel_size, str(ctypes.addressof(
+                renderer.contents)))) + "_" + text
+        tex = rendered_words_cache.get(key)
+        if tex != None:
+            return tex
         font = self.get_sdl_font()
         if color != None:
             c = sdl.SDL_Color(color.red, color.green, color.blue)
@@ -85,9 +112,10 @@ class Font(object):
         except AttributeError:
             pass
         surface = sdlttf.TTF_RenderUTF8_Blended(font, text, c)
-        texture = sdl.SDL_CreateTextureFromSurface(renderer, surface)
+        tex = sdl.SDL_CreateTextureFromSurface(renderer, surface)
         sdl.SDL_FreeSurface(surface)
-        return texture
+        rendered_words_cache.add(key, tex)
+        return tex
 
     def get_sdl_font(self):
         if self._sdl_font != None:

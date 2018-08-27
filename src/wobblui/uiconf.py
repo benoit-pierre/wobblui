@@ -12,6 +12,8 @@ class Conf(object):
         self.data[key] = value
 
     def get_default(self, value):
+        if value == "software_renderer":
+            return True
         if value == "perf_debug":
             return False
         if value == "debug_events":

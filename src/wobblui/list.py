@@ -104,7 +104,7 @@ class ListEntry(object):
             draw_hover=False,
             draw_keyboard_focus=False,
             draw_no_bg=False):
-        Perf.start('fullitem')
+        #Perf.start('fullitem')
         self.update_size()
         no_bg = draw_no_bg
         c = Color((200, 200, 200))
@@ -131,7 +131,7 @@ class ListEntry(object):
                 c = Color(self.style.get("selected_text"))
             if self.disabled and self.style.has("widget_disabled_text"):
                 c = Color(self.style.get("widget_disabled_text"))
-        Perf.start("List_text_draw")
+        #Perf.start("List_text_draw")
         self.text_obj.draw(renderer,
             round(5.0 * self.dpi_scale) + x,
             round(self.vertical_padding * self.dpi_scale) + y,
@@ -153,8 +153,8 @@ class ListEntry(object):
                 round(self.vertical_padding * self.dpi_scale) +\
                 max(0, self.extra_html_at_right_y) + y,
                 color=c)
-        Perf.stop("List_text_draw")
-        Perf.stop('fullitem')
+        #Perf.stop("List_text_draw")
+        #Perf.stop('fullitem')
 
     def copy(self):
         li = copy.copy(self)
@@ -513,11 +513,11 @@ class ListBase(ScrollbarDrawingWidget):
                 cy += self.usual_entry_height
 
     def do_redraw(self):
-        Perf.start("list_innerdraw")
+        #Perf.start("list_innerdraw")
         content_height = 0
         max_scroll_down = 0
 
-        Perf.start("sectiona")
+        #Perf.start("sectiona")
 
         # Get height of content:
         if not self.fixed_one_line_entries:
@@ -554,8 +554,8 @@ class ListBase(ScrollbarDrawingWidget):
             self.height - border_size * 2,
             color=c)
 
-        Perf.stop("sectiona")
-        Perf.start("sectionb")
+        #Perf.stop("sectiona")
+        #Perf.start("sectionb")
 
         # Draw items:
         skip_start_items = 0
@@ -584,16 +584,16 @@ class ListBase(ScrollbarDrawingWidget):
                 break
 
         # Draw keyboard focus line if we have the focus:
-        Perf.start("list_keyboardfocus")
+        #Perf.start("list_keyboardfocus")
         if self.focused:
             self.draw_keyboard_focus(0, 0, self.width, self.height)
-        Perf.stop("list_keyboardfocus")
-        Perf.stop("sectionb")
+        #Perf.stop("list_keyboardfocus")
+        #Perf.stop("sectionb")
 
         # Draw scroll bar:
         self.draw_scrollbar(content_height, self.height,
             self.scroll_y_offset)
-        Perf.stop("list_innerdraw")
+        #Perf.stop("list_innerdraw")
 
     def get_natural_width(self):
         border_size = max(1, round(1.0 * self.dpi_scale))

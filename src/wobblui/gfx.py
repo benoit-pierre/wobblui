@@ -92,7 +92,7 @@ def draw_font(renderer, text, x, y,
         bold=bold, italic=italic,
         px_size=px_size)
     if font != None:
-        tex = font.render_text_as_sdl_texture(renderer, text, color)
+        tex = font.get_cached_rendered_sdl_texture(renderer, text, color)
         if tex != None:
             w = ctypes.c_int32()
             h = ctypes.c_int32()
@@ -104,5 +104,4 @@ def draw_font(renderer, text, x, y,
             tg_rect.w = w.value
             tg_rect.h = h.value
             sdl.SDL_RenderCopy(renderer, tex, None, tg)
-            sdl.SDL_DestroyTexture(tex)
 

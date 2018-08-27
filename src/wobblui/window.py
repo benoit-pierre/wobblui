@@ -11,6 +11,7 @@ from wobblui.gfx import draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
+from wobblui.uiconf import config
 from wobblui.widget_base import all_widgets, WidgetBase
 from wobblui.widgetman import all_windows
 
@@ -94,8 +95,13 @@ class Window(WidgetBase):
                 sdl.SDL_DestroyRenderer(old_renderer)
                 self.renderer = None
         if self._renderer is None:
-            self._renderer = \
-                sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
+            if config.get("software_renderer"):
+                self._renderer = \
+                    sdl.SDL_CreateRenderer(self._sdl_window, -1,
+                        sdl.SDL_RENDERER_SOFTWARE)
+            else:
+                self._renderer = \
+                    sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
             self.needs_redraw = True
         self.update_to_real_sdlw_size()
         for child in self.children:
