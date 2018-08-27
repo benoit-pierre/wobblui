@@ -617,11 +617,12 @@ class ListBase(ScrollbarDrawingWidget):
         h = 0
         if given_width != None:
             h = 0
+            entry_width = given_width - round(border_size * 2)
             entry_copies = []
             for entry in self._entries:
                 entry_copies.append(entry.copy())
-                entry_copies[-1].max_width = given_width
-                entry_copies[-1].width = given_width
+                entry_copies[-1].max_width = entry_width
+                entry_copies[-1].width = entry_width
                 h += entry_copies[-1].height
         else:
             for entry in self._entries:
