@@ -110,7 +110,6 @@ class WidgetBase(object):
                 255, 255, 255, 255)
             if hasattr(self_value, "do_redraw"):
                 self_value.do_redraw()
-            sdl.SDL_RenderPresent(self_value.renderer)
             sdl.SDL_SetRenderTarget(self_value.renderer,
                 self_value.restore_old_target)
             self_value.restore_old_target = -1

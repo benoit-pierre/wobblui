@@ -1,4 +1,5 @@
 
+import random
 import sys
 
 from wobblui.perf import Perf
@@ -83,7 +84,8 @@ class Event(object):
             perf_name = "Event_redraw_" + (
                 str(self.on_object.__class__.__name__)
                 if self.on_object != None else
-                "<no_associated_object>")
+                "<no_associated_object>") +\
+                str(random.random())
             Perf.start(perf_name)
         try:
             # All of this is perfed:
@@ -111,7 +113,8 @@ class Event(object):
             return True
         finally:
             # Stop perf measurement.
-            Perf.stop(perf_name)
+            if perf_name != None:
+                Perf.stop(perf_name)
 
 class ForceDisabledDummyEvent(Event):
     def __init__(self, name, owner=None):
