@@ -6,11 +6,13 @@ from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
 class Label(Widget):
-    def __init__(self, text="", color=None):
+    def __init__(self, text="", color=None,
+            text_scale=1.0):
         super().__init__()
         self.type = "label"
         font_family = self.style.get("widget_font_family")
-        px_size = self.style.get("widget_text_size") 
+        px_size = round(self.style.get("widget_text_size") *\
+            text_scale) 
         self._layout_height = 0
         self.text_obj = RichText(font_family=font_family,
             px_size=px_size,
