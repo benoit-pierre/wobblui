@@ -305,9 +305,13 @@ class HBox(Box):
                 stretch_children_on_secondary_axis)
 
 class CenterBox(Widget):
-    def __init__(self, padding=0):
+    def __init__(self, padding=0,
+            child_minimum_width=0,
+            expand_vertically=False):
         super().__init__(is_container=True)
         self.padding = padding
+        self.child_minimum_width = child_minimum_width
+        self.expand_vertically = expand_vertically
 
     def do_redraw(self):
         self.draw_children()
@@ -315,7 +319,9 @@ class CenterBox(Widget):
     def get_natural_width(self):
         if len(self._children) == 0:
             return 0
-        return self._children[0].get_natural_width() +\
+        min_width = round(self.dpi_scale * self.child_minimum_width) 
+        return max(min_width,
+            self._children[0].get_natural_width()) +\
             (self.padding * 2 * self.dpi_scale)
 
     def get_natural_height(self, given_width=None):
@@ -335,10 +341,15 @@ class CenterBox(Widget):
         child = self._children[0]
         nat_width = child.get_natural_width()
         child.width = min(round(self.width -
-            outer_padding * 2), nat_width)
-        child.height = min(round(self.height -
-            outer_padding * 2), child.get_natural_height(
-            given_width=child.width))
+            outer_padding * 2),
+            max(self.child_minimum_width, nat_width))
+        if not self.expand_vertically:
+            child.height = min(round(self.height -
+                outer_padding * 2), child.get_natural_height(
+                given_width=child.width))
+        else:
+            child.height = max(1, self.height -
+                self.padding * 2 * self.dpi_scale)
         child.x = math.floor((self.width - child.width) / 2)
         child.y = math.floor((self.height - child.height) / 2)
         child.relayout_if_necessary()

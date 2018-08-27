@@ -227,7 +227,6 @@ class ListEntry(object):
     def update_size(self):
         if not self.need_size_update:
             return
-        print("UPDATING ENTRY SIZE")
         self.need_size_update = False
         padding = max(0, round(5.0 * self.dpi_scale))
         padding_vertical = max(0,
@@ -317,21 +316,26 @@ class ListEntry(object):
             (self.text_width, self.text_height) = self.text_obj.layout(
                 max_width=mw)
             self._height = round(self.text_height + padding_vertical * 2)
+            self.subtitle_y = self.text_height +\
+                math.ceil(self.extra_html_as_subtitle_padding *
+                    self.dpi_scale)
             if self.extra_html_as_subtitle_obj != None:
-                self._height = round(max(self.text_height,
-                    self.subtitle_y +
-                    self.subtitle_h) + padding_vertical * 2)
+                self._height = round(self.subtitle_y +
+                    self.subtitle_h) + padding_vertical * 2
         if is_empty:
             self.text_width = 0
             self.text_obj.set_text("")
 
 class ListBase(Widget):
     def __init__(self, render_as_menu=False,
-            fixed_one_line_entries=False):
+            fixed_one_line_entries=False,
+            triggered_by_single_click=False):
         super().__init__(is_container=False, can_get_focus=True,
-            generate_double_click_for_touches=True)
+            generate_double_click_for_touches=(
+            not triggered_by_single_click))
         self.triggered = Event("triggered", owner=self)
-        self.triggered_by_single_click = False
+        self.triggered_by_single_click =\
+            triggered_by_single_click
         self._entries = []
         self._selected_index = -1
         self._hover_index = -1
@@ -461,7 +465,9 @@ class ListBase(Widget):
 
     def on_doubleclick(self, mouse_id, button, x, y):
         self.set_selection_by_mouse_pos(x, y)
-        self.triggered()
+        if not self.triggered_by_single_click and \
+                self._selected_index >= 0:
+            self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
         self.set_selection_by_mouse_pos(x, y)
@@ -693,7 +699,9 @@ class ListBase(Widget):
             extra_html_as_subtitle=subtitle_html))
         
 class List(ListBase):
-    def __init__(self, fixed_one_line_entries=False):
+    def __init__(self, fixed_one_line_entries=False,
+            triggered_by_single_click=False):
         super().__init__(render_as_menu=False,
-            fixed_one_line_entries=fixed_one_line_entries)
+            fixed_one_line_entries=fixed_one_line_entries,
+            triggered_by_single_click=triggered_by_single_click)
 

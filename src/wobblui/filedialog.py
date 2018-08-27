@@ -3,6 +3,7 @@ import functools
 import html
 import os
 import platform
+import time
 
 from wobblui.box import HBox, VBox
 from wobblui.button import Button, ImageButton
@@ -12,14 +13,19 @@ from wobblui.image import stock_image
 from wobblui.label import Label
 from wobblui.list import List
 from wobblui.osinfo import is_android
+from wobblui.textentry import TextEntry
+from wobblui.timer import schedule
 from wobblui.topbar import Topbar
 from wobblui.uiconf import config
 from wobblui.widget import Widget
 
+CHOSEN_NOTHING=-1
+
 class FileOrDirChooserDialog(Widget):
     def __init__(self, window, choose_dir=False, confirm_text="Open",
+            title=None, can_choose_nothing=False,
             cancel_text="Cancel",
-            choose_nonexisting=False, outer_padding=15.0,
+            choose_nonexisting=False, outer_padding=2.0,
             start_directory=None, file_filter="*"):
         self.debug = (config.get("debug_file_dialog") is True)
         if self.debug:
@@ -38,8 +44,11 @@ class FileOrDirChooserDialog(Widget):
         self.listing_path = None
         self.file_filter = file_filter
         topbar = Topbar()
-        topbar.add_to_top(Label("Choose a " +
-            ("File:" if not choose_dir else "Folder:")))
+        if title == None:
+            topbar.add_to_top(Label("Choose a " +
+                ("File:" if not choose_dir else "Folder:")))
+        else:
+            topbar.add_to_top(Label(title))
         vbox = VBox()
         nav_hbox = HBox()
         self.location_label = Label("")
@@ -58,11 +67,40 @@ class FileOrDirChooserDialog(Widget):
         self.contents_list = List(fixed_one_line_entries=True)
         self.contents_list.triggered.register(self.select_item)
         vbox.add(self.contents_list, shrink=True)
+        
+        # Add new file entry if choosing new file:
+        if not choose_dir and choose_nonexisting:
+            create_row = HBox()
+            create_label = Label("...or create new file:")
+            create_row.add(create_label, expand=False)
+            self.create_entry = TextEntry()
+            self.create_entry.set_text("Enter New Filename")
+            def focus_entry():
+                self.create_entry.select_all()
+                self.contents_list.selected_index = -1
+                def select_all():
+                    if self.create_entry.text == \
+                            "Enter New Filename":
+                        # No typing yet
+                        self.create_entry.select_all()
+                schedule(select_all, 0.1)
+            self.create_entry.focus.register(focus_entry)
+            create_row.add(self.create_entry, expand=True)
+            vbox.add(create_row, expand=False)
+
+        # Add bottom button row:
         buttons_row = HBox()
         self.cancel_button = Button(cancel_text)
         self.cancel_button.triggered.register(self.abort_dialog)
         self.okay_button = Button(confirm_text)
         self.okay_button.triggered.register(self.select_item)
+        if can_choose_nothing:
+            self.no_target = Button("Clear Old Choice")
+            buttons_row.add(self.no_target, expand=False)
+            self.no_target.triggered.register(
+                lambda: self.select_item(no_target=True))
+            if not choose_nonexisting:
+                create_row.add_spacer()
         buttons_row.add_spacer()
         buttons_row.add(self.cancel_button, expand=False)
         buttons_row.add(self.okay_button, expand=False)
@@ -94,12 +132,32 @@ class FileOrDirChooserDialog(Widget):
         self.stop_run()
         self.run_callback(None)
 
-    def select_item(self):
+    def select_item(self, no_target=False):
+        if no_target:
+            self.stop_run()
+            self.run_callback(CHOSEN_NOTHING)
+            return
         item_index = self.contents_list.selected_index
         if self.listing_data is None or \
                 self.listing_data == "error" or \
                 item_index < 0 or \
                 item_index >= len(self.listing_data):
+            if not self.choose_dir and \
+                    hasattr(self, "create_entry") and \
+                    len(self.create_entry.text.strip()) > 0 and \
+                    self.create_entry.text.strip().lower() != \
+                    "Enter New Filename".lower():
+                result = os.path.normpath(os.path.abspath(
+                    os.path.join(self.current_path,
+                    self.create_entry.text.strip())))
+                ending = None
+                if self.file_filter.startswith("*.") and\
+                        len(self.file_filter) > 2:
+                    ending = self.file_filter[1:]
+                if not result.endswith(ending):
+                    result += ending
+                self.stop_run()
+                self.run_callback(result)
             return
         info = self.listing_data[item_index]
         if info[1]:
@@ -232,7 +290,7 @@ class FileOrDirChooserDialog(Widget):
             self.width = self.parent_window.width
             self.height = self.parent_window.height
         outer_padding = max(0, round(self.outer_padding * self.dpi_scale))
-        inner_padding = max(2, round(3.0 * self.dpi_scale))
+        inner_padding = max(2, round(5.0 * self.dpi_scale))
         total_padding = outer_padding + inner_padding
         child = self._children[0]
         child.x = total_padding
@@ -243,20 +301,11 @@ class FileOrDirChooserDialog(Widget):
     def on_redraw(self):
         outer_padding = max(0, round(self.outer_padding * self.dpi_scale))
         border_c = Color.black
-        bg_c = Color.white
-        if self.style != None:
+        if self.style != None and False:
             border_c = Color(self.style.get("border"))
-            bg_c = Color(self.style.get("window_bg"))
-        outer_border_width = max(1, round(1.0 * self.dpi_scale))
         draw_rectangle(self.renderer, outer_padding, outer_padding,
             self.width - outer_padding * 2,
             self.height - outer_padding * 2, color=border_c)
-        draw_rectangle(self.renderer,
-            outer_border_width + outer_padding,
-            outer_border_width + outer_padding,
-            self.width - outer_border_width * 2 - outer_padding * 2,
-            self.height - outer_border_width * 2 - outer_padding * 2,
-            color=bg_c)
         self.draw_children()
 
     def suggest_start_dir(self):
@@ -286,6 +335,8 @@ class FileOrDirChooserDialog(Widget):
 
 class FileChooserDialog(FileOrDirChooserDialog):
     def __init__(self, window, confirm_text="Open",
+            title=None,
+            can_choose_nothing=False,
             choose_nonexisting=False, outer_padding=15.0,
             start_directory=None,
             file_filter="*"):
@@ -294,6 +345,8 @@ class FileChooserDialog(FileOrDirChooserDialog):
             choose_nonexisting=choose_nonexisting,
             outer_padding=outer_padding,
             start_directory=start_directory,
+            title=title,
+            can_choose_nothing=can_choose_nothing,
             file_filter=file_filter)
 
 class DirectoryChooserDialog(FileOrDirChooserDialog):
@@ -302,6 +355,7 @@ class DirectoryChooserDialog(FileOrDirChooserDialog):
         super().__init__(window, choose_dir=False,
             confirm_text=confirm_text,
             choose_nonexisting=False,
+            can_choose_nothing=can_choose_nothing,
             outer_padding=outer_padding,
             start_directory=start_directory)
 

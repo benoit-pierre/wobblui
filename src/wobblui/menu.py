@@ -66,9 +66,9 @@ class MenuSeparator(ListEntry):
 
 class Menu(ListBase):
     def __init__(self):
-        super().__init__(render_as_menu=True)
+        super().__init__(render_as_menu=True,
+            triggered_by_single_click=True)
         self.callback_funcs = []
-        self.triggered_by_single_click = True
 
     def on_triggered(self):
         item_id = self.selected_index

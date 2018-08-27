@@ -5,13 +5,15 @@ class Conf(object):
 
     def get(self, value):
         if not value in self.data:
-            return self.get_default[value]
+            return self.get_default(value)
         return self.data[value]
 
     def set(self, key, value):
         self.data[key] = value
 
     def get_default(self, value):
+        if value == "perf_debug":
+            return False
         if value == "debug_events":
             return False
         if value == "debug_source_events":

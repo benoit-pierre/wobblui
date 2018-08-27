@@ -124,6 +124,7 @@ class Button(Widget):
         if v.red != self._image_color.red or \
                 v.green != self._image_color.green or \
                 v.blue != self._image_color.blue:
+            self._image_color = v
             self.update_texture_color()
 
     def update_texture_color(self):

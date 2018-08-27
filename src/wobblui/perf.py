@@ -3,7 +3,7 @@ import copy
 import threading
 import time
 
-PERF_DEBUG=True
+from wobblui.uiconf import config
 
 class Perf(object):
     perf_start_times = dict()
@@ -22,6 +22,7 @@ class Perf(object):
 
     @classmethod
     def stop(cls, name):
+        global config
         now = time.monotonic()
         cls.lock.acquire()
         if not name in cls.perf_start_times or \
@@ -35,7 +36,7 @@ class Perf(object):
         duration = now - start_time
         cls.perf_measurements[name].append((now, duration))
         cls.lock.release()
-        if PERF_DEBUG:
+        if config.get("perf_debug"):
             v = str(round(duration * 10000000.0))
             while len(v) < 5:
                 v = "0" + v

@@ -49,7 +49,7 @@ class Topbar(Widget):
         if self.style != None:
             c = Color(self.style.get("topbar_bg"))
         sdl.SDL_SetRenderDrawColor(self.renderer,
-            255, 255, 255, 255)
+            0, 0, 0, 0)
         sdl.SDL_RenderClear(self.renderer)
 
         # Draw topbar background:
