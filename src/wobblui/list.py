@@ -20,32 +20,34 @@ class ListEntry(object):
             extra_html_at_right_scale=0.8, is_alternating=False):
         self._cached_natural_width = None
         self._width = 0
-        self.style = style
+        self._style = style
         self._html = html
         self.extra_html_at_right = extra_html_at_right
         self.extra_html_at_right_scale = extra_html_at_right_scale
+        self.extra_html_as_subtitle = extra_html_as_subtitle
+        self.extra_html_as_subtitle_scale =\
+            extra_html_as_subtitle_scale
         self.disabled = False
         self.is_alternating = is_alternating
         self._style = style
-        font_family = "Tex Gyre Heros"
-        if style != None:
-            font_family = style.get("widget_font_family")
         self.px_size_scaler = px_size_scaler
         self.update_text_objects()
 
     def update_text_objects(self):
         dpi_scale = 1.0
         px_size = 12 * self.px_size_scaler
+        font_family = "Tex Gyre Heros"
         if self.style != None:
             px_size = round(self.style.get("widget_text_size") *
                 self.px_size_scaler)
             dpi_scale = self.style.dpi_scale
+            font_family = self.style.get("widget_font_family")
 
         # Main text:
         self.text_obj = RichText(font_family=font_family,
             px_size=round(px_size),
             draw_scale=dpi_scale)
-        self.text_obj.set_html(html)
+        self.text_obj.set_html(self._html)
         self._text = self.text_obj.text
 
         # Extra text at the right:
@@ -55,13 +57,15 @@ class ListEntry(object):
         self.extra_html_at_right_h = 0
         self.extra_html_at_right_obj = None
         self.extra_html_at_right_padding = 0
-        if extra_html_at_right != None:
+        if self.extra_html_at_right != None:
             self.extra_html_at_right_padding = 35.0
             self.extra_html_at_right_obj = RichText(
                 font_family=font_family,
-                px_size=round(extra_html_at_right_scale * px_size),
+                px_size=round(self.extra_html_at_right_scale *
+                    px_size),
                 draw_scale=dpi_scale)
-            self.extra_html_at_right_obj.set_html(extra_html_at_right)
+            self.extra_html_at_right_obj.set_html(
+                self.extra_html_at_right)
 
         # Subtitle text:
         self.subtitle_x = 0
@@ -70,14 +74,15 @@ class ListEntry(object):
         self.subtitle_h = 0
         self.extra_html_as_subtitle_obj = None
         self.extra_html_as_subtitle_padding = 0.0
-        if extra_html_as_subtitle != None:
+        if self.extra_html_as_subtitle != None:
             self.extra_html_as_subtitle_padding = 5.0
             self.extra_html_as_subtitle_obj = RichText(
                 font_family=font_family,
-                px_size=round(extra_html_as_subtitle_scale * px_size),
+                px_size=round(self.extra_html_as_subtitle_scale *
+                    px_size),
                 draw_scale=dpi_scale)
             self.extra_html_as_subtitle_obj.\
-                set_html(extra_html_as_subtitle)
+                set_html(self.extra_html_as_subtitle)
 
         self._max_width = None
         self.need_size_update = True
@@ -196,6 +201,7 @@ class ListEntry(object):
             self._cached_natural_width = None
             self.need_size_update = True
             self._style = v
+            self.update_text_objects()
 
     @property
     def max_width(self):
