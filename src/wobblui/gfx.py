@@ -1,9 +1,11 @@
 
+import ctypes
 import math
 import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.font.manager import font_manager
+from wobblui.perf import Perf
 
 _rect = sdl.SDL_Rect()
 def draw_rectangle(renderer, x, y, w, h, color=None,
@@ -37,8 +39,120 @@ def draw_rectangle(renderer, x, y, w, h, color=None,
         round(color.blue), 255)
     sdl.SDL_RenderFillRect(renderer, _rect)
 
-def draw_dashed_line(renderer, x1, y1, x2, y2, color=None,
+dash_tex_dashlength = 10
+dash_tex_length = (dash_tex_dashlength * 100)
+dash_tex_wide = 32
+dashed_texture_store = dict()
+def get_dashed_texture(renderer, vertical=False):
+    global dashed_texture_store
+    renderer_key = str(ctypes.addressof(renderer.contents))
+    if (vertical, renderer_key) in dashed_texture_store:
+        return dashed_texture_store[(vertical, renderer_key)]
+    if not vertical:
+        tex = sdl.SDL_CreateTexture(
+            renderer, sdl.SDL_PIXELFORMAT_RGBA8888,
+            sdl.SDL_TEXTUREACCESS_TARGET, dash_tex_length, dash_tex_wide)
+    else:
+        tex = sdl.SDL_CreateTexture(
+            renderer, sdl.SDL_PIXELFORMAT_RGBA8888,
+            sdl.SDL_TEXTUREACCESS_TARGET, dash_tex_wide, dash_tex_length)
+    old_t = sdl.SDL_GetRenderTarget(renderer)
+    assert(tex != None)
+    if sdl.SDL_SetRenderTarget(renderer, tex) != 0:
+        raise RuntimeError("failed to change render target: " +
+            str(sdl.SDL_GetError()))
+    sdl.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
+    sdl.SDL_RenderClear(renderer)
+    if not vertical:
+        _draw_dashed_line_uncached(renderer,
+            0, round(dash_tex_wide / 2), dash_tex_length,
+            round(dash_tex_wide / 2),
+            color=Color.white, dash_length=dash_tex_dashlength,
+            thickness=round(dash_tex_wide * 1.5))
+    else:
+        _draw_dashed_line_uncached(renderer,
+            round(dash_tex_wide / 2), 0,
+            round(dash_tex_wide / 2), dash_tex_length,
+            color=Color.white, dash_length=dash_tex_dashlength,
+            thickness=round(dash_tex_wide * 1.5))
+
+    sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+    sdl.SDL_SetRenderTarget(renderer, old_t)
+    dashed_texture_store[(vertical, renderer_key)] = tex
+    return tex
+
+def clear_renderer(renderer):
+    global dashed_texture_store
+    renderer_key = str(ctypes.addressof(renderer.contents))
+    new_dashed_store = dict()
+    for entry in dashed_texture_store:
+        if entry[1] == renderer_key:
+            sdl.SDL_DestroyTexture(dashed_texture_store[entry])
+            continue
+        new_dashed_store[entry] = dashed_texture_store[entry]
+    dashed_texture_store[entry] = new_dashed_store
+
+def draw_dashed_line(
+        renderer, x1, y1, x2, y2, color=None,
         dash_length=7.0, thickness=3.0):
+    if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
+        raise NotImplementedError("lines that aren't straight vertical or " +
+            "horizontal aren't implemented yet")
+    vertical = True
+    if abs(x1 - x2) > abs(y1 - y2):
+        vertical = False
+    tex = get_dashed_texture(renderer, vertical=vertical)
+    tex_stretch = (dash_length / float(dash_tex_dashlength))
+    draw_x = min(x2, x1)
+    draw_y = min(y2, y1)
+    length = round(abs(y1 - y2))
+    if not vertical:
+        draw_y -= thickness / 2.0
+        length = round(abs(x1 - x2))
+    else:
+        draw_x -= thickness / 2.0
+    if length <= 0:
+        return
+    draw_x = round(draw_x)
+    draw_y = round(draw_y)
+    source_rect = sdl.SDL_Rect()
+    target_rect = sdl.SDL_Rect()
+    sdl.SDL_SetTextureColorMod(tex,
+        color.red, color.blue, color.blue)
+    offset = 0
+    while offset < length:
+        tex_target_uncut_length = max(1, round(tex_stretch * dash_tex_length))
+        tex_target_length = max(1, min(length - offset, tex_target_uncut_length))
+        tex_percentage_shown = tex_target_length / float(tex_target_uncut_length)
+        tex_source_length = max(1, round(tex_percentage_shown * dash_tex_length))
+        tex_source_width = max(1, min(dash_tex_wide - 2, round(thickness)))
+        tex_target_width = max(1, round(thickness))
+        if vertical:
+            source_rect.x = 1
+            source_rect.y = 0
+            source_rect.w = tex_source_width
+            source_rect.h = tex_source_length
+            target_rect.x = draw_x
+            target_rect.y = draw_y + offset
+            target_rect.w = tex_target_width
+            target_rect.h = tex_target_length
+            sdl.SDL_RenderCopy(renderer, tex, source_rect, target_rect)
+        else:
+            source_rect.x = 0
+            source_rect.y = 1
+            source_rect.w = tex_source_length
+            source_rect.h = tex_source_width
+            target_rect.x = draw_x + offset
+            target_rect.y = draw_y
+            target_rect.w = tex_target_length
+            target_rect.h = tex_target_width
+            sdl.SDL_RenderCopy(renderer, tex, source_rect, target_rect)
+        offset += tex_target_length
+
+def _draw_dashed_line_uncached(
+        renderer, x1, y1, x2, y2, color=None,
+        dash_length=7.0, thickness=3.0):
+    perf_id = Perf.start('draw_drashed_line')
     if color is None:
         color = Color.black
     if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
@@ -79,6 +193,7 @@ def draw_dashed_line(renderer, x1, y1, x2, y2, color=None,
             curr_v += dash_length * 2.0
         else:
             curr_v = end_v + 1.0
+    Perf.stop(perf_id)
 
 def draw_line(renderer, x1, y1, x2, y2, color=None, thickness=3.0):
     draw_dashed_line(renderer, x1, y1, x2, y2, color=color,

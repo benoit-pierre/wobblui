@@ -8,33 +8,35 @@ from wobblui.uiconf import config
 class Perf(object):
     perf_start_times = dict()
     perf_measurements = dict()
+    perf_id = 0
     lock = threading.Lock()
 
     @classmethod
     def start(cls, name):
         now = time.monotonic()
         cls.lock.acquire()
-        if not name in cls.perf_start_times:
-            cls.perf_start_times[name] = [now]
-        else:
-            cls.perf_start_times[name].append(now)
+        cls.perf_id += 1
+        perf_id = cls.perf_id
+        cls.perf_start_times[perf_id] = (now, name)
         cls.lock.release()
+        return perf_id
 
     @classmethod
-    def stop(cls, name):
+    def stop(cls, perf_id):
         global config
         now = time.monotonic()
         cls.lock.acquire()
-        if not name in cls.perf_start_times or \
-                len(cls.perf_start_times[name]) == 0:
-            cls.lock.release()
-            return
-        start_time = cls.perf_start_times[name][-1]
-        cls.perf_start_times[name] = cls.perf_start_times[name][:-1]
-        if not name in cls.perf_measurements:
-            cls.perf_measurements[name] = []
+        if not perf_id in cls.perf_start_times:
+            raise ValueError("invalid perf id")
+        start_time = cls.perf_start_times[perf_id][0]
+        perf_name = cls.perf_start_times[perf_id][1]
         duration = now - start_time
-        cls.perf_measurements[name].append((now, duration))
+        if not perf_name in cls.perf_measurements:
+            cls.perf_measurements[perf_name] = list()
+        cls.perf_measurements[perf_name].append((now, duration))
+        if len(cls.perf_measurements[perf_name]) > 40:
+            cls.perf_measurements[perf_name] = \
+                cls.perf_measurements[perf_name][20:]
         cls.lock.release()
         if config.get("perf_debug"):
             v = str(round(duration * 10000000.0))
@@ -42,7 +44,7 @@ class Perf(object):
                 v = "0" + v
             v = v[:-4] + "." + v[-4:]
             print("wobblui.perf: " +
-                str(name) + " -> " +
+                str(perf_name) + " -> " +
                 v + "ms")
 
     @staticmethod

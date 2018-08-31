@@ -79,14 +79,12 @@ class Event(object):
         if config.get("debug_events") is True:
             print("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
-        perf_name = None
+        perf_id = None
         if self.name == "redraw":
-            perf_name = "Event_redraw_" + (
+            perf_id = Perf.start("Event_redraw_" +
                 str(self.on_object.__class__.__name__)
                 if self.on_object != None else
-                "<no_associated_object>") +\
-                str(random.random())
-            Perf.start(perf_name)
+                "<no_associated_object>")
         try:
             # All of this is perfed:
             if self._disabled:
@@ -113,8 +111,8 @@ class Event(object):
             return True
         finally:
             # Stop perf measurement.
-            if perf_name != None:
-                Perf.stop(perf_name)
+            if perf_id != None:
+                Perf.stop(perf_id)
 
 class ForceDisabledDummyEvent(Event):
     def __init__(self, name, owner=None):

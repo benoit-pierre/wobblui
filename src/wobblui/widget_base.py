@@ -14,6 +14,7 @@ from wobblui.event import Event, ForceDisabledDummyEvent,\
     InternalOnlyDummyEvent
 from wobblui.gfx import draw_dashed_line
 from wobblui.keyboard import enable_text_events
+from wobblui.perf import Perf
 from wobblui.uiconf import config
 from wobblui.widgetman import add_widget, all_widgets, \
     get_widget_id, get_add_id, tab_sort
@@ -1016,6 +1017,7 @@ class WidgetBase(object):
         return None
 
     def draw_keyboard_focus(self, x, y, width, height):
+        perf_id = Perf.start("draw_keyboard_focus")
         focus_border_thickness = 1.0
         c = Color.red
         if c != None:
@@ -1052,6 +1054,7 @@ class WidgetBase(object):
             dash_length=(7.0 * self.dpi_scale),
             thickness=(focus_border_thickness * self.dpi_scale),
             color=c)
+        Perf.stop(perf_id)
 
     @property
     def renderer(self):

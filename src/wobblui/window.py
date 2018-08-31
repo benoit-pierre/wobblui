@@ -7,7 +7,7 @@ import weakref
 
 from wobblui.color import Color
 from wobblui.event import Event
-from wobblui.gfx import draw_rectangle
+from wobblui.gfx import clear_renderer, draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
@@ -90,8 +90,7 @@ class Window(WidgetBase):
                 self._renderer = None
                 for child in self.children:
                     child.renderer_update()
-                    if child.parent == self:
-                        child.internal_override_parent(None)
+                clear_renderer(old_renderer)
                 sdl.SDL_DestroyRenderer(old_renderer)
                 self.renderer = None
         if self._renderer is None:
@@ -133,6 +132,10 @@ class Window(WidgetBase):
                 self._renderer = None
                 for child in self.children:
                     child.renderer_update()
+                    if close_window:
+                        if child.parent == self:
+                            child.internal_override_parent(self)
+                clear_renderer(my_renderer)
                 sdl.SDL_DestroyRenderer(my_renderer)
             self._renderer = None
             if close_window:
