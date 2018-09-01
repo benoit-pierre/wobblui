@@ -9,6 +9,7 @@ from wobblui.color import Color
 import wobblui.cssparse as cssparse
 import wobblui.htmlparse as htmlparse
 from wobblui.font.manager import font_manager
+from wobblui.perf import Perf
 
 class TagInfo(object):
     def __init__(self, tag_name, is_block=False):
@@ -87,6 +88,7 @@ class RichTextFragment(RichTextObj):
         self.px_size = px_size
         self.align = None
         self.draw_scale = 1.0
+        self._width_cache = dict()
 
     def has_block_tag(self):
         for tag in self.surrounding_tags:
@@ -177,12 +179,16 @@ class RichTextFragment(RichTextObj):
         return self.get_width_up_to_length(len(self.text))
 
     def get_width_up_to_length(self, index):
+        index = max(0, min(index, len(self.text)))
+        if index in self._width_cache:
+            return self._width_cache[index]
         text_part = self.text[:index]
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
             draw_scale=self.draw_scale)
         (w, h) = font.render_size(text_part)
+        self._width_cache[index] = w
         return w
 
     def get_height(self):
@@ -418,6 +424,7 @@ class RichText(object):
         return new_text
 
     def layout(self, max_width=None, align_if_none=None):
+        perf_id = Perf.start("richtext_layout")
         self.simplify()
         layouted_elements = []
         layout_line_indexes = []
@@ -604,6 +611,7 @@ class RichText(object):
 
         # Set final relayouted elements:
         self.fragments = layouted_elements
+        Perf.stop(perf_id)
         return (layout_w, layout_h)
  
     def set_text(self, text):
