@@ -33,7 +33,7 @@ def get_sdl_font_cached(font_path, px_size):
     return font
 
 rendered_words_cache = KeyValueCache(size=500,
-    destroy_func=lambda x: sdl.SDL_DestroyTexture(x))
+    destroy_func=lambda x: sdl.SDL_DestroyTexture(x[2]))
 
 ttf_was_initialized = False
 class Font(object):
