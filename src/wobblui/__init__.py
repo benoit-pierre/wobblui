@@ -356,6 +356,8 @@ def _handle_event(event):
                     internal_data=[float(event.button.x),
                     float(event.button.y)])
             if not capture_enabled:
+                if config.get("capture_debug"):
+                    print("wobblui.py: debug: mouse capture engage")
                 sdl.SDL_CaptureMouse(sdl.SDL_TRUE)
         else:
             if event.button.which == sdl_touch_mouseid or \
@@ -376,7 +378,9 @@ def _handle_event(event):
                     int(event.button.button)))
             if capture_enabled and \
                     (len(mouse_ids_button_ids_pressed) == 0 and
-                    touch_pressed):
+                    not touch_pressed):
+                if config.get("capture_debug"):
+                    print("wobblui.py: debug: mouse capture release")
                 sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
     elif event.type == sdl.SDL_MOUSEWHEEL:
         sdl_touch_mouseid = 4294967295
