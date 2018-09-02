@@ -516,11 +516,15 @@ class WidgetBase(object):
                     20.0 * self.dpi_scale and \
                     self.touch_start_time + 0.7 > time.monotonic())):
                 self.touch_scrolling = True
-                scalar = 0.004
-                self.mousewheel(0,
-                    diff_x * scalar, diff_y * scalar,
-                    internal_data=[
-                    orig_touch_start_x, orig_touch_start_y])
+                scalar = 0.019
+                self._prevent_mouse_event_propagate = True
+                try:
+                    self.mousewheel(0,
+                        diff_x * scalar, diff_y * scalar,
+                        internal_data=[
+                        orig_touch_start_x, orig_touch_start_y])
+                finally:
+                    self._prevent_mouse_event_propagate = False
 
         # See if we want to focus this widget:
         if event_name == "mousedown" or \
