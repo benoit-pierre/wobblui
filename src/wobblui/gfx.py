@@ -50,11 +50,11 @@ def get_dashed_texture(renderer, vertical=False):
         return dashed_texture_store[(vertical, renderer_key)]
     if not vertical:
         tex = sdl.SDL_CreateTexture(
-            renderer, sdl.SDL_PIXELFORMAT_RGBA8888,
+            renderer, sdl.SDL_PIXELFORMAT_ARGB8888,
             sdl.SDL_TEXTUREACCESS_TARGET, dash_tex_length, dash_tex_wide)
     else:
         tex = sdl.SDL_CreateTexture(
-            renderer, sdl.SDL_PIXELFORMAT_RGBA8888,
+            renderer, sdl.SDL_PIXELFORMAT_ARGB8888,
             sdl.SDL_TEXTUREACCESS_TARGET, dash_tex_wide, dash_tex_length)
     old_t = sdl.SDL_GetRenderTarget(renderer)
     assert(tex != None)
@@ -121,10 +121,14 @@ def draw_dashed_line(
         color.red, color.blue, color.blue)
     offset = 0
     while offset < length:
-        tex_target_uncut_length = max(1, round(tex_stretch * dash_tex_length))
-        tex_target_length = max(1, min(length - offset, tex_target_uncut_length))
-        tex_percentage_shown = tex_target_length / float(tex_target_uncut_length)
-        tex_source_length = max(1, round(tex_percentage_shown * dash_tex_length))
+        tex_target_uncut_length = max(1,
+            round(tex_stretch * dash_tex_length))
+        tex_target_length = max(1, min(length - offset,
+            tex_target_uncut_length))
+        tex_percentage_shown = tex_target_length / \
+            float(tex_target_uncut_length)
+        tex_source_length = max(1,
+            round(tex_percentage_shown * dash_tex_length))
         tex_source_width = max(1, min(dash_tex_wide - 2, round(thickness)))
         tex_target_width = max(1, round(thickness))
         if vertical:
@@ -207,16 +211,13 @@ def draw_font(renderer, text, x, y,
         bold=bold, italic=italic,
         px_size=px_size)
     if font != None:
-        tex = font.get_cached_rendered_sdl_texture(renderer, text, color)
+        (w, h, tex) = font.\
+            get_cached_rendered_sdl_texture(renderer, text, color)
         if tex != None:
-            w = ctypes.c_int32()
-            h = ctypes.c_int32()
-            sdl.SDL_QueryTexture(tex, None, None,
-                ctypes.byref(w), ctypes.byref(h))
             tg_rect = sdl.SDL_Rect() 
             tg_rect.x = x
             tg_rect.y = y
-            tg_rect.w = w.value
-            tg_rect.h = h.value
+            tg_rect.w = w
+            tg_rect.h = h
             sdl.SDL_RenderCopy(renderer, tex, None, tg)
 

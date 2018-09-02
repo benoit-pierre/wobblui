@@ -14,6 +14,24 @@ DRAW_SCALE_GRANULARITY_FACTOR=1000
 from wobblui.cache import KeyValueCache
 from wobblui.color import Color
 
+
+ttf_font_cache = KeyValueCache(size=500,
+    destroy_func=lambda x: sdlttf.TTF_CloseFont(x))
+def get_sdl_font_cached(font_path, px_size):
+    global ttf_font_cache
+    px_size = round(px_size)
+    font = ttf_font_cache.get((font_path, px_size))
+    if font is None:
+        font = sdlttf.TTF_OpenFont(
+            font_path.encode("utf-8"),
+            px_size)
+        if font is None:
+            error_msg = sdlttf.TTF_GetError()
+            raise ValueError("couldn't load TTF " +
+                "font: " + str(error_msg))
+        ttf_font_cache.add((font_path, px_size), font)
+    return font
+
 rendered_words_cache = KeyValueCache(size=500,
     destroy_func=lambda x: sdl.SDL_DestroyTexture(x))
 
@@ -67,7 +85,6 @@ class Font(object):
                 str(sdlttf.TTF_GetError().decode("utf-8", "replace")))
         return (int(width.value), int(height.value))
 
-
     def _render_size(self, text):
         return GlobalFontDrawer.render_size(self, text)
 
@@ -76,20 +93,14 @@ class Font(object):
             text, x, y, color=color)
 
     def draw_at(self, renderer, text, x, y, color=Color.black):
-        tex = self.get_cached_rendered_sdl_texture(renderer, text,
-            color=Color.white)
+        (w, h, tex) = self.get_cached_rendered_sdl_texture(
+            renderer, text, color=Color.white)
         assert(tex != None)
-        w = ctypes.c_int32()
-        h = ctypes.c_int32()
-        w.value = 0
-        h.value = 0
-        sdl.SDL_QueryTexture(tex, None, None,
-            ctypes.byref(w), ctypes.byref(h))
         tg = sdl.SDL_Rect()
         tg.x = x
         tg.y = y
-        tg.w = w.value
-        tg.h = h.value
+        tg.w = w
+        tg.h = h
         sdl.SDL_SetTextureColorMod(tex,
             color.red, color.green, color.blue)
         sdl.SDL_RenderCopy(renderer, tex, None, tg)
@@ -99,9 +110,9 @@ class Font(object):
         key = str((self.font_family, self.italic, self.bold,
             self.pixel_size, str(ctypes.addressof(
                 renderer.contents)))) + "_" + text
-        tex = rendered_words_cache.get(key)
-        if tex != None:
-            return tex
+        value = rendered_words_cache.get(key)
+        if value != None:
+            return value
         font = self.get_sdl_font()
         if color != None:
             c = sdl.SDL_Color(color.red, color.green, color.blue)
@@ -113,9 +124,15 @@ class Font(object):
             pass
         surface = sdlttf.TTF_RenderUTF8_Blended(font, text, c)
         tex = sdl.SDL_CreateTextureFromSurface(renderer, surface)
+        w = ctypes.c_int32()
+        h = ctypes.c_int32()
+        w.value = 0
+        h.value = 0
+        sdl.SDL_QueryTexture(tex, None, None,
+            ctypes.byref(w), ctypes.byref(h))
         sdl.SDL_FreeSurface(surface)
-        rendered_words_cache.add(key, tex)
-        return tex
+        rendered_words_cache.add(key, (w, h, tex))
+        return (w, h, tex)
 
     def get_sdl_font(self):
         if self._sdl_font != None:
@@ -132,14 +149,7 @@ class Font(object):
             self.font_family + " " + variant)
         for (variant_name, font_path) in font_paths:
             if font_path.endswith(".ttf"):
-                f = sdlttf.TTF_OpenFont(font_path.encode("utf-8"),
-                    round(self.pixel_size))
-                if f is None:
-                    error_msg = sdlttf.TTF_GetError()
-                    raise ValueError("couldn't load TTF " +
-                        "font: " + str(error_msg))
-                self._sdl_font = f
-                return f
+                return get_sdl_font_cached(font_path, self.pixel_size)
         raise ValueError("TTF font not found: " +
             str(self.font_family + " " + variant))
 

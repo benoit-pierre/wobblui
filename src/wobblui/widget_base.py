@@ -516,7 +516,7 @@ class WidgetBase(object):
                     20.0 * self.dpi_scale and \
                     self.touch_start_time + 0.7 > time.monotonic())):
                 self.touch_scrolling = True
-                scalar = 0.012
+                scalar = 0.004
                 self.mousewheel(0,
                     diff_x * scalar, diff_y * scalar,
                     internal_data=[

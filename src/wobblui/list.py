@@ -2,6 +2,7 @@
 import copy
 import html
 import math
+import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.event import Event
@@ -17,8 +18,11 @@ class ListEntry(object):
             extra_html_as_subtitle=None,
             extra_html_as_subtitle_scale=0.7,
             extra_html_at_right=None,
-            extra_html_at_right_scale=0.8, is_alternating=False):
+            extra_html_at_right_scale=0.8, is_alternating=False,
+            with_visible_bg=False):
+        self.with_visible_bg = with_visible_bg
         self._cached_natural_width = None
+        self._cached_render_tex = None
         self._width = 0
         self._style = style
         self._html = html
@@ -33,7 +37,13 @@ class ListEntry(object):
         self.px_size_scaler = px_size_scaler
         self.update_text_objects()
 
+    def __del__(self):
+        self.clear_texture()
+
     def update_text_objects(self):
+        if self._cached_render_tex != None:
+            sdl.SDL_DestroyTexture(self._cached_render_tex)
+            self._cached_render_tex = None
         dpi_scale = 1.0
         px_size = 12 * self.px_size_scaler
         font_family = "Tex Gyre Heros"
@@ -100,13 +110,53 @@ class ListEntry(object):
         return "<ListEntry text='" +\
             str(self.text).replace("'", "'\"'\"'") + "'>"
 
+    def clear_texture(self):
+        if self._cached_render_tex != None:
+            sdl.SDL_DestroyTexture(self._cached_render_tex)
+            self._cached_render_tex = None
+
     def draw(self, renderer, x, y, draw_selected=False,
             draw_hover=False,
-            draw_keyboard_focus=False,
-            draw_no_bg=False):
-        #Perf.start('fullitem')
+            draw_keyboard_focus=False):
         self.update_size()
-        no_bg = draw_no_bg
+        if draw_selected or draw_hover or \
+                draw_keyboard_focus:
+            self.do_actual_draw(renderer, x, y,
+                draw_selected=draw_selected,
+                draw_hover=draw_hover,
+                draw_keyboard_focus=draw_keyboard_focus)
+            return
+
+        tex = self._cached_render_tex
+        if tex is None:
+            old_t = sdl.SDL_GetRenderTarget(renderer)
+            self._cached_render_tex = sdl.SDL_CreateTexture(
+                renderer, sdl.SDL_PIXELFORMAT_ARGB8888,
+                sdl.SDL_TEXTUREACCESS_TARGET, round(self.width),
+                round(self.height))
+            sdl.SDL_SetRenderTarget(renderer, self._cached_render_tex)
+            sdl.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
+            sdl.SDL_RenderClear(renderer)
+            sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+            self.do_actual_draw(renderer, 0, 0,
+                draw_selected=draw_selected,
+                draw_hover=draw_hover,
+                draw_keyboard_focus=draw_keyboard_focus)
+            sdl.SDL_RenderPresent(renderer)
+            sdl.SDL_SetRenderTarget(renderer, old_t)
+            sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+            tex = self._cached_render_tex
+        r = sdl.SDL_Rect()
+        r.x = round(x)
+        r.y = round(y)
+        r.w = round(self.width)
+        r.h = round(self.height)
+        sdl.SDL_RenderCopy(renderer, tex, None, r)
+
+    def do_actual_draw(self, renderer, x, y, draw_selected=False,
+            draw_hover=False,
+            draw_keyboard_focus=False):
+        no_bg = (not self.with_visible_bg)
         c = Color((200, 200, 200))
         if self.style != None:
             if not draw_hover and not draw_selected:
@@ -131,7 +181,7 @@ class ListEntry(object):
                 c = Color(self.style.get("selected_text"))
             if self.disabled and self.style.has("widget_disabled_text"):
                 c = Color(self.style.get("widget_disabled_text"))
-        #Perf.start("List_text_draw")
+        perf_id = Perf.start("ListItem.draw -> text_objs draw")
         self.text_obj.draw(renderer,
             round(5.0 * self.dpi_scale) + x,
             round(self.vertical_padding * self.dpi_scale) + y,
@@ -144,20 +194,19 @@ class ListEntry(object):
                 self.subtitle_y +  y,
                 color=c)
         if self.extra_html_at_right_obj != None:
-            #if self.style != None and \
-            #        self.style.has("widget_disabled_text"):
-            #    c = Color(self.style.get("widget_disabled_text"))
             self.extra_html_at_right_obj.draw(renderer,
                 round(5.0 * self.dpi_scale) +\
                 self.extra_html_at_right_x + x,
                 round(self.vertical_padding * self.dpi_scale) +\
                 max(0, self.extra_html_at_right_y) + y,
                 color=c)
-        #Perf.stop("List_text_draw")
-        #Perf.stop('fullitem')
+        Perf.stop(perf_id)
 
     def copy(self):
+        old_self_tex = self._cached_render_tex
+        self._cached_render_tex = None
         li = copy.copy(self)
+        self._cached_render_tex = old_self_tex
         li.update_text_objects()
         return li
 
@@ -223,6 +272,9 @@ class ListEntry(object):
         if not self.need_size_update:
             return
         self.need_size_update = False
+        if self._cached_render_tex != None:
+            sdl.SDL_DestroyTexture(self._cached_render_tex)
+            self._cached_render_tex = None
         padding = max(0, round(5.0 * self.dpi_scale))
         padding_vertical = max(0,
             round(self.vertical_padding * self.dpi_scale))
@@ -339,6 +391,11 @@ class ListBase(ScrollbarDrawingWidget):
         self.render_as_menu = render_as_menu
         self.fixed_one_line_entries = fixed_one_line_entries
         self.update_style_info()
+
+    def renderer_update(self):
+        super().renderer_update()
+        for entry in self._entries:
+            entry.clear_texture()
 
     def on_stylechanged(self):
         self.update_style_info()
@@ -512,8 +569,8 @@ class ListBase(ScrollbarDrawingWidget):
             else:
                 cy += self.usual_entry_height
 
-    def do_redraw(self):
-        #Perf.start("list_innerdraw")
+    def on_redraw(self):
+        perf_id = Perf.start("list_innerdraw")
         content_height = 0
         max_scroll_down = 0
 
@@ -554,9 +611,6 @@ class ListBase(ScrollbarDrawingWidget):
             self.height - border_size * 2,
             color=c)
 
-        #Perf.stop("sectiona")
-        #Perf.start("sectionb")
-
         # Draw items:
         skip_start_items = 0
         if self.fixed_one_line_entries:
@@ -576,24 +630,20 @@ class ListBase(ScrollbarDrawingWidget):
                 (entry_id != self._hover_index or
                 not self.render_as_menu)),
                 draw_hover=(self.render_as_menu and
-                entry_id == self._hover_index),
-                draw_no_bg=self.render_as_menu)
+                entry_id == self._hover_index))
             if self.fixed_one_line_entries and \
                     entry.y_offset > self.height +\
                     self.scroll_y_offset:
                 break
 
         # Draw keyboard focus line if we have the focus:
-        #Perf.start("list_keyboardfocus")
         if self.focused:
             self.draw_keyboard_focus(0, 0, self.width, self.height)
-        #Perf.stop("list_keyboardfocus")
-        #Perf.stop("sectionb")
 
         # Draw scroll bar:
         self.draw_scrollbar(content_height, self.height,
             self.scroll_y_offset)
-        #Perf.stop("list_innerdraw")
+        Perf.stop(perf_id)
 
     def get_natural_width(self):
         border_size = max(1, round(1.0 * self.dpi_scale))
@@ -640,7 +690,8 @@ class ListBase(ScrollbarDrawingWidget):
         self.insert_html(index, html.escape(text))
 
     def insert_html(self, index, text):
-        self._entries.insert(index, ListEntry(html, self.style))
+        self._entries.insert(index, ListEntry(html, self.style,
+            with_visible_bg=(not self.render_as_menu)))
         i = 0
         while i < len(self._entries):
             self._entries[i].is_alternating = \
@@ -666,7 +717,8 @@ class ListBase(ScrollbarDrawingWidget):
         self._entries.append(ListEntry(html, self.style,
             is_alternating=(not last_was_alternating),
             extra_html_at_right=side_html,
-            extra_html_as_subtitle=subtitle_html))
+            extra_html_as_subtitle=subtitle_html,
+            with_visible_bg=(not self.render_as_menu)))
         
 class List(ListBase):
     def __init__(self, fixed_one_line_entries=False,

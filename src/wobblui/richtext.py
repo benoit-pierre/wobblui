@@ -72,6 +72,7 @@ class RichTextObj(object):
             " y: " + str(self.y) + ">"
         return t
 
+fragment_draw_rect = None
 class RichTextFragment(RichTextObj):
     def __init__(self, text, font_family, bold, italic,
             px_size, surrounding_tags=[],
@@ -144,6 +145,12 @@ class RichTextFragment(RichTextObj):
         return t
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
+        global fragment_draw_rect
+        if len(self.text.strip()) == 0:
+            return
+        if fragment_draw_rect is None:
+            fragment_draw_rect = sdl.SDL_Rect()
+        perf_id = Perf.start("fragment draw part 1")
         if color is None:
             color = Color.black
         if draw_scale is None:
@@ -151,29 +158,30 @@ class RichTextFragment(RichTextObj):
         font = self.get_font(draw_scale=draw_scale)
         if self.forced_text_color != None:
             color = self.forced_text_color
-        tex = font.get_cached_rendered_sdl_texture(renderer,
+        Perf.stop(perf_id)
+        perf_id = Perf.start("fragment draw part 2")
+        (w, h, tex) = font.get_cached_rendered_sdl_texture(renderer,
             self.text, color=color)
-        w = ctypes.c_int32()
-        h = ctypes.c_int32()
-        sdl.SDL_QueryTexture(tex, None, None,
-            ctypes.byref(w), ctypes.byref(h))
-        tg = sdl.SDL_Rect()
+        Perf.stop(perf_id)
+        perf_id = Perf.start("fragment draw part 3")
+        tg = fragment_draw_rect
         tg.x = round(x)
         tg.y = round(y)
-        tg.w = w.value
-        tg.h = h.value
+        tg.w = w
+        tg.h = h
         sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
-        #if self.forced_text_color is None:
-        #    sdl.SDL_SetTextureColorMod(tex,
-        #        round(color.red), round(color.green),
-        #        round(color.blue))
-        #else:
-        #    sdl.SDL_SetTextureColorMod(tex,
-        #        round(self.forced_text_color.red),
-        #        round(self.forced_text_color.green),
-        #        round(self.forced_text_color.blue))
+        if self.forced_text_color is None:
+            sdl.SDL_SetTextureColorMod(tex,
+                round(color.red), round(color.green),
+                round(color.blue))
+        else:
+            sdl.SDL_SetTextureColorMod(tex,
+                round(self.forced_text_color.red),
+                round(self.forced_text_color.green),
+                round(self.forced_text_color.blue))
         sdl.SDL_RenderCopy(renderer,
             tex, None, tg)
+        Perf.stop(perf_id)
 
     def get_width(self):
         return self.get_width_up_to_length(len(self.text))

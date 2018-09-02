@@ -100,7 +100,8 @@ class Window(WidgetBase):
                         sdl.SDL_RENDERER_SOFTWARE)
             else:
                 self._renderer = \
-                    sdl.SDL_CreateRenderer(self._sdl_window, -1, 0)
+                    sdl.SDL_CreateRenderer(self._sdl_window, -1,
+                        sdl.SDL_RENDERER_ACCELERATED)
             self.needs_redraw = True
         self.update_to_real_sdlw_size()
         for child in self.children:
