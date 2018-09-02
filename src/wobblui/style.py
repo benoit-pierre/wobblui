@@ -111,7 +111,7 @@ class AppStyleDark(AppStyle):
         self.set("widget_disabled_bg", "#333")
         self.set("inner_widget_bg", "#111")
         self.set("inner_widget_alternating_bg", "#1f1e1e")
-        self.set("widget_text", "#cfcfcf")
+        self.set("widget_text", "#e0e0e0")
         self.set("saturated_widget_text", "#fff")
         self.set("widget_disabled_text", "#665")
         self.set("border", "#000")
