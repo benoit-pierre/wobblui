@@ -134,6 +134,8 @@ class ListEntry(object):
                 renderer, sdl.SDL_PIXELFORMAT_ARGB8888,
                 sdl.SDL_TEXTUREACCESS_TARGET, round(self.width),
                 round(self.height))
+            sdl.SDL_SetTextureBlendMode(self._cached_render_tex,
+                sdl.SDL_BLENDMODE_BLEND)
             sdl.SDL_SetRenderTarget(renderer, self._cached_render_tex)
             sdl.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
             sdl.SDL_RenderClear(renderer)
