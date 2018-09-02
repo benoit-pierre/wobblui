@@ -57,6 +57,7 @@ def internal_trigger_check():
             trigger_events.add(event)
     for event in trigger_events:
         scheduled_events.discard(event)
+    for event in trigger_events:
         event()
 
 def schedule(func, delay):
