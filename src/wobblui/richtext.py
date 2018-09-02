@@ -90,6 +90,7 @@ class RichTextFragment(RichTextObj):
         self.align = None
         self.draw_scale = 1.0
         self._width_cache = dict()
+        self._cached_height = None
 
     def has_block_tag(self):
         for tag in self.surrounding_tags:
@@ -200,11 +201,14 @@ class RichTextFragment(RichTextObj):
         return w
 
     def get_height(self):
+        if self._cached_height != None:
+            return self._cached_height
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
             draw_scale=self.draw_scale)
         (w, h) = font.render_size(self.text)
+        self._cached_height = h
         return h
 
     def has_same_formatting_as(self, obj):
@@ -433,6 +437,7 @@ class RichText(object):
 
     def layout(self, max_width=None, align_if_none=None):
         perf_id = Perf.start("richtext_layout")
+        perf_1 = Perf.start("richtext_layout_1")
         self.simplify()
         layouted_elements = []
         layout_line_indexes = []
@@ -508,9 +513,13 @@ class RichText(object):
                     k += 1
                 return
 
+        Perf.stop(perf_1)
+        perf_1 = Perf.start("fragment loop")
+        fragment_count = len(self.fragments)
         i = 0
-        while i < len(self.fragments):
+        while i < fragment_count:
             # Get next element:
+            perf_10 = Perf.start("before fitting loop")
             next_element = self.fragments[i]
             if left_over_fragment != None:
                 next_element = left_over_fragment
@@ -524,6 +533,7 @@ class RichText(object):
                 current_line_elements += 1
                 add_line_break()
                 i += 1
+                Perf.stop(perf_10)
                 continue
             next_element.draw_scale = self.draw_scale
 
@@ -532,37 +542,64 @@ class RichText(object):
             if part_amount == 0:
                 assert(next_element.text == "")
                 i += 1
+                Perf.stop(perf_10)
                 continue
 
-            # See how much we can fit into the line:
+            # See how much we can fit into the line with binary search:
             partial = False
             letters = None
+            Perf.stop(perf_10)
+            perf_2 = Perf.start("fitting loop")
+            max_part_amount = part_amount
+            previously_downwards = True
+            jump_amount = -max(1, round(part_amount / 2.0))
             next_width = None
-            while part_amount > 0:
+            while True:
+                part_amount = max(1, min(max_part_amount,
+                    part_amount + jump_amount))
                 letters = len("".join(next_element.parts[:part_amount]))
                 next_width = next_element.\
                     get_width_up_to_length(letters)
+
+                # If it fits, continue binary search upwards:
                 if max_width is None or \
                         current_x + next_width <= max_width:
-                    break
+                    if (part_amount >= max_part_amount or (
+                            previously_downwards and jump_amount <= 1)):
+                        # Already at upper edge. We're done!
+                        partial = False
+                        break
+                    previously_downwards = False
+                    jump_amount = max(1, abs(round(jump_amount / 2.0)))
+                    continue
+
+                # If it doesn't fit, continue binary search downwards:
                 partial = True
-                if part_amount == 1 and current_line_elements == 0:
-                    letters = max(1, len(next_element.parts[0]))
-                    next_width = next_element.get_width_up_to_length(
-                        letters)
-                    while letters > 1 and \
-                            current_x + next_width > max_width:
-                        letters -= 1
+                if part_amount <= 1:
+                    # Already at bottom. We're done:
+                    if current_line_elements == 0:
+                        # Have to break up into individual letters:
+                        letters = max(1, len(next_element.parts[0]))
                         next_width = next_element.get_width_up_to_length(
                             letters)
+                        while letters > 1 and \
+                                current_x + next_width > max_width:
+                            letters -= 1
+                            next_width = next_element.get_width_up_to_length(
+                                letters)
                     break
-                part_amount -= 1
+                previously_downwards = True
+                jump_amount = -max(1, abs(round(jump_amount / 2.0)))
+            Perf.stop(perf_2)
+            perf_9 = Perf.start("after fitting loop")
             if part_amount == 0:
                 add_line_break()
                 # Don't increase i, we need to add the element next line.
+                Perf.stop(perf_9)
                 continue
             old_max_height_seen_in_line = None
-            if partial and letters < len(next_element.text):
+            if partial and letters != None and \
+                    letters < len(next_element.text):
                 assert(letters > 0)
                 split_before = next_element.copy()
                 left_over_fragment = next_element.copy()
@@ -585,15 +622,15 @@ class RichText(object):
                 # Don't increase i, will be increased after processing partial
                 # element in next loop
             else:
-                added = next_element.copy()
+                added = next_element
                 added.x = current_x
                 added.y = current_y
                 added.width = added.get_width()
                 added.height = added.get_height()
                 if max_height_seen_in_line is None:
-                    max_height_seen_in_line = added.get_height()
+                    max_height_seen_in_line = added.height
                 max_height_seen_in_line = max(
-                    max_height_seen_in_line, added.get_height())
+                    max_height_seen_in_line, added.height)
                 old_max_height_seen_in_line = max_height_seen_in_line
                 current_x += added.width
                 current_line_elements += 1
@@ -601,6 +638,10 @@ class RichText(object):
                 layouted_elements.append(added)
                 i += 1
             layout_h = max(layout_h, current_y + old_max_height_seen_in_line)
+            Perf.stop(perf_9)
+        Perf.stop(perf_1)
+        perf_1 = Perf.start("ending")
+
         # Record last line pair if not empty:
         if current_line_elements > 0:
             clen = len(layouted_elements)
@@ -619,6 +660,7 @@ class RichText(object):
 
         # Set final relayouted elements:
         self.fragments = layouted_elements
+        Perf.stop(perf_1)
         Perf.stop(perf_id)
         return (layout_w, layout_h)
  
@@ -664,6 +706,7 @@ class RichText(object):
         t = ""
         for fragment in self.fragments:
             t += fragment.text
+        self._cached_text = t
         return t
 
     def simplify(self):
