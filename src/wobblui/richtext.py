@@ -577,8 +577,10 @@ class RichText(object):
                 partial = True
                 if part_amount <= 1:
                     # Already at bottom. We're done:
+                    part_amount = 0  # indicate nothing fits for later code
                     if current_line_elements == 0:
                         # Have to break up into individual letters:
+                        part_amount = 1  # partial word (more than zero)
                         letters = max(1, len(next_element.parts[0]))
                         next_width = next_element.get_width_up_to_length(
                             letters)
