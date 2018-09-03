@@ -35,6 +35,8 @@ def get_sdl_font_cached(font_path, px_size):
 rendered_words_cache = KeyValueCache(size=500,
     destroy_func=lambda x: sdl.SDL_DestroyTexture(x[2]))
 
+render_size_cache = KeyValueCache(size=5000)
+
 ttf_was_initialized = False
 class Font(object):
     def __init__(self, font_family,
@@ -69,9 +71,18 @@ class Font(object):
             sdlttf.TTF_CloseFont(self._sdl_font)
             self._sdl_font = None
 
+    @property
+    def unique_key(self):
+        return str(self.__repr__())
+
     def render_size(self, text):
+        global render_size_cache
         if len(text) == 0:
             return (0, 0)
+        unique_key = self.unique_key
+        result = render_size_cache.get((unique_key, text))
+        if result != None:
+            return result
         font = self.get_sdl_font()
         width = ctypes.c_int32()
         height = ctypes.c_int32()
@@ -83,7 +94,9 @@ class Font(object):
                 width), ctypes.byref(height)) != 0:
             raise RuntimeError("TTF_SizeUTF8 failed: " +
                 str(sdlttf.TTF_GetError().decode("utf-8", "replace")))
-        return (int(width.value), int(height.value))
+        result = (int(width.value), int(height.value))
+        render_size_cache.add((unique_key, text), result)
+        return result
 
     def _render_size(self, text):
         return GlobalFontDrawer.render_size(self, text)
