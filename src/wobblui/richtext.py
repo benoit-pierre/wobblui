@@ -552,7 +552,10 @@ class RichText(object):
             perf_2 = Perf.start("fitting loop")
             max_part_amount = part_amount
             previously_downwards = True
-            jump_amount = -max(1, round(part_amount / 2.0))
+            # Force jump amount >= 2 such that the first loop can't
+            # immediately exit. Boundary enforcements will prevent jumping
+            # outside of valid range anyway:
+            jump_amount = -max(2, round(part_amount / 2.0))
             next_width = None
             while True:
                 part_amount = max(1, min(max_part_amount,
@@ -565,18 +568,18 @@ class RichText(object):
                 if max_width is None or \
                         current_x + next_width <= max_width:
                     if (part_amount >= max_part_amount or (
-                            previously_downwards and jump_amount <= 1)):
+                            previously_downwards and abs(jump_amount) <= 1)):
                         # Already at upper edge. We're done!
-                        partial = False
+                        partial = (part_amount < max_part_amount)
                         break
                     previously_downwards = False
                     jump_amount = max(1, abs(round(jump_amount / 2.0)))
                     continue
 
                 # If it doesn't fit, continue binary search downwards:
-                partial = True
                 if part_amount <= 1:
                     # Already at bottom. We're done:
+                    partial = True
                     part_amount = 0  # indicate nothing fits for later code
                     if current_line_elements == 0:
                         # Have to break up into individual letters:
@@ -600,8 +603,7 @@ class RichText(object):
                 Perf.stop(perf_9)
                 continue
             old_max_height_seen_in_line = None
-            if partial and letters != None and \
-                    letters < len(next_element.text):
+            if partial and letters < len(next_element.text):
                 assert(letters > 0)
                 split_before = next_element.copy()
                 left_over_fragment = next_element.copy()
