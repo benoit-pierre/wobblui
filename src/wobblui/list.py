@@ -394,6 +394,11 @@ class ListBase(ScrollbarDrawingWidget):
         self.fixed_one_line_entries = fixed_one_line_entries
         self.update_style_info()
 
+    def _internal_on_unfocus(self, internal_data=None):
+        super()._internal_on_unfocus(
+            internal_data=internal_data)
+        self._hover_index = -1
+
     def renderer_update(self):
         super().renderer_update()
         for entry in self._entries:
@@ -520,13 +525,15 @@ class ListBase(ScrollbarDrawingWidget):
     def on_doubleclick(self, mouse_id, button, x, y):
         self.set_selection_by_mouse_pos(x, y)
         if not self.triggered_by_single_click and \
-                self._selected_index >= 0:
+                self._hover_index >= 0:
+            self._selected_index = self._hover_index
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
         self.set_selection_by_mouse_pos(x, y)
         if self.triggered_by_single_click and \
-                self._selected_index >= 0:
+                self._hover_index >= 0:
+            self._selected_index = self._hover_index
             self.triggered()
 
     def on_mousedown(self, mouse_id, button, x, y):

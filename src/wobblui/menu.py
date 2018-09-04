@@ -136,18 +136,43 @@ class ContainerWithSlidingMenu(Widget):
         self.menu.unfocus.register(menu_unfocused)
         super().add(self.menu)
 
+    def on_mousewheel(self, mouse_id, x, y):
+        if abs(x) <= 0.0001:
+            return
+        if self.menu_slid_out_x < 5:
+            return
+        scroll_amount = x * 50.0
+        self.slide_animation_target = None
+        new_x = self.menu_slid_out_x + scroll_amount
+        if new_x < 0:
+            if self.menu.focused:
+                self.menu.unfocus()
+            self.menu_slid_out_x = 0
+            self.slide_animation_target = "closed"
+        elif new_x >= self.menu.width:
+            self.menu_slid_out_x = self.menu.width
+            self.slide_animation_target = "open"
+        else:
+            self.menu_slid_out_x = new_x
+        self.menu.x = min(0, round(-self.menu.width +
+            self.menu_slid_out_x))
+        self.needs_redraw = True
+        self.needs_relayout = True
+
     def get_children_in_strict_mouse_event_order(self):
         return self._children
 
     def open_menu(self):
         if self.slide_animation_target == "open":
             return
+        self.menu.selected_index = -1
         self.slide_animation_target = "open"
         self.schedule_animation()
 
     def close_menu(self):
         if self.slide_animation_target == "closed":
             return
+        self.menu.selected_index = -1
         self.slide_animation_target = "closed"
         self.schedule_animation()
 
@@ -190,6 +215,8 @@ class ContainerWithSlidingMenu(Widget):
             self.menu_slid_out_x -= move
             if self.menu_slid_out_x < target_x:
                 self.menu_slid_out_x = target_x
+                if self.menu.focused:
+                    self.menu.unfocus()
                 done = True
         if done:
             if self.slide_animation_target == "open":
