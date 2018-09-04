@@ -66,7 +66,7 @@ class MenuSeparator(ListEntry):
     
 
 class Menu(ListBase):
-    def __init__(self, unfocus_on_trigger=False):
+    def __init__(self, unfocus_on_trigger=True):
         super().__init__(render_as_menu=True,
             triggered_by_single_click=True)
         self.callback_funcs = []
@@ -124,6 +124,16 @@ class ContainerWithSlidingMenu(Widget):
         self.animation_callback_scheduled = False
         self.needs_relayout = True
         self.needs_redraw = True
+        def menu_focused():
+            if self._disabled:
+                return
+            self.focus(user_callbacks_only=True, ignore_disabled=True)
+        self.menu.focus.register(menu_focused)
+        def menu_unfocused():
+            if self._disabled:
+                return
+            self.unfocus(user_callbacks_only=True, ignore_disabled=True)
+        self.menu.unfocus.register(menu_unfocused)
         super().add(self.menu)
 
     def get_children_in_strict_mouse_event_order(self):
@@ -136,7 +146,10 @@ class ContainerWithSlidingMenu(Widget):
         self.schedule_animation()
 
     def close_menu(self):
+        if self.slide_animation_target == "closed":
+            return
         self.slide_animation_target = "closed"
+        self.schedule_animation()
 
     def schedule_animation(self):
         if not self.animation_callback_scheduled:

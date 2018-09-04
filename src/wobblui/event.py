@@ -74,7 +74,8 @@ class Event(object):
                 return True
         return False
 
-    def __call__(self, *args, internal_data=None):
+    def __call__(self, *args, internal_data=None,
+            user_callbacks_only=False, ignore_disabled=False):
         global config
         if config.get("debug_events") is True:
             print("EVENT TRIGGER: " + str(self.name) +
@@ -87,12 +88,14 @@ class Event(object):
                 "<no_associated_object>")
         try:
             # All of this is perfed:
-            if self._disabled:
+            if self._disabled and not ignore_disabled:
                 return True
-            if self.special_pre_event_func != None:
+            if self.special_pre_event_func != None and \
+                    not user_callbacks_only:
                 self.special_pre_event_func()
             try:
-                if self.widget_must_get_event:
+                if self.widget_must_get_event and \
+                        not user_callbacks_only:
                     if self.native_widget_callback(*args,
                             internal_data=internal_data):
                         return False
@@ -100,13 +103,15 @@ class Event(object):
                     result = f(*args)
                     if result is True:
                         return False
-                if not self.widget_must_get_event:
+                if not self.widget_must_get_event and \
+                        not user_callbacks_only:
                     if self.native_widget_callback(*args,
                             internal_data=internal_data):
                         return False
                 return True
             finally:
-                if self.special_post_event_func != None:
+                if self.special_post_event_func != None and \
+                        not user_callbacks_only:
                     self.special_post_event_func()
             return True
         finally:
