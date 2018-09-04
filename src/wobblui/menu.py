@@ -221,7 +221,8 @@ class ContainerWithSlidingMenu(Widget):
             child.draw(child.x, child.y)
 
     def on_relayout(self):
-        self.menu.width = min(self.menu.get_natural_width(),
+        self.menu.width = min(int(
+            self.menu.get_natural_width() * 1.5),
             self.width)
         self.menu.height = self.height
         if not self.is_opened:
