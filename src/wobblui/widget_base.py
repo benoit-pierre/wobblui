@@ -455,8 +455,34 @@ class WidgetBase(object):
                 hit_check_x = x
                 hit_check_y = y
 
+        # Regular mouse down focus:
+        def do_focus():
+            event_descends_into_child = False
+            for child in self.children:
+                rel_x = hit_check_x - self.abs_x
+                rel_y = hit_check_y - self.abs_y
+                if rel_x >= child.x and rel_y >= child.y and \
+                        rel_x <= child.x + child.width and \
+                        rel_y <= child.y + child.height and \
+                        child.focusable and \
+                        not child.effectively_inactive:
+                    event_descends_into_child = True
+                    break
+            if not event_descends_into_child:
+                if self.focusable and not self.focused:
+                    self.focus()
+                else:
+                    p = self.parent
+                    while p != None and not p.focusable:
+                        p = p.parent
+                    if p != None and not p.focused:
+                        p.focus()
+        if event_name == "mousedown":
+            do_focus()
+
         # If our own widget doesn't handle touch, fire the
         # fake clicks here:
+        touch_fake_clicked = False
         if not self.has_native_touch_support and \
                 event_name == "touchend" and \
                 orig_touch_start_x != None and \
@@ -471,6 +497,8 @@ class WidgetBase(object):
                 # necessary, emulate their own mouse clicks as well
                 # from the already propagating touch event):
                 self._prevent_mouse_event_propagate = True
+                touch_fake_clicked = True
+                do_focus()
                 try:
                     self.mousedown(0, 1,
                         orig_touch_start_x - self.abs_x,
@@ -525,32 +553,6 @@ class WidgetBase(object):
                         orig_touch_start_x, orig_touch_start_y])
                 finally:
                     self._prevent_mouse_event_propagate = False
-
-        # See if we want to focus this widget:
-        if event_name == "mousedown" or \
-                event_name == "touchstart" or \
-                (event_name.startswith("touch") and
-                treat_as_touch_start):
-            event_descends_into_child = False
-            for child in self.children:
-                rel_x = x - self.abs_x
-                rel_y = y - self.abs_y
-                if rel_x >= child.x and rel_y >= child.y and \
-                        rel_x <= child.x + child.width and \
-                        rel_y <= child.y + child.height and \
-                        child.focusable and \
-                        not child.effectively_inactive:
-                    event_descends_into_child = True
-                    break
-            if not event_descends_into_child:
-                if self.focusable and not self.focused:
-                    self.focus()
-                else:
-                    p = self.parent
-                    while p != None and not p.focusable:
-                        p = p.parent
-                    if p != None and not p.focused:
-                        p.focus()
 
         # Pass on event to child widgets:
         if hasattr(self, "_prevent_mouse_event_propagate") and \
