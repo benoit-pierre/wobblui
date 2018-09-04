@@ -186,7 +186,7 @@ class ContainerWithSlidingMenu(Widget):
             if self.menu_slid_out_x > target_x:
                 self.menu_slid_out_x = target_x
                 done = True
-        elif target_x < self.menu_slid_out_x:
+        elif target_x <= self.menu_slid_out_x:
             self.menu_slid_out_x -= move
             if self.menu_slid_out_x < target_x:
                 self.menu_slid_out_x = target_x
