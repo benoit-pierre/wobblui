@@ -92,7 +92,8 @@ class Event(object):
                 return True
             if self.special_pre_event_func != None and \
                     not user_callbacks_only:
-                self.special_pre_event_func()
+                self.special_pre_event_func(*args,
+                    internal_data=internal_data)
             try:
                 if self.widget_must_get_event and \
                         not user_callbacks_only:
@@ -112,7 +113,8 @@ class Event(object):
             finally:
                 if self.special_post_event_func != None and \
                         not user_callbacks_only:
-                    self.special_post_event_func()
+                    self.special_post_event_func(*args,
+                        internal_data=internal_data)
             return True
         finally:
             # Stop perf measurement.
@@ -140,7 +142,8 @@ class InternalOnlyDummyEvent(Event):
         if self._disabled:
             return True
         if self.special_pre_event_func != None:
-            self.special_pre_event_func()
+            self.special_pre_event_func(*args,
+                internal_data=internal_data)
         try:
             if self.native_widget_callback(*args,
                     internal_data=internal_data,
@@ -148,6 +151,7 @@ class InternalOnlyDummyEvent(Event):
                 return False
         finally:
             if self.special_post_event_func != None:
-                self.special_post_event_func()
+                self.special_post_event_func(*args,
+                    internal_data=internal_data)
         return True
 

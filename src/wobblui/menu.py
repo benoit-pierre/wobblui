@@ -120,6 +120,7 @@ class ContainerWithSlidingMenu(Widget):
         self.menu = Menu()
         self.menu_slid_out_x = 0
         self.is_opened = False
+        self.continue_infinite_scroll_when_unfocused = True
         self.slide_animation_target = None
         self.animation_callback_scheduled = False
         self.needs_relayout = True
@@ -136,10 +137,15 @@ class ContainerWithSlidingMenu(Widget):
         self.menu.unfocus.register(menu_unfocused)
         super().add(self.menu)
 
+    def on_click(self, mouse_id, button, x, y):
+        if not self.menu.focused:
+            self.stop_infinite_scroll()
+            self.close_menu()
+
     def on_mousewheel(self, mouse_id, x, y):
-        if abs(x) <= 0.0001:
-            return
-        if self.menu_slid_out_x < 5:
+        if self.menu_slid_out_x < 5 and \
+                self.slide_animation_target == "closed":
+            self.stop_infinite_scroll()
             return
         scroll_amount = x * 50.0
         self.slide_animation_target = None

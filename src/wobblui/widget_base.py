@@ -15,6 +15,7 @@ from wobblui.event import Event, ForceDisabledDummyEvent,\
 from wobblui.gfx import draw_dashed_line
 from wobblui.keyboard import enable_text_events
 from wobblui.perf import Perf
+from wobblui.timer import schedule
 from wobblui.uiconf import config
 from wobblui.widgetman import add_widget, all_widgets, \
     get_widget_id, get_add_id, tab_sort
@@ -24,6 +25,7 @@ class WidgetBase(object):
             can_get_focus=False,
             takes_text_input=False,
             has_native_touch_support=False,
+            fake_mouse_even_with_native_touch_support=False,
             generate_double_click_for_touches=False):
         self.type = "unknown"
         self._focusable = can_get_focus
@@ -33,6 +35,9 @@ class WidgetBase(object):
         self.id = get_widget_id()
         self.added_order = get_add_id()
 
+        self.continue_infinite_scroll_when_unfocused = False
+        self.fake_mouse_even_with_native_touch_support =\
+            fake_mouse_even_with_native_touch_support
         self.needs_relayout = True
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
@@ -57,7 +62,7 @@ class WidgetBase(object):
         self.sdl_texture_height = -1
 
         self.restore_old_target = -1
-        def start_redraw():
+        def start_redraw(internal_data=None):
             self_value = self_ref()
             if self_value is None or self_value.renderer is None:
                 return
@@ -103,7 +108,7 @@ class WidgetBase(object):
             sdl.SDL_RenderClear(self_value.renderer)
             sdl.SDL_SetRenderDrawColor(self_value.renderer,
                 255, 255, 255, 255)
-        def end_redraw():
+        def end_redraw(internal_data=None):
             self_value = self_ref()
             if self_value is None or self_value.renderer is None:
                 return
@@ -140,6 +145,7 @@ class WidgetBase(object):
         self.parentchanged = Event("parentchanged", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         if has_native_touch_support:
+            print("NATIVE TOUCH FOR: " + str(self))
             self.has_native_touch_support = True
             self.multitouchstart = Event("multitouchstart", owner=self)
             self.multitouchmove = Event("multitouchmove", owner=self)
@@ -154,12 +160,24 @@ class WidgetBase(object):
                 "multitouchmove", owner=self)
             self.multitouchend = InternalOnlyDummyEvent(
                 "multitouchend", owner=self)
+            def touchstart_pre(x, y, internal_data=None):
+                self._pre_mouse_event_handling("touchstart",
+                    [x, y], internal_data=internal_data)
             self.touchstart = InternalOnlyDummyEvent(
-                "touchstart", owner=self)
+                "touchstart", owner=self,
+                special_pre_event_func=touchstart_pre)
+            def touchmove_pre(x, y, internal_data=None):
+                self._pre_mouse_event_handling("touchmove",
+                    [x, y], internal_data=internal_data)
             self.touchmove = InternalOnlyDummyEvent(
-                "touchmove", owner=self)
+                "touchmove", owner=self,
+                special_pre_event_func=touchmove_pre)
+            def touchend_pre(x, y, internal_data=None):
+                self._pre_mouse_event_handling("touchend",
+                    [x, y], internal_data=internal_data)
             self.touchend = InternalOnlyDummyEvent(
-                "touchend", owner=self)
+                "touchend", owner=self,
+                special_pre_event_func=touchend_pre)
             self.has_native_touch_support = False
         self.mousemove = Event("mousemove", owner=self)
         self.mousedown = Event("mousedown", owner=self)
@@ -342,8 +360,122 @@ class WidgetBase(object):
             p = p.parent
         return y
 
+    def stop_infinite_scroll(self):
+        self.touch_vel_x = 0
+        self.touch_vel_y = 0
+
+    def schedule_infinite_scroll_check(self, x, y, stop_event=False):
+        # If this widget wants to handle its own touch without faked
+        # mouse events, abort (since this is for faking a mouse wheel):
+        if self.has_native_touch_support and \
+                not self.fake_mouse_even_with_native_touch_support:
+            return
+
+        # Track how this touch drag is going:
+        if not hasattr(self, "touch_vel_x"):
+            self.touch_vel_x = 0
+            self.touch_vel_y = 0
+        if hasattr(self, "last_touch_event_ts"):
+            old_ts = self.last_touch_event_ts
+        else:
+            old_ts = time.monotonic()
+        self.last_touch_event_ts = time.monotonic()
+        self.touch_in_progress = (not stop_event)
+        if hasattr(self, "last_seen_touch_x") and not stop_event:
+            duration = max(0.001, time.monotonic() - old_ts)
+            self.touch_vel_x = \
+                max(-90 * self.dpi_scale,
+                min(90 * self.dpi_scale,
+                (x - self.last_seen_touch_x) * 0.02 / duration))
+            self.touch_vel_y = \
+                max(-90 * self.dpi_scale,
+                min(90 * self.dpi_scale,
+                (y - self.last_seen_touch_y) * 0.02 / duration))
+        if stop_event and abs(self.touch_vel_x) < 5.0 * self.dpi_scale \
+                and abs(self.touch_vel_y) < 5.0 * self.dpi_scale:
+            self.touch_vel_x = 0
+            self.touch_vel_y = 0
+        self.last_seen_touch_x = x
+        self.last_seen_touch_y = y
+
+        # Schedule checker to see if user keeps finger still:
+        if hasattr(self, "have_scheduled_scroll_checker") \
+                and self.have_scheduled_scroll_checker:
+            return
+        self.have_scheduled_scroll_checker = True
+        self_ref = weakref.ref(self)
+        def do_it():
+            self_value = self_ref()
+            if self_value is None:
+                return
+            t = self_value.scheduled_infinite_scroll_checker()
+            if t != None:
+                schedule(do_it, t)
+            else:
+                self_value.have_scheduled_scroll_checker = False
+        schedule(do_it, 0.1)
+
+    def scheduled_infinite_scroll_checker(self):
+        # Stop if finger rests or we're no longer focused:
+        if (self.touch_in_progress and (self.last_touch_event_ts
+                + 0.2 < time.monotonic())) or (not self.focused
+                and not self.continue_infinite_scroll_when_unfocused):
+            self.touch_vel_x = 0
+            self.touch_vel_y = 0
+            self.last_infinite_ts = None
+
+        # See if we should continue moving infinitely:
+        continue_moving = abs(self.touch_vel_x) > 2.0 * self.dpi_scale or \
+            abs(self.touch_vel_y) > 2.0 * self.dpi_scale
+        faked_event = False
+        if not self.touch_in_progress and continue_moving:
+            faked_event = True
+            if not hasattr(self, "last_infinite_ts") or \
+                    self.last_infinite_ts is None:
+                self.last_infinite_ts = time.monotonic()
+            duration = min(1.0, time.monotonic() - self.last_infinite_ts)
+            i = 0
+            while i < 5:
+                self.touch_vel_x *= min(0.999, 1.0 - duration * 0.1)
+                self.touch_vel_y *= min(0.999, 1.0 - duration * 0.1)
+                i += 1
+            self.last_infinite_ts = time.monotonic()
+            effective_vel_x = self.touch_vel_x * duration
+            effective_vel_y = self.touch_vel_y * duration
+            self.last_seen_touch_x += effective_vel_x
+            self.last_seen_touch_y += effective_vel_y
+            scalar = 0.3
+            self._prevent_mouse_event_propagate = True
+            try:
+                self.mousewheel(0,
+                    effective_vel_x * scalar,
+                    effective_vel_y * scalar,
+                    internal_data=[
+                    self.last_seen_touch_x + self.abs_x,
+                    self.last_seen_touch_y + self.abs_y])
+            finally:
+                self._prevent_mouse_event_propagate = False
+        else:
+            self.last_infinite_ts = None
+        if self.touch_in_progress or continue_moving:
+            if faked_event:
+                return 0.01  # keep high rate to scroll smoothly
+            else:
+                return 0.1
+        return None
+
     def _post_mouse_event_handling(self, event_name,
             event_args, internal_data=None):
+        return self._pre_or_post_mouse_event_handling(event_name,
+            event_args, internal_data=None, is_post=True)
+
+    def _pre_mouse_event_handling(self, event_name,
+            event_args, internal_data=None):
+        return self._pre_or_post_mouse_event_handling(event_name,
+            event_args, internal_data=None, is_post=False)
+
+    def _pre_or_post_mouse_event_handling(self, event_name,
+            event_args, internal_data=None, is_post=False):
         # If we arrived here, the internal event wasn't prevented from
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
@@ -407,7 +539,8 @@ class WidgetBase(object):
             self.last_touch_x = None
             self.last_touch_y = None
             self.touch_scrolling = False
-        # Set touch start info:
+
+        # Obtain touch start and diff info:
         orig_touch_start_x = self.touch_start_x
         orig_touch_start_y = self.touch_start_y
         diff_x = 0
@@ -415,37 +548,50 @@ class WidgetBase(object):
         if event_name == "touchstart" or \
                 (event_name.startswith("touch") and \
                 self.touch_start_x is None):
-            self.touch_max_ever_distance = 0.0
-            self.touch_start_time = time.monotonic()
-            self.touch_start_x = x
-            self.touch_scrolling = False
-            self.touch_start_y = y
-            orig_touch_start_x = self.touch_start_x
-            orig_touch_start_y = self.touch_start_y
-            self.last_touch_x = x
-            self.last_touch_y = y
+            orig_touch_start_x = x
+            orig_touch_start_y = y
             treat_as_touch_start = True
         elif event_name.startswith("touch"):
             diff_x = (x - self.last_touch_x)
             diff_y = (y - self.last_touch_y)
-            self.last_touch_x = x
-            self.last_touch_y = y
-        # Update touch info during move & end events:
-        if event_name == "touchmove" or \
-                event_name == "touchend":
-            self.touch_max_ever_distance = max(
-                self.touch_max_ever_distance, float(
-                math.sqrt(math.pow(
-                x - self.touch_start_x, 2) +
-                math.pow(y - self.touch_start_y, 2))))
-            if self.touch_start_x != None:
-                touch_hitpoint_check_x = self.touch_start_x
-                touch_hitpoint_check_y = self.touch_start_y
-            if event_name == "touchend":
-                self.touch_start_x = None
-                self.touch_start_y = None
+
+        # *** BASIC TOUCH STATE UPDATE, ONLY ON PRE-CALLBACK ***
+        if not is_post:
+            # Update touch start and last touch point:
+            if event_name == "touchstart" or \
+                    (event_name.startswith("touch") and \
+                    self.touch_start_x is None):
+                self.touch_max_ever_distance = 0.0
+                self.touch_start_time = time.monotonic()
+                self.touch_start_x = x
+                self.touch_scrolling = False
+                self.touch_start_y = y
+                self.last_touch_x = x
+                self.last_touch_y = y
+            elif event_name.startswith("touch"):
+                self.last_touch_x = x
+                self.last_touch_y = y
+            # Update touch info during move & end events:
+            if event_name == "touchmove" or \
+                    event_name == "touchend":
+                self.touch_max_ever_distance = max(
+                    self.touch_max_ever_distance, float(
+                    math.sqrt(math.pow(
+                    x - self.touch_start_x, 2) +
+                    math.pow(y - self.touch_start_y, 2))))
+                if self.touch_start_x != None:
+                    touch_hitpoint_check_x = self.touch_start_x
+                    touch_hitpoint_check_y = self.touch_start_y
+                if event_name == "touchend":
+                    self.touch_start_x = None
+                    self.touch_start_y = None
+            # Update infinite scroll emulation:
+            if event_name.startswith("touch"):
+                self.schedule_infinite_scroll_check(x, y,
+                    stop_event=(event_name == "touchend"))
 
         # See what we want to use for the hit check for propagation:
+        # (This needs to happen both in pre and post handler!!)
         hit_check_x = x
         hit_check_y = y
         if event_name.startswith("touch"):
@@ -455,47 +601,53 @@ class WidgetBase(object):
                 hit_check_x = x
                 hit_check_y = y
 
-        # Regular mouse down focus:
-        def do_focus():
-            event_descends_into_child = False
-            for child in self.children:
-                rel_x = hit_check_x - self.abs_x
-                rel_y = hit_check_y - self.abs_y
-                if rel_x >= child.x and rel_y >= child.y and \
-                        rel_x <= child.x + child.width and \
-                        rel_y <= child.y + child.height and \
-                        child.focusable and \
-                        not child.effectively_inactive:
-                    event_descends_into_child = True
-                    break
-            if not event_descends_into_child:
-                if self.focusable and not self.focused:
-                    self.focus()
-                else:
-                    p = self.parent
-                    while p != None and not p.focusable:
-                        p = p.parent
-                    if p != None and not p.focused:
-                        p.focus()
-        if event_name == "mousedown":
-            do_focus()
+        # *** FAKE MOUSE TOUCH EVENTS (only in pre handler) ***
+        if not is_post:
+            # Regular mouse down focus:
+            def do_focus():
+                event_descends_into_child = False
+                for child in self.children:
+                    rel_x = hit_check_x - self.abs_x
+                    rel_y = hit_check_y - self.abs_y
+                    if rel_x >= child.x and rel_y >= child.y and \
+                            rel_x <= child.x + child.width and \
+                            rel_y <= child.y + child.height and \
+                            child.focusable and \
+                            not child.effectively_inactive:
+                        event_descends_into_child = True
+                        break
+                if not event_descends_into_child:
+                    if self.focusable and not self.focused:
+                        self.focus()
+                    else:
+                        p = self.parent
+                        while p != None and not p.focusable:
+                            p = p.parent
+                        if p != None and not p.focused:
+                            p.focus()
+            if event_name == "mousedown":
+                do_focus()
 
-        # If our own widget doesn't handle touch, fire the
-        # fake clicks here:
-        touch_fake_clicked = False
-        if not self.has_native_touch_support and \
-                event_name == "touchend" and \
-                orig_touch_start_x != None and \
-                orig_touch_start_y != None:
-            if self.touch_max_ever_distance <\
+            # If our own widget doesn't handle touch, fire the
+            # fake clicks here:
+            touch_fake_clicked = False
+            fake_clicks_for_event = \
+                ((not self.has_native_touch_support or
+                self.fake_mouse_even_with_native_touch_support)
+                and event_name == "touchend" and
+                orig_touch_start_x != None and
+                orig_touch_start_y != None)
+            if fake_clicks_for_event and \
+                    self.touch_max_ever_distance <\
                     40.0 * self.dpi_scale and \
                     not self.touch_scrolling and \
                     self.touch_start_time + config.get(
-                    "touch_longclick_time") > time.monotonic():
+                    "touch_shortclick_time") > time.monotonic():
                 # Emulate a mouse click, but make sure it's not
                 # propagated to children (since they would, if
                 # necessary, emulate their own mouse clicks as well
                 # from the already propagating touch event):
+                self.stop_infinite_scroll()
                 self._prevent_mouse_event_propagate = True
                 touch_fake_clicked = True
                 do_focus()
@@ -529,14 +681,18 @@ class WidgetBase(object):
                 finally:
                     self._prevent_mouse_event_propagate = False 
 
-        # If our own widget doesn't handle touch, do the
-        # fake scrolling here:
-        if not self.has_native_touch_support and \
+            # If our own widget doesn't handle touch, do the
+            # fake scrolling here:
+            fake_scrolling_for_event =\
+                ((not self.has_native_touch_support or
+                self.fake_mouse_even_with_native_touch_support)
+                and
                 (event_name == "touchmove" or
-                event_name == "touchend") and \
-                orig_touch_start_x != None and \
-                orig_touch_start_y != None:
-            if (abs(diff_x) >= 0.1 or abs(diff_y) >= 0.1) and (
+                event_name == "touchend") and
+                orig_touch_start_x != None and
+                orig_touch_start_y != None)
+            if fake_scrolling_for_event and \
+                    (abs(diff_x) >= 0.1 or abs(diff_y) >= 0.1) and (
                     self.touch_scrolling or
                     self.touch_max_ever_distance >
                     40.0 * self.dpi_scale or \
@@ -544,6 +700,7 @@ class WidgetBase(object):
                     20.0 * self.dpi_scale and \
                     self.touch_start_time + 0.7 > time.monotonic())):
                 self.touch_scrolling = True
+                do_focus()
                 scalar = 0.019
                 self._prevent_mouse_event_propagate = True
                 try:
@@ -553,6 +710,10 @@ class WidgetBase(object):
                         orig_touch_start_x, orig_touch_start_y])
                 finally:
                     self._prevent_mouse_event_propagate = False
+
+        # *** EVENT PROPAGATION, ONLY POST-CALLBACK HANDLING ***
+        if not is_post:
+            return
 
         # Pass on event to child widgets:
         if hasattr(self, "_prevent_mouse_event_propagate") and \

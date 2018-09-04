@@ -28,6 +28,8 @@ class Conf(object):
             return 0.4
         if value == "mouse_wheel_speed_modifier":
             return 1.2
+        if value == "touch_shortclick_time":
+            return 0.2
         if value == "touch_longclick_time":
             return 1.1
         if value == "mouse_fakes_touch_events":

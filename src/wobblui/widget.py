@@ -6,12 +6,17 @@ from wobblui.window import Window
 
 class Widget(WidgetBase):
     def __init__(self, is_container=False, can_get_focus=False,
-            takes_text_input=False, generate_double_click_for_touches=False):
+            takes_text_input=False, generate_double_click_for_touches=False,
+            has_native_touch_support=False,
+            fake_mouse_even_with_native_touch_support=False):
         super().__init__(is_container=is_container,
             can_get_focus=can_get_focus,
             takes_text_input=takes_text_input,
             generate_double_click_for_touches=\
-                generate_double_click_for_touches)
+                generate_double_click_for_touches,
+            has_native_touch_support=has_native_touch_support,
+            fake_mouse_even_with_native_touch_support=\
+                fake_mouse_even_with_native_touch_support)
         self.parentwindowresized = Event("parentwindowresized",
             owner=self)
         self._temp_style = AppStyleBright()
