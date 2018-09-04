@@ -1,4 +1,5 @@
 
+import sdl2 as sdl
 import time
 import weakref
 
@@ -65,10 +66,11 @@ class MenuSeparator(ListEntry):
     
 
 class Menu(ListBase):
-    def __init__(self):
+    def __init__(self, unfocus_on_trigger=False):
         super().__init__(render_as_menu=True,
             triggered_by_single_click=True)
         self.callback_funcs = []
+        self.defocus_on_trigger = unfocus_on_trigger
 
     def on_triggered(self):
         item_id = self.selected_index
@@ -77,7 +79,7 @@ class Menu(ListBase):
             if item_id < len(self.callback_funcs):
                 if self.callback_funcs[item_id] != None:
                     f = self.callback_funcs[item_id]
-            if self.focused:
+            if self.focused and self.defocus_on_trigger:
                 self.focus_next()
             if f != None:
                 f()
@@ -122,9 +124,16 @@ class ContainerWithSlidingMenu(Widget):
         self.animation_callback_scheduled = False
         self.needs_relayout = True
         self.needs_redraw = True
+        super().add(self.menu)
+
+    def get_children_in_strict_mouse_event_order(self):
+        return self._children
 
     def open_menu(self):
+        if self.slide_animation_target == "open":
+            return
         self.slide_animation_target = "open"
+        self.schedule_animation()
 
     def close_menu(self):
         self.slide_animation_target = "closed"
@@ -139,8 +148,9 @@ class ContainerWithSlidingMenu(Widget):
                 if self_value is None:
                     return
                 self_value.animation_callback_scheduled = False
-                self_value.animate(max(0.01, time.monotonic() - start_ts))
-            schedule(anim_do, 50)
+                self_value.animate(max(0.01, time.monotonic() -
+                    start_ts))
+            schedule(anim_do, 0.05)
 
     def animate(self, passed_time):
         if self.slide_animation_target is None:
@@ -156,7 +166,7 @@ class ContainerWithSlidingMenu(Widget):
                 flush=True)
             self.slide_animation_target = None
             return
-        move = passed_time * 10.0
+        move = passed_time * self.menu.width * 6.0
         done = False
         if target_x > self.menu_slid_out_x:
             self.menu_slid_out_x += move
@@ -176,26 +186,42 @@ class ContainerWithSlidingMenu(Widget):
             self.slide_animation_target = None
         else:
             self.schedule_animation()
+        self.menu.x = min(0, round(-self.menu.width +
+            self.menu_slid_out_x))
         self.needs_relayout = True
         self.needs_redraw = True
 
     def on_redraw(self):
-        self.draw_children()
+        # Draw actual children behind menu, if any:
+        if len(self._children) >= 2:
+            for child in self._children[1:]:
+                child.redraw_if_necessary()
+                sdl.SDL_SetRenderDrawColor(self.renderer,
+                    255, 255, 255, 255)
+                child.draw(child.x, child.y)
+        # Draw menu:
+        if len(self._children) >= 1:
+            child = self._children[0]
+            child.redraw_if_necessary()
+            sdl.SDL_SetRenderDrawColor(self.renderer,
+                255, 255, 255, 255)
+            child.draw(child.x, child.y)
 
     def on_relayout(self):
         self.menu.width = min(self.menu.get_natural_width(),
             self.width)
         self.menu.height = self.height
         if not self.is_opened:
-            self.menu.x = min(0, round(-(self.menu.width + self.menu_slid_out_x)))
+            self.menu.x = min(0, round(-self.menu.width +
+                self.menu_slid_out_x))
         else:
             self.menu_x = 0
         self.menu.y = 0
-        if len(self._children) >= 1:
-            self._children[0].x = 0
-            self._children[0].y = 0
-            self._children[0].width = self.width
-            self._children[0].height = self.height
+        if len(self._children) >= 2:
+            self._children[1].x = 0
+            self._children[1].y = 0
+            self._children[1].width = self.width
+            self._children[1].height = self.height
 
     def add(self, obj_or_text, func_callback=None,
             global_shortcut_func=None,
@@ -208,7 +234,7 @@ class ContainerWithSlidingMenu(Widget):
                 "but function callback and/or global shortcut " +
                 "for a menu entry were specified") 
         if not isinstance(obj_or_text, str):
-            if len(self._children) >= 1:
+            if len(self._children) >= 2:
                 raise ValueError("only one layout child is supported")
             super().add(obj_or_text)
         else:

@@ -29,7 +29,8 @@ class Topbar(Widget):
             self.topbar_box.remove(item,
                 error_if_not_present=error_if_not_present) 
         else:
-            super().remove(item, error_if_not_present=error_if_not_present)
+            super().remove(item,
+                error_if_not_present=error_if_not_present)
 
     def add_to_top(self, child, expand=True, shrink=False):
         self.topbar_box.add(child, expand=expand, shrink=shrink)
