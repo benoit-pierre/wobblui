@@ -86,7 +86,10 @@ def get_font_paths_by_name(name):
         return []
 
     # Search system-wide:
-    import fontconfig
+    try:
+        import fontconfig, fontTools
+    except ImportError:
+        return []
     from wobblui.font.query import get_font_name
     candidates = []
     unspecific_variants = ["italic", "bold", "condensed"]
