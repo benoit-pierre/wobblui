@@ -43,9 +43,11 @@ REVERSE_DIRECTION = True
 
 def glyphs_to_quadratic(
         glyphs, max_err=MAX_ERR, reverse_direction=REVERSE_DIRECTION):
-    from cu2qu.pens import Cu2QuPen
-    from fontTools.pens.ttGlyphPen import TTGlyphPen
-
+    try:
+        from cu2qu.pens import Cu2QuPen
+        from fontTools.pens.ttGlyphPen import TTGlyphPen
+    except ImportError:
+        raise ValueError("cannot convert glyphs due to missing libs")
     quadGlyphs = {}
     for gname in glyphs.keys():
         glyph = glyphs[gname]
