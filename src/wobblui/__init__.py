@@ -340,6 +340,13 @@ def _handle_event(event):
             w.set_hidden(False)
         capture_enabled = (len(mouse_ids_button_ids_pressed) > 0 or
             touch_pressed)
+        # Swap button 2 and 3, since SDL maps them unintuitively
+        # (SDL: middle 2, right 3 - ours: middle 3, right 2)
+        if event.button.button == 2:
+            event.button.button = 3
+        elif event.button.button == 3:
+            event.button.button = 2
+        # Actually send off event:
         if event.type == sdl.SDL_MOUSEBUTTONDOWN:
             if event.button.which == sdl_touch_mouseid or \
                     _debug_mouse_fakes_touch:

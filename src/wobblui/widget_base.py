@@ -478,6 +478,76 @@ class WidgetBase(object):
         return self._pre_or_post_mouse_event_handling(event_name,
             event_args, internal_data=None, is_post=False)
 
+    def return_long_click_test_closure(self, callback_id):
+        self_ref = weakref.ref(self)
+        def test_long_click():
+            self_value = self_ref()
+            if self_value is None:
+                return
+            if self_value.long_click_callback_id != callback_id:
+                # A newer callback was already started.
+                return
+            self_value.have_long_click_callback = False
+            fake_clicks_for_event = \
+                ((not self_value.has_native_touch_support or
+                self_value.fake_mouse_even_with_native_touch_support) and \
+                self_value.last_touch_x != None and
+                self_value.last_touch_y != None)
+            # Emulate a right-click if necessary:
+            if fake_clicks_for_event and \
+                    not self_value.touch_scrolling:
+                self_value.stop_infinite_scroll()
+                self_value.consider_mouse_click_focus(
+                    self_value.last_touch_x, self_value.last_touch_y)
+                self_value._prevent_mouse_event_propagate = True
+                old_value = self_value._in_touch_fake_event_processing
+                try:
+                    self_value._in_touch_fake_event_processing = True
+                    self_value.mousedown(0, 2,
+                        self_value.last_touch_x - self_value.abs_x,
+                        self_value.last_touch_y - self_value.abs_y,
+                        internal_data=[
+                            self_value.last_touch_x,
+                            self_value.last_touch_y])
+                    self_value.click(0, 2,
+                        self_value.last_touch_x - self_value.abs_x,
+                        self_value.last_touch_y - self_value.abs_y,
+                        internal_data=[
+                            self_value.last_touch_x,
+                            self_value.last_touch_y])
+                    self_value.mouseup(0, 2,
+                        self_value.last_touch_x - self_value.abs_x,
+                        self_value.last_touch_y - self_value.abs_y,
+                        internal_data=[
+                            self_value.last_touch_x,
+                            self_value.last_touch_y])
+                finally:
+                    self_value._in_touch_fake_event_processing = old_value
+                    self_value._prevent_mouse_event_propagate = False
+        return test_long_click 
+
+    def consider_mouse_click_focus(self, hit_check_x, hit_check_y):
+        event_descends_into_child = False
+        for child in self.children:
+            rel_x = hit_check_x - self.abs_x
+            rel_y = hit_check_y - self.abs_y
+            if rel_x >= child.x and rel_y >= child.y and \
+                    rel_x <= child.x + child.width and \
+                    rel_y <= child.y + child.height and \
+                    child.focusable and \
+                    not child.effectively_inactive:
+                event_descends_into_child = True
+                break
+        if not event_descends_into_child:
+            if self.focusable and not self.focused:
+                self.focus()
+            else:
+                p = self.parent
+                while p != None and not p.focusable:
+                    p = p.parent
+                if p != None and not p.focused:
+                    p.focus()
+
     def _pre_or_post_mouse_event_handling(self, event_name,
             event_args, internal_data=None, is_post=False):
         # If we arrived here, the internal event wasn't prevented from
@@ -572,6 +642,17 @@ class WidgetBase(object):
                 self.touch_start_y = y
                 self.last_touch_x = x
                 self.last_touch_y = y
+                
+                # Schedule test for long-press click:
+                if not hasattr(self, "long_click_callback_id"):
+                    self.long_click_callback_id = 0
+                    self.have_long_click_callback = False
+                self.long_click_callback_id += 1
+                curr_id = self.long_click_callback_id
+                self_ref = weakref.ref(self)
+                self.have_long_click_callback = True
+                schedule(self.return_long_click_test_closure(curr_id),
+                    config.get("touch_longclick_time"))
             elif event_name.startswith("touch"):
                 self.last_touch_x = x
                 self.last_touch_y = y
@@ -583,10 +664,22 @@ class WidgetBase(object):
                     math.sqrt(math.pow(
                     x - self.touch_start_x, 2) +
                     math.pow(y - self.touch_start_y, 2))))
+                # Make sure moving too far stops long clicks:
+                if self.touch_max_ever_distance > 7 * self.dpi_scale \
+                        and self.have_long_click_callback:
+                    # Finger moved too far, no longer long press click:
+                    self.have_long_click_callback = False
+                    self.long_click_callback_id += 1
+                # Set hit point check for touch movement:
                 if self.touch_start_x != None:
                     touch_hitpoint_check_x = self.touch_start_x
                     touch_hitpoint_check_y = self.touch_start_y
                 if event_name == "touchend":
+                    # Stop long click detection:
+                    if self.have_long_click_callback:
+                        self.long_click_callback_id += 1
+                        self.have_long_click_callback = False
+                    # Reset touch start:
                     self.touch_start_x = None
                     self.touch_start_y = None
             # Update infinite scroll emulation:
@@ -608,29 +701,8 @@ class WidgetBase(object):
         # *** FAKE MOUSE TOUCH EVENTS (only in pre handler) ***
         if not is_post:
             # Regular mouse down focus:
-            def do_focus():
-                event_descends_into_child = False
-                for child in self.children:
-                    rel_x = hit_check_x - self.abs_x
-                    rel_y = hit_check_y - self.abs_y
-                    if rel_x >= child.x and rel_y >= child.y and \
-                            rel_x <= child.x + child.width and \
-                            rel_y <= child.y + child.height and \
-                            child.focusable and \
-                            not child.effectively_inactive:
-                        event_descends_into_child = True
-                        break
-                if not event_descends_into_child:
-                    if self.focusable and not self.focused:
-                        self.focus()
-                    else:
-                        p = self.parent
-                        while p != None and not p.focusable:
-                            p = p.parent
-                        if p != None and not p.focused:
-                            p.focus()
             if event_name == "mousedown":
-                do_focus()
+                self.consider_mouse_click_focus(hit_check_x, hit_check_y)            
 
             # If our own widget doesn't handle touch, fire the
             # fake clicks here:
@@ -654,7 +726,8 @@ class WidgetBase(object):
                 self.stop_infinite_scroll()
                 self._prevent_mouse_event_propagate = True
                 touch_fake_clicked = True
-                do_focus()
+                self.consider_mouse_click_focus(hit_check_x,
+                    hit_check_y)
                 old_value = self._in_touch_fake_event_processing
                 try:
                     self._in_touch_fake_event_processing = True
@@ -707,7 +780,8 @@ class WidgetBase(object):
                     20.0 * self.dpi_scale and \
                     self.touch_start_time + 0.7 > time.monotonic())):
                 self.touch_scrolling = True
-                do_focus()
+                self.consider_mouse_click_focus(hit_check_x,
+                    hit_check_y)
                 scalar = 0.019
                 self._prevent_mouse_event_propagate = True
                 old_value = self._in_touch_fake_event_processing

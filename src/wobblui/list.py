@@ -530,9 +530,14 @@ class ListBase(ScrollbarDrawingWidget):
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
+        if button != 1 and self.triggered_by_single_click:
+            # This is supposed to be an instant-click list.
+            # Since this click doesn't do anything for that,
+            # also ignore it for selection:
+            return
         self.set_selection_by_mouse_pos(x, y)
         if self.triggered_by_single_click and \
-                self._hover_index >= 0:
+                self._hover_index >= 0 and button == 1:
             self._selected_index = self._hover_index
             self.triggered()
 
