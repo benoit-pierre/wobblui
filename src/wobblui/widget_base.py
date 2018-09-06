@@ -38,6 +38,7 @@ class WidgetBase(object):
         self.continue_infinite_scroll_when_unfocused = False
         self.fake_mouse_even_with_native_touch_support =\
             fake_mouse_even_with_native_touch_support
+        self._in_touch_fake_event_processing = False
         self.needs_relayout = True
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
@@ -209,6 +210,9 @@ class WidgetBase(object):
     @property
     def invisible(self):
         return self._invisible
+
+    def is_mouse_event_actually_touch(self):
+        return self._in_touch_fake_event_processing
 
     @invisible.setter
     def invisible(self, v):
@@ -651,7 +655,9 @@ class WidgetBase(object):
                 self._prevent_mouse_event_propagate = True
                 touch_fake_clicked = True
                 do_focus()
+                old_value = self._in_touch_fake_event_processing
                 try:
+                    self._in_touch_fake_event_processing = True
                     self.mousedown(0, 1,
                         orig_touch_start_x - self.abs_x,
                         orig_touch_start_y - self.abs_y,
@@ -679,6 +685,7 @@ class WidgetBase(object):
                             orig_touch_start_x,
                             orig_touch_start_y])
                 finally:
+                    self._in_touch_fake_event_processing = old_value
                     self._prevent_mouse_event_propagate = False 
 
             # If our own widget doesn't handle touch, do the
@@ -703,12 +710,15 @@ class WidgetBase(object):
                 do_focus()
                 scalar = 0.019
                 self._prevent_mouse_event_propagate = True
+                old_value = self._in_touch_fake_event_processing
                 try:
+                    self._in_touch_fake_event_processing = True
                     self.mousewheel(0,
                         diff_x * scalar, diff_y * scalar,
                         internal_data=[
                         orig_touch_start_x, orig_touch_start_y])
                 finally:
+                    self._in_touch_fake_event_processing = False
                     self._prevent_mouse_event_propagate = False
 
         # *** EVENT PROPAGATION, ONLY POST-CALLBACK HANDLING ***
