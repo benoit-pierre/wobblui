@@ -38,6 +38,7 @@ rendered_words_cache = KeyValueCache(size=500,
 render_size_cache = KeyValueCache(size=5000)
 
 ttf_was_initialized = False
+_reuse_draw_rect = sdl.SDL_Rect()
 class Font(object):
     def __init__(self, font_family,
             pixel_size, italic=False, bold=False):
@@ -106,10 +107,11 @@ class Font(object):
             text, x, y, color=color)
 
     def draw_at(self, renderer, text, x, y, color=Color.black):
+        global _reuse_draw_rect
         (w, h, tex) = self.get_cached_rendered_sdl_texture(
             renderer, text, color=Color.white)
         assert(tex != None)
-        tg = sdl.SDL_Rect()
+        tg = _reuse_draw_rect
         tg.x = x
         tg.y = y
         tg.w = w
