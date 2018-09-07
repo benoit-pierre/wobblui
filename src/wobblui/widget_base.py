@@ -667,6 +667,10 @@ class WidgetBase(object):
         elif event_name.startswith("touch"):
             diff_x = (x - self.last_touch_x)
             diff_y = (y - self.last_touch_y)
+        if event_name == "touchstart" or event_name == "touchmove":
+            if self.touch_start_x != None:
+                touch_hitpoint_check_x = self.touch_start_x
+                touch_hitpoint_check_y = self.touch_start_y
 
         # *** BASIC TOUCH STATE UPDATE, ONLY ON PRE-CALLBACK ***
         if not is_post:
@@ -709,10 +713,6 @@ class WidgetBase(object):
                     # Finger moved too far, no longer long press click:
                     self.have_long_click_callback = False
                     self.long_click_callback_id += 1
-                # Set hit point check for touch movement:
-                if self.touch_start_x != None:
-                    touch_hitpoint_check_x = self.touch_start_x
-                    touch_hitpoint_check_y = self.touch_start_y
                 if event_name == "touchend":
                     # Stop long click detection:
                     if self.have_long_click_callback:
