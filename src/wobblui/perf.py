@@ -64,7 +64,7 @@ class Perf(object):
             while len(v) < 5:
                 v = "0" + v
             v = v[:-4] + "." + v[-4:]
-            logdebug("wobblui.perf: " +
+            logdebug("perf: " +
                 str(perf_name) + " -> " +
                 v + "ms")
 
