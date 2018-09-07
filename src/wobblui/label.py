@@ -13,15 +13,18 @@ class Label(ScrollbarDrawingWidget):
             text_scale=1.0):
         super().__init__()
         self.type = "label"
+        self.current_draw_scale = 1.0
         self.text_scale = text_scale
         font_family = self.style.get("widget_font_family")
         self.px_size = self.get_intended_text_size()
         self._layout_height = 0
         self.scroll_y_offset = 0
+        self.natural_size_cache = dict()
         self.text_obj = RichText(font_family=font_family,
             px_size=self.px_size,
             draw_scale=self.dpi_scale)
         self._current_align = "left"
+        self._cached_text = None
         if text.find("<") >= 0 and (text.find("/>") > 0 or
                 text.find("/ >") > 0 or
                 (text.find("</") > 0 and text.find(">") > 0)):
@@ -29,6 +32,9 @@ class Label(ScrollbarDrawingWidget):
         else:
             self.text = text
         self._user_set_color = color
+
+    def on_stylechanged(self):
+        self.natural_size_cache = dict()
 
     def get_intended_text_size(self):
         if self.style == None:
@@ -102,16 +108,19 @@ class Label(ScrollbarDrawingWidget):
             y * 50.0 * self.dpi_scale)
         self.needs_redraw = True
 
-    def on_relayout(self):
+    def font_size_refresh(self):
         new_px_size = self.get_intended_text_size()
-        if new_px_size != self.px_size:
+        if new_px_size != self.px_size or \
+                self.dpi_scale != self.current_draw_scale:
             # Font size update!
             self.px_size = new_px_size
+            self.natural_size_cache = dict()
             self.text_obj.px_size = self.px_size
-        self.text_obj.draw_scale = self.dpi_scale
-        if self.style.has("topbar_text_size") and self.in_topbar():
-            self.text_obj.px_size = \
-                int(self.style.get("topbar_text_size"))
+            self.text_obj.draw_scale = self.dpi_scale
+            self.current_draw_scale = self.dpi_scale
+
+    def on_relayout(self):
+        self.font_size_refresh()
         layout_width = self.width
         if self._max_width != None and self._max_width < layout_width:
             layout_width = self._max_width
@@ -121,28 +130,51 @@ class Label(ScrollbarDrawingWidget):
     def get_natural_width(self):
         if len(self.text_obj.text) == 0:
             return 0
+        self.font_size_refresh()
+        if "natural_width" in self.natural_size_cache:
+            return self.natural_size_cache["natural_width"]
         text_obj_copy = self.text_obj.copy()
         text_obj_copy.draw_scale = self.dpi_scale
         (w, h) = text_obj_copy.layout()
+        self.natural_size_cache["natural_width"] = w
+        if not "natural_height" in self.natural_size_cache:
+            self.natural_size_cache["natural_height"] = dict()
+        self.natural_size_cache["natural_height"][None] = h
         return w
 
     def get_natural_height(self, given_width=None):
-        if len(self.text_obj.text) == 0:
+        if len(self.text) == 0:
             return 0
+        self.font_size_refresh()
+        if given_width != None:
+            given_width = max(0, round(given_width))
+        if not "natural_height" in self.natural_size_cache:
+            self.natural_size_cache["natural_height"] = dict()
+        if given_width in self.natural_size_cache\
+                ["natural_height"]:
+            return self.natural_size_cache\
+                ["natural_height"][given_width]
         text_obj_copy = self.text_obj.copy()
         text_obj_copy.draw_scale = self.dpi_scale
         (w, h) = text_obj_copy.layout(max_width=given_width)
+        self.natural_size_cache["natural_height"][given_width] = h
         return h
 
     @property
     def text(self):
-        return self.text_obj.text
+        if self._cached_text == None:
+            self._cached_text = self.text_obj.text
+        return self._cached_text
 
     @text.setter
     def text(self, t):
+        if self.text == t:
+            return
+        self.natural_size_cache = dict()
         self.text_obj.set_text(t)
         self.needs_relayout = True
         self.needs_redraw = True
+        self._cached_text = t
 
     @property
     def html(self):
@@ -150,6 +182,9 @@ class Label(ScrollbarDrawingWidget):
 
     @html.setter
     def html(self, t):
+        if self.html == t:
+            return
+        self.natural_size_cache = dict()
         self.text_obj.set_html(t)
         self.needs_relayout = True
         self.needs_redraw = True
