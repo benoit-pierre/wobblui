@@ -43,7 +43,7 @@ class Perf(object):
         return perf_id
 
     @classmethod
-    def stop(cls, perf_id):
+    def stop(cls, perf_id, debug=None, expected_max_duration=None):
         global config
         now = time.monotonic()
         cls.lock.acquire()
@@ -60,13 +60,19 @@ class Perf(object):
                 cls.perf_measurements[perf_name][20:]
         cls.lock.release()
         if config.get("perf_debug"):
+            note = "" 
+            if expected_max_duration != None:
+                if (duration < expected_max_duration):
+                    return
+                note = "[SLOW]"
             v = str(round(duration * 10000000.0))
             while len(v) < 5:
                 v = "0" + v
             v = v[:-4] + "." + v[-4:]
             logdebug("perf: " +
-                str(perf_name) + " -> " +
-                v + "ms")
+                str(perf_name) + note + " -> " +
+                v + "ms" + ("" if (debug is None
+                or len(str(debug)) == 0) else "  " + str(debug)))
 
     @staticmethod
     def values(cls, name, startswith=False):

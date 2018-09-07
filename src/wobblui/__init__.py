@@ -31,6 +31,7 @@ from wobblui.keyboard import internal_update_text_events,\
     internal_update_keystate_keydown, \
     internal_update_keystate_keyup, \
     clean_global_shortcuts
+from wobblui.perf import Perf
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
@@ -44,6 +45,7 @@ def redraw_windows(layout_only=False):
         if w is None or w.hidden:
             continue
         try:
+            relayout_perf = Perf.start("redraw_windows_relayout")
             w.update_to_real_sdlw_size()
             i = 0
             while i < 10:
@@ -53,6 +55,7 @@ def redraw_windows(layout_only=False):
             if i == 10:
                 logwarning("WARNING: a widget appears to be causing a " +
                     "relayout() loop")
+            Perf.stop(relayout_perf, expected_max_duration=0.010)
             w.redraw_if_necessary()
         except Exception as e:
             logerror("*** ERROR HANDLING WINDOW ***")
@@ -276,9 +279,13 @@ def do_event_processing(ui_active=True):
                 # Skip regular processing of this event:
                 continue
         try:
+            perf_id = Perf.start("sdlevent_" + str(
+                debug_describe_event(event)) + "_processing")
             if _handle_event(event) is False and ui_active:
                 # App termination.
+                Perf.stop(perf_id)
                 return "appquit"
+            Perf.stop(perf_id, expected_max_duration=0.020)
         except Exception as e:
             logerror("*** ERROR IN EVENT HANDLER ***")
             logerror(str(traceback.format_exc()))

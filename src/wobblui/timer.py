@@ -24,6 +24,7 @@ import time
 import traceback
 import uuid
 
+from wobblui.perf import Perf
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class ScheduledEvent(object):
@@ -72,6 +73,7 @@ def maximum_sleep_time():
 
 def internal_trigger_check():
     global scheduled_events
+    trigger_perf_id = Perf.start("timer_trigger")
     trigger_events = set()
     for event in scheduled_events:
         if event.check():
@@ -80,6 +82,10 @@ def internal_trigger_check():
         scheduled_events.discard(event)
     for event in trigger_events:
         event()
+    Perf.stop(trigger_perf_id, debug="events triggered: " +
+        str(len(trigger_events)) + ", functions: " +
+        str([str(event.func) for event in trigger_events]),
+        expected_max_duration=0.005)
 
 def schedule(func, delay):
     global scheduled_events
