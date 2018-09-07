@@ -478,6 +478,25 @@ class WidgetBase(object):
         return self._pre_or_post_mouse_event_handling(event_name,
             event_args, internal_data=None, is_post=False)
 
+    def draw_selection_drag_handle(self, x, y, line_height):
+        x = round(x)
+        y = round(y)
+        c = Color.black
+        if self.style != None and self.style.has(
+                "touch_selection_drag_handles"):
+            c = Color(self.style.get("touch_selection_drag_handles"))
+        elif self.style != None and self.style.has("scrollbar_knob_fg"):
+            c = Color(self.style.get("scrollbar_knob_fg"))
+        line_thickness = max(1, round(1.0 * self.dpi_scale))
+        line_offset_x = math.floor(line_thickness / 0.5)
+        draw_rectangle(self.renderer, x + line_offset_x, y,
+            line_thickness, line_height, color=c)
+        square_size = max(3, round(5.0 * self.dpi_scale))
+        square_offset_x = x - -max(1, round(square_size / 2.0))
+        square_offset_y = y - square_size
+        draw_rectangle(self.renderer, square_offset_x,
+            square_offset_y, square_size, square_size, color=c)
+
     def return_long_click_test_closure(self, callback_id):
         self_ref = weakref.ref(self)
         def test_long_click():
