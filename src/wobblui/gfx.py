@@ -45,7 +45,7 @@ def draw_rectangle(renderer, x, y, w, h, color=None,
             x, y, min(border, w), h,
             color=color, filled=True)
         draw_rectangle(renderer,
-            x + w - min(border, w), y, h, border,
+            x + w - min(border, w), y, min(border, w), h,
             color=color, filled=True)
         return
     _rect.x = max(0, round(x))
