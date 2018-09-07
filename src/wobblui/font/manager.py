@@ -15,7 +15,7 @@ from wobblui.cache import KeyValueCache
 from wobblui.color import Color
 
 
-ttf_font_cache = KeyValueCache(size=500,
+ttf_font_cache = KeyValueCache(size=30,
     destroy_func=lambda x: sdlttf.TTF_CloseFont(x))
 def get_sdl_font_cached(font_path, px_size):
     global ttf_font_cache
