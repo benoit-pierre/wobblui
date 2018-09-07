@@ -1,4 +1,24 @@
 
+'''
+wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+'''
+
 import functools
 import html
 import os
@@ -18,6 +38,7 @@ from wobblui.timer import schedule
 from wobblui.topbar import Topbar
 from wobblui.uiconf import config
 from wobblui.widget import Widget
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 CHOSEN_NOTHING=-1
 
@@ -29,7 +50,7 @@ class FileOrDirChooserDialog(Widget):
             start_directory=None, file_filter="*"):
         self.debug = (config.get("debug_file_dialog") is True)
         if self.debug:
-            print("wobblui.filedialog " + str(id(self)) + ": " +
+            logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                 "dialog initializing " +
                 "with start_directory=" + str(start_directory))
         self.choose_dir = choose_dir
@@ -175,7 +196,7 @@ class FileOrDirChooserDialog(Widget):
 
     def run(self, done_callback):
         if self.debug:
-            print("wobblui.filedialog " + str(id(self)) +
+            logdebug("wobblui.filedialog " + str(id(self)) +
                 ": run() called")
         def filter_func(widget):
             if not widget.has_as_parent(self) and \
@@ -187,7 +208,7 @@ class FileOrDirChooserDialog(Widget):
             start_directory = self.suggest_start_dir()
         self.current_path = start_directory
         if self.debug:
-            print("wobblui.filedialog " + str(id(self)) + ": " +
+            logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                 "dialog start path is now: " +
                 str(self.current_path))
         self.window_to_add.add(self)
@@ -207,7 +228,7 @@ class FileOrDirChooserDialog(Widget):
 
     def refresh(self):
         if self.debug:
-            print("wobblui.filedialog " + str(id(self)) + ": " +
+            logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                 "refreshing dialog with path: " +
                 str(self.current_path))
         try:
@@ -219,24 +240,24 @@ class FileOrDirChooserDialog(Widget):
                         self.current_path, item[0]))
                 except (OSError, PermissionError) as e:
                     if self.debug:
-                        print("wobblui.filedialog " +
+                        logdebug("wobblui.filedialog " +
                             str(id(self)) + ": " +
                             "error getting isdir for '" +
                             str(f) + "': " + str(e))
             if self.debug:
-                print("wobblui.filedialog " + str(id(self)) + ": " +
+                logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                     "listing obtained is: " +
                     str(new_listing_data))
         except (OSError, PermissionError) as e:
             if self.debug:
-                print("wobblui.filedialog " + str(id(self)) + ": " +
+                logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                     "failed to obtain listing: " +
                     str(e))
             new_listing_data = "error"
         if self.listing_path != self.current_path and \
                 new_listing_data != self.listing_data:
             if self.debug:
-                print("wobblui.filedialog " + str(id(self)) + ": " +
+                logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                     "rebuilding list contents")
             self.contents_list.clear()
             self.listing_path = self.current_path

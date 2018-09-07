@@ -1,4 +1,24 @@
 
+'''
+wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+'''
+
 import copy
 import ctypes
 import functools
@@ -19,6 +39,7 @@ from wobblui.timer import schedule
 from wobblui.uiconf import config
 from wobblui.widgetman import add_widget, all_widgets, \
     get_widget_id, get_add_id, tab_sort
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class WidgetBase(object):
     def __init__(self, is_container=False,
@@ -92,9 +113,8 @@ class WidgetBase(object):
                     sdl.SDL_TEXTUREACCESS_TARGET,
                     tex_x, tex_y)
                 if self_value.sdl_texture is None:
-                    print("warning: failed to create texture in " +
-                        "wobblui.widget_base.WidgetBase",
-                        file=sys.stderr, flush=True)
+                    logwarning("warning: failed to create texture in " +
+                        "wobblui.widget_base.WidgetBase")
                     self_value.needs_redraw = False
                     return
                 sdl.SDL_SetTextureBlendMode(self_value.sdl_texture,
@@ -146,7 +166,7 @@ class WidgetBase(object):
         self.parentchanged = Event("parentchanged", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         if has_native_touch_support:
-            print("NATIVE TOUCH FOR: " + str(self))
+            logdebug("NATIVE TOUCH FOR: " + str(self))
             self.has_native_touch_support = True
             self.multitouchstart = Event("multitouchstart", owner=self)
             self.multitouchmove = Event("multitouchmove", owner=self)

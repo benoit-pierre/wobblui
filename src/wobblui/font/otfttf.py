@@ -1,6 +1,26 @@
 
-"""
-This is code is based on slightly modified code from fonttools.
+'''
+wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+'''
+
+'''
+Parts of this code are based on modified code from fonttools.
 The original licensing of this code / fonttools is as follows:
 
 MIT License
@@ -25,12 +45,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-"""
+'''
 
 from __future__ import print_function, division, absolute_import
 import sys
 import argparse
 
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 # default approximation error, measured in UPEM
 MAX_ERR = 1.0
@@ -69,10 +90,9 @@ def otf_to_ttf_do(ttFont, post_format=POST_FORMAT, **kwargs):
         from fontTools.pens.ttGlyphPen import TTGlyphPen
         from fontTools.ttx import makeOutputFileName
     except ImportError:
-        print("wobblui.font.otftottf.py: " +
+        logwarning("wobblui.font.otftottf.py: " +
             "warning: OTF font conversion aborted due to " +
-            "missing fontTools and cu2qu dependencies",
-            file=sys.stderr, flush=True)
+            "missing fontTools and cu2qu dependencies")
         raise ValueError("cannot convert OTF fonts without " +
             "the fontTools and cu2qu libraries")
 

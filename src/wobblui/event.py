@@ -1,9 +1,30 @@
 
+'''
+wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+'''
+
 import random
 import sys
 
 from wobblui.perf import Perf
 from wobblui.uiconf import config
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DEBUG_EVENT=False
 
@@ -66,9 +87,8 @@ class Event(object):
                 result = getattr(self.on_object,
                     "on_" + str(self.name))(*args)
             except Exception as e:
-                print("ERROR: Exception processing " +
-                    "on_" + str(self.name) + " on " + str(self.on_object),
-                    file=sys.stderr, flush=True)
+                logerror("ERROR: Exception processing " +
+                    "on_" + str(self.name) + " on " + str(self.on_object))
                 raise e
             if result is True:
                 return True
@@ -78,7 +98,7 @@ class Event(object):
             user_callbacks_only=False, ignore_disabled=False):
         global config
         if config.get("debug_events") is True:
-            print("EVENT TRIGGER: " + str(self.name) +
+            logdebug("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
         perf_id = None
         if self.name == "redraw":
@@ -137,7 +157,7 @@ class InternalOnlyDummyEvent(Event):
     def __call__(self, *args, internal_data=None):
         global config
         if config.get("debug_events") is True:
-            print("EVENT TRIGGER: " + str(self.name) +
+            logdebug("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
         if self._disabled:
             return True

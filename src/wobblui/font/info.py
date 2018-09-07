@@ -1,4 +1,24 @@
 
+'''
+wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+'''
+
 import hashlib
 import hmac
 import os
@@ -6,6 +26,7 @@ import shutil
 import tempfile
 
 from wobblui.sdlinit import initialize_sdl
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DEBUG_FONTINFO=False
 
@@ -35,7 +56,7 @@ def extract_name_ending(font_filename):
 def get_font_paths_by_name(name):
     # Search in packaged folder:
     if DEBUG_FONTINFO:
-        print("get_font_paths_by_name: searching for '" +
+        logdebug("get_font_paths_by_name: searching for '" +
             str(name) + "'")
     initialize_sdl()
     name_variants = []
@@ -48,7 +69,7 @@ def get_font_paths_by_name(name):
         (variant_name, extracted_letters) = extract_name_ending(
             filename)
         if DEBUG_FONTINFO:
-            print("get_font_paths_by_name: " +
+            logdebug("get_font_paths_by_name: " +
                 "searching " + str(name_variants) +
                 " in " + str((variant_name, extracted_letters)) +
                 " of packaged " + str(filename))
@@ -75,7 +96,7 @@ def get_font_paths_by_name(name):
                             "packaged-fonts", filename)))] + candidates
     if len(candidates) > 0:
         if DEBUG_FONTINFO:
-            print("get_font_paths_by_name: " +
+            logdebug("get_font_paths_by_name: " +
                 "got candidates for " + str(name) +
                 ": " + str(candidates))
         return candidates
@@ -94,7 +115,7 @@ def get_font_paths_by_name(name):
     candidates = []
     unspecific_variants = ["italic", "bold", "condensed"]
     if DEBUG_FONTINFO:
-        print("get_font_paths_by_name: " +
+        logdebug("get_font_paths_by_name: " +
             "got no candidates for " + str(name) +
             ", searching system-wide...", flush=True)
     def is_not_regular(font_name):
@@ -148,10 +169,9 @@ def get_font_as_ttf_files(name):
             fontotfttf.otf_to_ttf(fpath, full_path)
             new_paths.append((fname, full_path))
         except ValueError:
-            print("wobblui.font.info.py: " +
+            logwarning("wobblui.font.info.py: " +
                 "warning: font conversion failed: " +
-                str((fname, full_path)), file=sys.stderr,
-                flush=True)
+                str((fname, full_path)))
             continue
     return new_paths
 

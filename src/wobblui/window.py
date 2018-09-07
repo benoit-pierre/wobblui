@@ -1,4 +1,24 @@
 
+'''
+wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+'''
+
 import ctypes
 import math
 import sdl2 as sdl
@@ -14,6 +34,7 @@ from wobblui.style import AppStyleDark
 from wobblui.uiconf import config
 from wobblui.widget_base import all_widgets, WidgetBase
 from wobblui.widgetman import all_windows
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 def get_focused_window():
     global all_windows
@@ -117,11 +138,11 @@ class Window(WidgetBase):
         close_window = False
         if sdl.SDL_GetPlatform().decode("utf-8",
                 "replace").lower() != "android":
-            print("REGULAR WIN CLOSE")
+            logdebug("REGULAR WIN CLOSE")
             if self.closing():
                 close_window = True
         else:
-            print("ANDROID WIN HIDE")
+            logdebug("ANDROID WIN HIDE")
             if self.focused:
                 self.unfocus()
             self.set_hidden(True)
@@ -149,7 +170,7 @@ class Window(WidgetBase):
                 self.destroyed()
             else:
                 # Keep it around to be reopened.
-                print("ANDROID RENDERER DUMPED. WAITING FOR RESUME.")
+                logdebug("ANDROID RENDERER DUMPED. WAITING FOR RESUME.")
                 return
 
     def get_mouse_pos(self, mouse_id):

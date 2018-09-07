@@ -1,4 +1,24 @@
 
+'''
+wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+'''
+
 import ctypes
 import sdl2 as sdl
 import sys
@@ -16,6 +36,7 @@ from wobblui.timer import internal_trigger_check,\
 from wobblui.uiconf import config
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 def redraw_windows(layout_only=False):
     for w_ref in all_windows:
@@ -30,13 +51,12 @@ def redraw_windows(layout_only=False):
                     break
                 i += 1
             if i == 10:
-                print("WARNING: a widget appears to be causing a " +
-                    "relayout() loop", file=sys.stderr, flush=True)
+                logwarning("WARNING: a widget appears to be causing a " +
+                    "relayout() loop")
             w.redraw_if_necessary()
         except Exception as e:
-            print("*** ERROR HANDLING WINDOW ***",
-                file=sys.stderr, flush=True)
-            print(str(traceback.format_exc()))
+            logerror("*** ERROR HANDLING WINDOW ***")
+            logerror(str(traceback.format_exc()))
 
 def sdl_vkey_map(key):
     if key >= sdl.SDLK_0 and key <= sdl.SDLK_9:
@@ -219,7 +239,7 @@ def do_event_processing(ui_active=True):
         return False
     for event in events:
         if config.get("debug_source_events") is True:
-            print("wobblui.__init__.py: DEBUG: sdl event: " +
+            logdebug("wobblui.__init__.py: DEBUG: sdl event: " +
                 debug_describe_event(event))
         if not ui_active:
             # Skip this event unless it is essential.
@@ -260,9 +280,8 @@ def do_event_processing(ui_active=True):
                 # App termination.
                 return "appquit"
         except Exception as e:
-            print("*** ERROR IN EVENT HANDLER ***",
-                file=sys.stderr, flush=True)
-            print(str(traceback.format_exc()))
+            logerror("*** ERROR IN EVENT HANDLER ***")
+            logerror(str(traceback.format_exc()))
     redraw_windows(layout_only=True)
     internal_trigger_check()
     internal_update_text_events()
@@ -364,7 +383,7 @@ def _handle_event(event):
                     float(event.button.y)])
             if not capture_enabled:
                 if config.get("capture_debug"):
-                    print("wobblui.py: debug: mouse capture engage")
+                    logdebug("wobblui.py: debug: mouse capture engage")
                 sdl.SDL_CaptureMouse(sdl.SDL_TRUE)
         else:
             if event.button.which == sdl_touch_mouseid or \
@@ -387,7 +406,7 @@ def _handle_event(event):
                     (len(mouse_ids_button_ids_pressed) == 0 and
                     not touch_pressed):
                 if config.get("capture_debug"):
-                    print("wobblui.py: debug: mouse capture release")
+                    logdebug("wobblui.py: debug: mouse capture release")
                 sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
     elif event.type == sdl.SDL_MOUSEWHEEL:
         sdl_touch_mouseid = 4294967295
@@ -491,10 +510,10 @@ def _handle_event(event):
             if w != None and w.hidden and not w.is_closed:
                 w.set_hidden(False)
     elif (event.type == sdl.SDL_APP_DIDENTERBACKGROUND):
-        print("APP BACKGROUND EVENT.")
+        logdebug("APP BACKGROUND EVENT.")
         if sdl.SDL_GetPlatform().decode("utf-8", "replace").\
                 lower() == "android":
-            print("ANDROID IN BACKGROUND. DUMP ALL WINDOW RENDERERS.")
+            logdebug("ANDROID IN BACKGROUND. DUMP ALL WINDOW RENDERERS.")
             for w_ref in all_windows:
                 w = w_ref()
                 if w != None:
@@ -502,7 +521,7 @@ def _handle_event(event):
                         w.unfocus()
                     w.handle_sdlw_close()
     elif (event.type == sdl.SDL_APP_WILLENTERFOREGROUND):
-        print("APP RESUME EVENT")
+        logdebug("APP RESUME EVENT")
         for w_ref in all_windows:
             w = w_ref()
             if w != None and not w.is_closed:
