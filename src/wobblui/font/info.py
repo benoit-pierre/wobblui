@@ -102,6 +102,7 @@ def get_font_paths_by_name(name):
         return candidates
 
     # Don't try other places on android:
+    import sdl2 as sdl
     if sdl.SDL_GetPlatform().decode("utf-8",
             "replace").lower() != "android":
         return []

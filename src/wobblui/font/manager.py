@@ -172,6 +172,12 @@ class Font(object):
     def get_sdl_font(self):
         if self._sdl_font != None:
             return self._sdl_font
+        path = self.get_font_file_path()
+        return get_sdl_font_cached(path, self.pixel_size)
+
+    def get_font_file_path(self):
+        if self._sdl_font != None:
+            return self._sdl_font
         initialize_sdl()
         variant = "Regular"
         if self.italic and not self.bold:
@@ -184,7 +190,7 @@ class Font(object):
             self.font_family + " " + variant)
         for (variant_name, font_path) in font_paths:
             if font_path.endswith(".ttf"):
-                return get_sdl_font_cached(font_path, self.pixel_size)
+                return font_path
         raise ValueError("TTF font not found: " +
             str(self.font_family + " " + variant))
 
@@ -223,19 +229,11 @@ class FontManager(object):
             del(self.font_by_sizedpistyle_cache[remove_this[1]])
             del(self.font_by_sizedpistyle_cache_times[remove_this[1]])
 
-    def get_word_width(self, word, font_name,
+    def get_word_size(self, word, font_name,
             bold=False, italic=False,
             px_size=12, display_dpi=96):
-        (w, h) = self.get_font(font_name, bold, italic,
+        return self.get_font(font_name, bold, italic,
             px_size=px_size, display_dpi=display_dpi).render_size(word)
-        return w
-
-    def get_word_height(self, word, font_name,
-            bold=False, italic=False,
-            px_size=12, display_dpi=96):
-        (w, h) = self.get_font(font_name, bold, italic,
-            px_size=px_size, display_dpi=display_dpi).render_size(word)
-        return h
 
     def get_qt_font_metrics(self, font_name,
             bold=False, italic=False,
@@ -246,12 +244,31 @@ class FontManager(object):
     def get_font(self, name, bold=False, italic=False, px_size=12,
             draw_scale=1.0, display_dpi=96):
         display_dpi = round(display_dpi)
-        self.load_font_info(name, bold, italic,
-            px_size=px_size,
-            draw_scale=draw_scale,
-            display_dpi=display_dpi)
         unified_draw_scale = round(draw_scale *
             DRAW_SCALE_GRANULARITY_FACTOR)
+        try:
+            self.load_font_info(name, bold, italic,
+                px_size=px_size,
+                draw_scale=draw_scale,
+                display_dpi=display_dpi)
+            # Make sure font exists:
+            font_path = self.font_by_sizedpistyle_cache[
+                (unified_draw_scale, display_dpi,
+                (name, bold, italic,
+                round(px_size * 10)))].get_font_file_path()
+        except ValueError as e:
+            if name.lower() == "sans" or \
+                    name.lower() == "sans serif" or \
+                    name.lower() == "arial":
+                return self.get_font("Tex Gyre Adventor",
+                    bold=bold, italic=italic, px_size=px_size,
+                    draw_scale=draw_scale, display_dpi=display_dpi)
+            elif name.lower() == "serif" or \
+                    name.lower() == "times new roman":
+                return self.get_font("Tex Gyre Heros",
+                    bold=bold, italic=italic, px_size=px_size,
+                    draw_scale=draw_scale, display_dpi=display_dpi)
+            raise e
         return self.font_by_sizedpistyle_cache[
             (unified_draw_scale, display_dpi,
             (name, bold, italic,

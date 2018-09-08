@@ -43,7 +43,8 @@ class Perf(object):
         return perf_id
 
     @classmethod
-    def stop(cls, perf_id, debug=None, expected_max_duration=None):
+    def stop(cls, perf_id, debug=None, expected_max_duration=None,
+            do_print=False):
         global config
         now = time.monotonic()
         cls.lock.acquire()
@@ -59,7 +60,7 @@ class Perf(object):
             cls.perf_measurements[perf_name] = \
                 cls.perf_measurements[perf_name][20:]
         cls.lock.release()
-        if config.get("perf_debug"):
+        if config.get("perf_debug") or do_print:
             note = "" 
             if expected_max_duration != None:
                 if (duration < expected_max_duration):

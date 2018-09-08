@@ -239,5 +239,13 @@ def draw_font(renderer, text, x, y,
             tg_rect.y = y
             tg_rect.w = w
             tg_rect.h = h
-            sdl.SDL_RenderCopy(renderer, tex, None, tg)
+            sdl.SDL_RenderCopy(renderer, tex, None, tg_rect)
 
+def get_draw_font_size(text,
+        font_family="Sans Serif",
+        px_size=12, bold=False, italic=False,
+        color=None):
+    font = font_manager().get_font(font_family,
+        bold=bold, italic=italic,
+        px_size=px_size)
+    return font.render_size(text)
