@@ -93,6 +93,8 @@ def sdl_vkey_map(key):
         return "backspace"
     if key == sdl.SDLK_SPACE:
         return "space"
+    if key == sdl.SDLK_AC_BACK:
+        return "back"
     return str("scancode-" + str(key))
 
 def sdl_key_map(key):
@@ -102,6 +104,8 @@ def sdl_key_map(key):
         return chr(ord("a") + (key - sdl.SDL_SCANCODE_A))
     if key == sdl.SDL_SCANCODE_KP_TAB or key == sdl.SDL_SCANCODE_TAB:
         return "tab"
+    if key == sdl.SDL_SCANCODE_AC_BACK:
+        return "back"
     if key == sdl.SDL_SCANCODE_DOWN:
         return "down"
     if key == sdl.SDL_SCANCODE_UP:
