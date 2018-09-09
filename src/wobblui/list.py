@@ -203,8 +203,6 @@ class ListEntry(object):
                 c = Color(self.style.get("selected_text"))
             if self.disabled and self.style.has("widget_disabled_text"):
                 c = Color(self.style.get("widget_disabled_text"))
-            else:
-                draw_rectangle(renderer, x, y, 5, 5, color=Color.green)
         perf_id = Perf.start("ListItem.draw -> text_objs draw")
         self.text_obj.draw(renderer,
             round(5.0 * self.dpi_scale) + x,
