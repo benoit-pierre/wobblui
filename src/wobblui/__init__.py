@@ -133,7 +133,8 @@ def event_loop(app_cleanup_callback=None):
             sleep_amount = event_loop_ms * 0.001
             if max_sleep != None:
                 sleep_amount = max(0, min(sleep_amount, max_sleep))
-            time.sleep(sleep_amount)
+            if sleep_amount > 0.001:
+                time.sleep(sleep_amount)
             result = do_event_processing(ui_active=True)
             if result == "appquit":
                 if app_cleanup_callback != None:
@@ -240,7 +241,7 @@ def do_event_processing(ui_active=True):
             continue
         break
     if len(events) == 0:
-        internal_trigger_check()
+        internal_trigger_check(idle=True)
         internal_update_text_events()
         redraw_windows()
         return False
@@ -294,7 +295,7 @@ def do_event_processing(ui_active=True):
             logerror("*** ERROR IN EVENT HANDLER ***")
             logerror(str(traceback.format_exc()))
     redraw_windows(layout_only=True)
-    internal_trigger_check()
+    internal_trigger_check(idle=False)
     internal_update_text_events()
     redraw_windows()
     return True
