@@ -159,6 +159,7 @@ class Font(object):
             pass
         surface = sdlttf.TTF_RenderUTF8_Blended(font, text, c)
         tex = sdl.SDL_CreateTextureFromSurface(renderer, surface)
+        sdl.SDL_SetTextureBlendMode(tex, sdl.SDL_BLENDMODE_BLEND)
         w = ctypes.c_int32()
         h = ctypes.c_int32()
         w.value = 0
