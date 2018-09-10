@@ -195,7 +195,7 @@ class ListEntry(object):
                 c = Color(self.style.get("selected_bg"))
         if not no_bg:
             draw_rectangle(renderer, x, y,
-                self.width, self.height, c)
+                self.width, self.height, color=c)
         c = Color((0, 0, 0))
         if self.style != None:
             c = Color(self.style.get("widget_text"))
@@ -431,12 +431,16 @@ class ListBase(ScrollbarDrawingWidget):
         entry = ListEntry("", self.style)
         self.usual_entry_height = entry.height
         del(entry)
+        for entry in self._entries:
+            entry.style = self.style
+            entry.clear_texture()
 
     def set_disabled(self, entry_index, state):
         new_state = (state is True)
         if self._entries[entry_index].disabled == state:
             return
         self._entries[entry_index].disabled = state
+        self._entries[entry_index].clear_texture()
         if self._selected_index == entry_index:
             self._selected_index = -1
         if self._hover_index == entry_index:

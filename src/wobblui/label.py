@@ -185,6 +185,7 @@ class Label(ScrollbarDrawingWidget):
         if self.html == t:
             return
         self.natural_size_cache = dict()
+        self._cached_text = None
         self.text_obj.set_html(t)
         self.needs_relayout = True
         self.needs_redraw = True

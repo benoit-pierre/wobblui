@@ -182,7 +182,7 @@ class RichTextFragment(RichTextObj):
         Perf.stop(perf_id)
         perf_id = Perf.start("fragment draw part 2")
         (w, h, tex) = font.get_cached_rendered_sdl_texture(renderer,
-            self.text, color=color)
+            self.text, color=Color.white)
         Perf.stop(perf_id)
         perf_id = Perf.start("fragment draw part 3")
         tg = fragment_draw_rect

@@ -232,13 +232,16 @@ def draw_font(renderer, text, x, y,
         px_size=px_size)
     if font != None:
         (w, h, tex) = font.\
-            get_cached_rendered_sdl_texture(renderer, text, color)
+            get_cached_rendered_sdl_texture(renderer, text,
+                color=Color.white)
         if tex != None:
             tg_rect = sdl.SDL_Rect() 
             tg_rect.x = x
             tg_rect.y = y
             tg_rect.w = w
             tg_rect.h = h
+            sdl.SDL_SetTextureColorMod(tex,
+                round(color.red), round(color.green), round(color.blue))
             sdl.SDL_RenderCopy(renderer, tex, None, tg_rect)
 
 def get_draw_font_size(text,
