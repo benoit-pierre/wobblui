@@ -87,9 +87,11 @@ class MenuSeparator(ListEntry):
     
 
 class Menu(ListBase):
-    def __init__(self, unfocus_on_trigger=True):
+    def __init__(self, unfocus_on_trigger=True,
+            fixed_one_line_entries=False):
         super().__init__(render_as_menu=True,
-            triggered_by_single_click=True)
+            triggered_by_single_click=True,
+            fixed_one_line_entries=fixed_one_line_entries)
         self.callback_funcs = []
         self.defocus_on_trigger = unfocus_on_trigger
 
