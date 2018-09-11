@@ -21,7 +21,7 @@ freely, subject to the following restrictions:
 
 import html.parser
 
-import wobblui.htmlparse as htmlparse
+import nettools.htmlparse as htmlparse
 
 class CSSAttribute(object):
     def __init__(self, name, value):

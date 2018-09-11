@@ -27,7 +27,7 @@ import string
 
 from wobblui.color import Color
 import wobblui.cssparse as cssparse
-import wobblui.htmlparse as htmlparse
+import nettools.htmlparse as htmlparse
 from wobblui.font.manager import font_manager
 from wobblui.perf import Perf
 
