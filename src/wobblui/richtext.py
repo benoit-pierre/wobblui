@@ -312,7 +312,8 @@ class RichTextFragment(RichTextObj):
         last_i = -1
         split_before_chars = set([" ", "\n", "\r"])
         split_after_chars = set([",", ".", ":",
-            "!", "'", "\"", "-", "=", "?"])
+            "!", "'", "\"", "-", "=", "?",
+            "/", "\\"])
         result = []
         i = 0
         while i < len(self.text):
