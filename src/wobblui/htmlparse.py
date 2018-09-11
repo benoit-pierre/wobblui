@@ -270,7 +270,14 @@ def parse_tag(html):
     return (i + 1, tag_name, attributes,
         is_closing, is_self_closing)
 
+def parse_xml(xml):
+    return parse(xml, void_tags=[])
+
 def parse(html, void_tags=None):
+    try:
+        html = html.decode("utf-8", "replace")
+    except AttributeError:
+        pass
     return parse_recurse(html, void_tags=void_tags)[1]
 
 def parse_recurse(html, void_tags=None, stop_at_closing=False):
