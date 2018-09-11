@@ -30,9 +30,10 @@ from wobblui.richtext import RichText
 from wobblui.widget import Widget
 
 class TextEntry(Widget):
-    def __init__(self, text="", color=None):
+    def __init__(self, text="", color=None, hide_with_character=None):
         super().__init__(can_get_focus=True,
             takes_text_input=True)
+        self.hide_with_character = hide_with_character
         self.type = "textentry"
         self.html = ""
         self.text = ""
@@ -73,7 +74,11 @@ class TextEntry(Widget):
         self.text = (v.replace("\r\n", "\n").\
             replace("\r", "\n").partition("\n")[0])
         self.html = html.escape(self.text)
-        self.text_obj.set_text(self.text)
+        if self.hide_with_character is None:
+            self.text_obj.set_text(self.text)
+        else:
+            self.text_obj.set_text(
+                self.hide_with_character * len(self.text))
         self.cursor_offset = min(len(self.text),
             self.cursor_offset)
         self.needs_relayout = True
@@ -81,10 +86,16 @@ class TextEntry(Widget):
 
     def set_html(self, v):
         self.html = v
-        self.text_obj.set_html(v)
+        if self.hide_with_character is None:
+            self.text_obj.set_html(v)
+        else:
+            self.text_obj.set_html(v)
+            chars = len(self.text_obj.text)
+            self.text_obj.set_text(
+                self.hide_with_character * chars)
+        self.text = self.text_obj.text
         self.cursor_offset = min(len(self.text),
             self.cursor_offset)
-        self.text = self.text_obj.text
         self.needs_relayout = True
         self.needs_redraw = True
 
@@ -177,11 +188,19 @@ class TextEntry(Widget):
             return
         if self.selection_length != 0:
             self.del_selection()
+        self.insert_at(self.cursor_offset, text)
+
+    def insert_at(self, pos, text):
+        if self.hide_with_character:
+            self.text_obj.set_text(self.text)
         self.text_obj.insert_text_at_offset(
-            self.cursor_offset, text)
+            pos, text)
         self.cursor_offset += len(text)
         self.text = self.text_obj.text
         self.html = self.text_obj.html
+        if self.hide_with_character != None:
+            self.text_obj.set_text(
+                self.hide_with_character * len(self.text))
         self.needs_relayout = True
         self.needs_redraw = True
 
@@ -231,13 +250,8 @@ class TextEntry(Widget):
                 if len(insert_text) == 0:
                     return
                 self.del_selection()
-                self.text_obj.insert_text_at_offset(
+                self.insert_at(
                     self.cursor_offset, insert_text)
-                self.text = self.text_obj.text
-                self.html = self.text_obj.html
-                self.cursor_offset += len(insert_text)
-                self.needs_relayout = True
-                self.needs_redraw = True
         elif "shift" in modifiers:
             if virtual_key == "left" or virtual_key == "up":
                 self.cursor_offset = max(0, self.cursor_offset - 1)
