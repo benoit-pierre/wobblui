@@ -47,11 +47,14 @@ class KeyValueCache(object):
         if key in self.cache_keys:
             return
         if len(self.cache_queries) > self.size:
-            if self.destroy_func != None:
-                self.destroy_func(self.cache_key_to_value[self.cache_queries[0]])
-            del(self.cache_key_to_value[self.cache_queries[0]])
-            self.cache_keys.discard(self.cache_queries[0])
-            self.cache_queries = self.cache_queries[1:]
+            try:
+                if self.destroy_func != None:
+                    self.destroy_func(
+                        self.cache_key_to_value[self.cache_queries[0]])
+            finally:
+                self.cache_key_to_value.pop(self.cache_queries[0])
+                self.cache_keys.discard(self.cache_queries[0])
+                self.cache_queries = self.cache_queries[1:]
         self.cache_key_to_value[key] = value
         self.cache_queries.append(key)
         self.cache_keys.add(key)
