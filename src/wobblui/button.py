@@ -131,6 +131,10 @@ class Button(Widget):
         self.set_html(v)
 
     def set_html(self, html):
+        if self.html == html:
+            return
+        self.needs_redraw = True
+        self.needs_relayout = True
         self._html = html
         self.update_font_object()
 
