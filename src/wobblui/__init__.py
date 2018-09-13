@@ -31,6 +31,7 @@ from wobblui.keyboard import internal_update_text_events,\
     internal_update_keystate_keydown, \
     internal_update_keystate_keyup, \
     clean_global_shortcuts
+from wobblui.osinfo import is_android
 from wobblui.perf import Perf
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
@@ -343,10 +344,12 @@ def loading_screen_fix():
         autoclass('org.kivy.android.PythonActivity').\
             mActivity.removeLoadingScreen()
 
+annoying_sdl_hack_spacebar_outstanding = False
 touch_pressed = False
 mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
-    global mouse_ids_button_ids_pressed, touch_pressed
+    global mouse_ids_button_ids_pressed, touch_pressed,\
+        annoying_sdl_hack_spacebar_outstanding
     _debug_mouse_fakes_touch = (
         config.get("mouse_fakes_touch_events") is True)
     if event.type == sdl.SDL_QUIT:
@@ -464,11 +467,25 @@ def _handle_event(event):
                     float(event.motion.y)])
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
+        if text.find(" ") >= 0:
+            annoying_sdl_hack_spacebar_outstanding = False
         widget = get_active_text_widget()
         if widget != None and text != "\n" and text != "\r\n":
             widget.textinput(text, get_modifiers())
     elif event.type == sdl.SDL_KEYDOWN or \
             event.type == sdl.SDL_KEYUP:
+        if event.type == sdl.SDL_KEYDOWN and is_android():
+            # SDL has a stupid bug, so work around it:
+            if sdl_vkey_map(event.key.keysym.sym) == "space" and \
+                    get_active_text_widget() != None:
+                annoying_sdl_hack_spacebar_outstanding = True
+        elif event.type == sdl.SDL_KEYUP and is_android():
+            if annoying_sdl_hack_spacebar_outstanding and \
+                    sdl_vkey_map(event.key.keysym.sym) == "space":
+                annoying_sdl_hack_spacebar_outstanding = False
+                widget = get_active_text_widget()
+                if widget != None:
+                    widget.textinput(text, get_modifiers())
         _process_key_event(event, trigger_shortcuts=True)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
