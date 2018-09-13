@@ -180,6 +180,12 @@ def sdl_event_name(event):
         return "mousemotion"
     elif ev_no == sdl.SDL_MOUSEWHEEL:
         return "mousewheel"
+    elif ev_no == sdl.SDL_KEYDOWN:
+        return "keydown-" + str(sdl_vkey_map(event.key.keysym.sym))
+    elif ev_no == sdl.SDL_KEYUP:
+        return "keyup-" + str(sdl_vkey_map(event.key.keysym.sym))
+    elif ev_no == sdl.SDL_TEXTINPUT:
+        return "textinput"
     elif ev_no == sdl.SDL_WINDOWEVENT:
         if event.window.event == sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
             return "windowfocusgained"
