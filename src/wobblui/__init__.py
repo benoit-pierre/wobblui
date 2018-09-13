@@ -473,9 +473,13 @@ def _handle_event(event):
                     float(event.motion.y)])
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
+        widget = get_active_text_widget()
         if text.find(" ") >= 0:
             annoying_sdl_hack_spacebar_outstanding = False
-        widget = get_active_text_widget()
+        elif annoying_sdl_hack_spacebar_outstanding and \
+                widget != None:
+            annoying_sdl_hack_spacebar_outstanding = False
+            widget.textinput(" ", get_modifiers())
         if widget != None and text != "\n" and text != "\r\n":
             widget.textinput(text, get_modifiers())
     elif event.type == sdl.SDL_KEYDOWN or \
@@ -491,7 +495,7 @@ def _handle_event(event):
                 annoying_sdl_hack_spacebar_outstanding = False
                 widget = get_active_text_widget()
                 if widget != None:
-                    widget.textinput(text, get_modifiers())
+                    widget.textinput(" ", get_modifiers())
         _process_key_event(event, trigger_shortcuts=True)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
