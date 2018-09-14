@@ -25,6 +25,7 @@ import os
 import shutil
 import tempfile
 
+from wobblui.cache import KeyValueCache
 from wobblui.sdlinit import initialize_sdl
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
@@ -53,7 +54,19 @@ def extract_name_ending(font_filename):
             return (variant, extracted_letters)
     return ("Regular", 0)
 
-def get_font_paths_by_name(name):
+font_paths_by_name_cache = KeyValueCache(size=5000)
+def get_font_paths_by_name(name, cached=True):
+    global font_paths_by_name_cache
+    if not cached:
+        return _uncached_get_font_paths_by_name(name)
+    result = font_paths_by_name_cache.get(name)
+    if result != None:
+        return result
+    result = _uncached_get_font_paths_by_name(name)
+    font_paths_by_name_cache.add(name, result)
+    return result
+
+def _uncached_get_font_paths_by_name(name):
     # Search in packaged folder:
     if DEBUG_FONTINFO:
         logdebug("get_font_paths_by_name: searching for '" +

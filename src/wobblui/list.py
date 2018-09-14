@@ -413,6 +413,7 @@ class ListBase(ScrollbarDrawingWidget):
         self.render_as_menu = render_as_menu
         self.fixed_one_line_entries = fixed_one_line_entries
         self.update_style_info()
+        self.cached_natural_width = None
 
     def _internal_on_unfocus(self, internal_data=None):
         super()._internal_on_unfocus(
@@ -425,9 +426,11 @@ class ListBase(ScrollbarDrawingWidget):
             entry.clear_texture()
 
     def on_stylechanged(self):
+        self.cached_natural_width = None
         self.update_style_info()
 
     def update_style_info(self):
+        self.cached_natural_width = None
         entry = ListEntry("", self.style)
         self.usual_entry_height = entry.height
         del(entry)
@@ -448,6 +451,7 @@ class ListBase(ScrollbarDrawingWidget):
         self.needs_redraw = True
 
     def clear(self):
+        self.cached_natural_width = None
         self._entries = []
         self._selected_index = -1
         self._hover_index = -1
@@ -594,6 +598,7 @@ class ListBase(ScrollbarDrawingWidget):
 
     def on_relayout(self):
         # Update the entry positions:
+        self.cached_natural_width = None
         border_size = max(1, round(1.0 * self.dpi_scale))
         if not self.render_as_menu:
             border_size = 0
@@ -684,6 +689,8 @@ class ListBase(ScrollbarDrawingWidget):
         Perf.stop(perf_id)
 
     def get_natural_width(self):
+        if self.cached_natural_width != None:
+            return self.cached_natural_width
         border_size = max(1, round(1.0 * self.dpi_scale))
         if not self.render_as_menu:
             border_size = 0
@@ -692,6 +699,7 @@ class ListBase(ScrollbarDrawingWidget):
         for entry in self._entries:
             w = max(w, entry.get_natural_width())
         w = max(w, round(12 * self.dpi_scale)) + border_size * 2
+        self.cached_natural_width = w
         return w
 
     def get_natural_height(self, given_width=None):
@@ -725,9 +733,11 @@ class ListBase(ScrollbarDrawingWidget):
         return l
 
     def insert(self, index, text):
+        self.cached_natural_width = None
         self.insert_html(index, html.escape(text))
 
     def insert_html(self, index, text):
+        self.cached_natural_width = None
         self._entries.insert(index, ListEntry(html, self.style,
             with_visible_bg=(not self.render_as_menu)))
         i = 0
@@ -748,6 +758,7 @@ class ListBase(ScrollbarDrawingWidget):
         if subtitle_html != None and self.fixed_one_line_entries:
             raise ValueError("cannot use subtitle when list is " +
                 "forced to simple one-line entries")
+        self.cached_natural_width = None
         last_was_alternating = True
         if len(self._entries) > 0 and \
                 not self._entries[-1].is_alternating:

@@ -55,7 +55,7 @@ def get_sdl_font_cached(font_path, px_size):
 rendered_words_cache = KeyValueCache(size=500,
     destroy_func=lambda x: sdl.SDL_DestroyTexture(x[2]))
 
-render_size_cache = KeyValueCache(size=5000)
+render_size_cache = KeyValueCache(size=50000)
 
 ttf_was_initialized = False
 _reuse_draw_rect = sdl.SDL_Rect()
@@ -83,7 +83,7 @@ class Font(object):
     def __repr__(self):
         return "<Font family='" + str(
             self.font_family) + "' px_size=" +\
-            str(self.pixel_size) +\
+            str(round(self.pixel_size)) +\
             " bold=" + str(self.bold) +\
             " italic=" + str(self.italic) + ">"
 
@@ -101,22 +101,22 @@ class Font(object):
         if len(text) == 0:
             return (0, 0)
         unique_key = self.unique_key
-        result = render_size_cache.get((unique_key, text))
+        try:
+            text = text.encode("utf-8", "replace")
+        except AttributeError:
+            pass
+        result = render_size_cache.get(str((unique_key, text)))
         if result != None:
             return result
         font = self.get_sdl_font()
         width = ctypes.c_int32()
         height = ctypes.c_int32()
-        try:
-            text = text.encode("utf-8", "replace")
-        except AttributeError:
-            pass
         if sdlttf.TTF_SizeUTF8(font, text, ctypes.byref(
                 width), ctypes.byref(height)) != 0:
             raise RuntimeError("TTF_SizeUTF8 failed: " +
                 str(sdlttf.TTF_GetError().decode("utf-8", "replace")))
         result = (int(width.value), int(height.value))
-        render_size_cache.add((unique_key, text), result)
+        render_size_cache.add(str((unique_key, text)), result)
         return result
 
     def _render_size(self, text):
@@ -174,7 +174,7 @@ class Font(object):
         if self._sdl_font != None:
             return self._sdl_font
         path = self.get_font_file_path()
-        return get_sdl_font_cached(path, self.pixel_size)
+        return get_sdl_font_cached(path, round(self.pixel_size))
 
     def get_font_file_path(self):
         if self._sdl_font != None:
@@ -188,7 +188,7 @@ class Font(object):
         elif self.bold and self.italic:
             variant = "BoldItalic"
         font_paths = wobblui.font.info.get_font_paths_by_name(
-            self.font_family + " " + variant)
+            self.font_family + " " + variant, cached=True)
         for (variant_name, font_path) in font_paths:
             if font_path.endswith(".ttf"):
                 return font_path
