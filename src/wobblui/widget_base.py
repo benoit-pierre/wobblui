@@ -394,6 +394,7 @@ class WidgetBase(object):
         if self.has_native_touch_support and \
                 not self.fake_mouse_even_with_native_touch_support:
             return
+        now = time.monotonic()
 
         # Track how this touch drag is going:
         if not hasattr(self, "touch_vel_x"):
@@ -402,11 +403,11 @@ class WidgetBase(object):
         if hasattr(self, "last_touch_event_ts"):
             old_ts = self.last_touch_event_ts
         else:
-            old_ts = time.monotonic()
-        self.last_touch_event_ts = time.monotonic()
+            old_ts = now
+        self.last_touch_event_ts = now
         self.touch_in_progress = (not stop_event)
         if hasattr(self, "last_seen_touch_x") and not stop_event:
-            duration = max(0.001, time.monotonic() - old_ts)
+            duration = max(0.001, now - old_ts)
             self.touch_vel_x = \
                 max(-90 * self.dpi_scale,
                 min(90 * self.dpi_scale,
@@ -440,9 +441,11 @@ class WidgetBase(object):
         schedule(do_it, 0.1)
 
     def scheduled_infinite_scroll_checker(self):
+        now = time.monotonic()
+
         # Stop if finger rests or we're no longer focused:
         if (self.touch_in_progress and (self.last_touch_event_ts
-                + 0.2 < time.monotonic())) or (not self.focused
+                + 0.2 < now)) or (not self.focused
                 and not self.continue_infinite_scroll_when_unfocused):
             self.touch_vel_x = 0
             self.touch_vel_y = 0
@@ -456,14 +459,14 @@ class WidgetBase(object):
             faked_event = True
             if not hasattr(self, "last_infinite_ts") or \
                     self.last_infinite_ts is None:
-                self.last_infinite_ts = time.monotonic()
-            duration = min(1.0, time.monotonic() - self.last_infinite_ts)
+                self.last_infinite_ts = now
+            duration = min(1.0, now - self.last_infinite_ts)
             i = 0
             while i < 5:
                 self.touch_vel_x *= min(0.999, 1.0 - duration * 0.1)
                 self.touch_vel_y *= min(0.999, 1.0 - duration * 0.1)
                 i += 1
-            self.last_infinite_ts = time.monotonic()
+            self.last_infinite_ts = now
             effective_vel_x = self.touch_vel_x * duration
             effective_vel_y = self.touch_vel_y * duration
             self.last_seen_touch_x += effective_vel_x
@@ -593,6 +596,11 @@ class WidgetBase(object):
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
 
+        now = time.monotonic()
+        if hasattr(self, "no_mouse_events") and \
+                self.no_mouse_events is True:
+            return
+
         # First, extract relevant event parameters:
         wx = None
         wy = None
@@ -679,7 +687,7 @@ class WidgetBase(object):
                     (event_name.startswith("touch") and \
                     self.touch_start_x is None):
                 self.touch_max_ever_distance = 0.0
-                self.touch_start_time = time.monotonic()
+                self.touch_start_time = now
                 self.touch_start_x = x
                 self.touch_scrolling = False
                 self.touch_start_y = y
@@ -757,7 +765,7 @@ class WidgetBase(object):
                     40.0 * self.dpi_scale and \
                     not self.touch_scrolling and \
                     self.touch_start_time + config.get(
-                    "touch_shortclick_time") > time.monotonic():
+                    "touch_shortclick_time") > now:
                 # Emulate a mouse click, but make sure it's not
                 # propagated to children (since they would, if
                 # necessary, emulate their own mouse clicks as well
@@ -817,7 +825,7 @@ class WidgetBase(object):
                     40.0 * self.dpi_scale or \
                     (self.touch_max_ever_distance >
                     20.0 * self.dpi_scale and \
-                    self.touch_start_time + 0.7 > time.monotonic())):
+                    self.touch_start_time + 0.7 > now)):
                 self.touch_scrolling = True
                 self.consider_mouse_click_focus(hit_check_x,
                     hit_check_y)
@@ -849,16 +857,16 @@ class WidgetBase(object):
                 self.get_children_in_strict_mouse_event_order())
             check_widget_overlap = True
         force_no_more_matches = False
+        rel_x = x - self.abs_x
+        rel_y = y - self.abs_y
+        hit_check_rx = hit_check_x - self.abs_x
+        hit_check_ry = hit_check_y - self.abs_y
         for child in child_list:
             if child.parent != self or (child.type != "window" and
                     child.parent_window is None):
                 # Either invalid child, or was already removed during
                 # processing of a previous child.
                 continue
-            rel_x = x - self.abs_x
-            rel_y = y - self.abs_y
-            hit_check_rx = hit_check_x - self.abs_x
-            hit_check_ry = hit_check_y - self.abs_y
             if not force_no_more_matches and \
                     hit_check_rx >= child.x and \
                     hit_check_ry >= child.y and \
@@ -915,12 +923,12 @@ class WidgetBase(object):
                         (event_args[0], event_args[1]))
 
                     # See if this is a double-click:
-                    t = time.monotonic() - 10.0
+                    t = now - 10.0
                     if (event_args[0], event_args[1]) in \
                             child.last_mouse_click_with_time:
                         t = child.last_mouse_click_with_time[
                             (event_args[0], event_args[1])]
-                    if t > time.monotonic() - config.get("doubleclick_time"):
+                    if t > now - config.get("doubleclick_time"):
                         # It's a double click!
                         del(child.last_mouse_click_with_time[
                             (event_args[0], event_args[1])])
@@ -931,7 +939,7 @@ class WidgetBase(object):
                         # Just a normal click.
                         child.last_mouse_click_with_time[
                             (event_args[0], event_args[1])] = \
-                            time.monotonic()
+                            now
                         child.click(mouse_id, event_args[1],
                             rel_x - child.x,
                             rel_y - child.y,
@@ -1389,6 +1397,7 @@ class WidgetBase(object):
             self.resized()
 
     def internal_override_parent(self, parent):
+        old_renderer = self.get_renderer()
         if self._parent == parent:
             return
         prev_style = self.get_style()
@@ -1401,7 +1410,9 @@ class WidgetBase(object):
                 item.stylechanged()
                 for child in item.children:
                     recursive_style_event(child)
-            recursive_style_event(self) 
+            recursive_style_event(self)
+        if self.get_renderer() != old_renderer:
+            self.renderer_update()
 
     @property
     def parent(self):

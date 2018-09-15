@@ -12,6 +12,7 @@ class Label(ScrollbarDrawingWidget):
     def __init__(self, text="", color=None,
             text_scale=1.0):
         super().__init__()
+        self.no_mouse_events = True
         self.type = "label"
         self.current_draw_scale = 1.0
         self.text_scale = text_scale
@@ -88,6 +89,10 @@ class Label(ScrollbarDrawingWidget):
 
         # Limit scrolling to reasonable area:
         max_scroll_down = max(0, content_height - self.height)
+        if max_scroll_down > 0:
+            self.no_mouse_events = False
+        else:
+            self.no_mouse_events = True
         self.scroll_y_offset = max(0, min(max_scroll_down,
             self.scroll_y_offset))
 

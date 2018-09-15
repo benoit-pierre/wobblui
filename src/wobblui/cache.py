@@ -26,13 +26,19 @@ class KeyValueCache(object):
         self.clear()        
 
     def clear(self):
+        _got_error = None
         if self.destroy_func != None and \
                 hasattr(self, "cache_Key_to_value"):
             for v in self.values:
-                self.destroy_func(v)
+                try:
+                    self.destroy_func(v)
+                except Exception as e:
+                    _got_error = e
         self.cache_keys = set()
         self.cache_key_to_value = dict()
         self.cache_queries = list()
+        if _got_error != None:
+            raise _got_error
 
     @property
     def values(self):
