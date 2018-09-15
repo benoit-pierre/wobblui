@@ -29,52 +29,31 @@ import time
 from wobblui.cache import KeyValueCache
 from wobblui.color import Color
 import wobblui.font.info
+import wobblui.font.sdlfont as sdlfont
 from wobblui.sdlinit import initialize_sdl
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
 
-
-ttf_font_cache = KeyValueCache(size=30,
-    destroy_func=lambda x: sdlttf.TTF_CloseFont(x))
-def get_sdl_font_cached(font_path, px_size):
-    global ttf_font_cache
-    px_size = round(px_size)
-    font = ttf_font_cache.get((font_path, px_size))
-    if font is None:
-        font = sdlttf.TTF_OpenFont(
-            font_path.encode("utf-8"),
-            px_size)
-        if font is None:
-            error_msg = sdlttf.TTF_GetError()
-            raise ValueError("couldn't load TTF " +
-                "font: " + str(error_msg))
-        ttf_font_cache.add((font_path, px_size), font)
-    return font
+render_size_cache = KeyValueCache(size=50000)
 
 rendered_words_cache = KeyValueCache(size=500,
     destroy_func=lambda x: sdl.SDL_DestroyTexture(x[2]))
 
-render_size_cache = KeyValueCache(size=50000)
-
-ttf_was_initialized = False
 _reuse_draw_rect = sdl.SDL_Rect()
 class Font(object):
     def __init__(self, font_family,
             pixel_size, italic=False, bold=False):
-        global ttf_was_initialized
-        if not ttf_was_initialized:
-            ttf_was_initialized = True
-            initialize_sdl()
-            sdlttf.TTF_Init()
         self.font_family = font_family
         self.pixel_size = pixel_size
         self.italic = italic
         self.bold = bold
         self._avg_letter_width = None
         self._sdl_font = None
+        self.mutex = threading.Lock()
 
     @staticmethod
     def clear_global_cache(self):
+        sdlfont.clear_global_cache()
         for v in rendered_words_cache:
             sdl.SDL_DestroyTexture(v)
         rendered_words_cache.clear()
@@ -85,11 +64,6 @@ class Font(object):
             str(round(self.pixel_size)) +\
             " bold=" + str(self.bold) +\
             " italic=" + str(self.italic) + ">"
-
-    def __del__(self):
-        if self._sdl_font != None:
-            sdlttf.TTF_CloseFont(self._sdl_font)
-            self._sdl_font = None
 
     @property
     def unique_key(self):
@@ -108,22 +82,10 @@ class Font(object):
         if result != None:
             return result
         font = self.get_sdl_font()
-        width = ctypes.c_int32()
-        height = ctypes.c_int32()
-        if sdlttf.TTF_SizeUTF8(font, text, ctypes.byref(
-                width), ctypes.byref(height)) != 0:
-            raise RuntimeError("TTF_SizeUTF8 failed: " +
-                str(sdlttf.TTF_GetError().decode("utf-8", "replace")))
-        result = (int(width.value), int(height.value))
+        result =  sdlfont.get_thread_safe_render_size(
+            font, text)
         render_size_cache.add(str((unique_key, text)), result)
         return result
-
-    def _render_size(self, text):
-        return GlobalFontDrawer.render_size(self, text)
-
-    def _old_draw_at(self, renderer, text, x, y, color=Color.black):
-        GlobalFontDrawer.draw_with_font(renderer, self,
-            text, x, y, color=color)
 
     def draw_at(self, renderer, text, x, y, color=Color.black):
         global _reuse_draw_rect
@@ -156,7 +118,8 @@ class Font(object):
             text = text.encode("utf-8", "replace")
         except AttributeError:
             pass
-        surface = sdlttf.TTF_RenderUTF8_Blended(font, text, c)
+        surface = sdlttf.TTF_RenderUTF8_Blended(
+            font.font, text, c)
         tex = sdl.SDL_CreateTextureFromSurface(renderer, surface)
         sdl.SDL_SetTextureBlendMode(tex, sdl.SDL_BLENDMODE_BLEND)
         w = ctypes.c_int32()
@@ -170,10 +133,19 @@ class Font(object):
         return (w, h, tex)
 
     def get_sdl_font(self):
+        self.mutex.acquire()
         if self._sdl_font != None:
+            self.mutex.release()
             return self._sdl_font
-        path = self.get_font_file_path()
-        return get_sdl_font_cached(path, round(self.pixel_size))
+        try:
+            path = self.get_font_file_path()
+            self._sdl_font = sdlfont.\
+                get_thread_safe_sdl_font(path,
+                round(self.pixel_size))
+            result = self._sdl_font
+        finally:
+            self.mutex.release()
+        return result
 
     def get_font_file_path(self):
         if self._sdl_font != None:
@@ -195,12 +167,19 @@ class Font(object):
             str(self.font_family + " " + variant))
 
     def get_average_letter_width(self):
+        self.mutex.acquire()
         if self._avg_letter_width != None:
-            return self._avg_letter_width
+            result = self._avg_letter_width
+            self.mutex.release()
+            return result
+        self.mutex.release()
         test_str = "This is a test test."
         (width, height) = self.render_size(test_str)
-        self._avg_letter_width = (width / float(len(test_str)))
-        return self._avg_letter_width
+        result = (width / float(len(test_str)))
+        self.mutex.acquire()
+        self._avg_letter_width = result
+        self.mutex.release()
+        return result
 
 class FontManager(object):
     def __init__(self):

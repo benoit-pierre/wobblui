@@ -33,6 +33,7 @@ from wobblui.keyboard import internal_update_text_events,\
     clean_global_shortcuts
 from wobblui.osinfo import is_android
 from wobblui.perf import Perf
+import wobblui.font.sdlfont as sdlfont
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
@@ -132,7 +133,7 @@ def event_loop(app_cleanup_callback=None):
         while True:
             max_sleep = maximum_sleep_time()
             sleep_amount = event_loop_ms * 0.001
-            if max_sleep != None:
+            if max_sleep != None and not sdlfont.process_jobs():
                 sleep_amount = max(0, min(sleep_amount, max_sleep))
             if sleep_amount > 0.001:
                 time.sleep(sleep_amount)
