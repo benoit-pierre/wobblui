@@ -23,16 +23,15 @@ import ctypes
 import functools
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
+import threading
 import time
 
+from wobblui.cache import KeyValueCache
 from wobblui.color import Color
 import wobblui.font.info
 from wobblui.sdlinit import initialize_sdl
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
-
-from wobblui.cache import KeyValueCache
-from wobblui.color import Color
 
 
 ttf_font_cache = KeyValueCache(size=30,
@@ -212,8 +211,9 @@ class FontManager(object):
         self.missing_fonts = dict()
         self.avg_letter_width_cache = dict()
         self.cache_size = 20
+        self.mutex = threading.Lock()
 
-    def limit_cache(self):
+    def _limit_cache(self):
         if len(self.font_by_sizedpistyle_cache.values()) <= \
                 self.cache_size:
             return
@@ -236,19 +236,14 @@ class FontManager(object):
         return self.get_font(font_name, bold, italic,
             px_size=px_size, display_dpi=display_dpi).render_size(word)
 
-    def get_qt_font_metrics(self, font_name,
-            bold=False, italic=False,
-            px_size=12, dpi=96):
-        return self.get_font(font_name, bold, italic,
-            px_size=px_size, display_dpi=dpi).get_qt_font_metrics()
-
     def get_font(self, name, bold=False, italic=False, px_size=12,
             draw_scale=1.0, display_dpi=96):
+        self.mutex.acquire()
         display_dpi = round(display_dpi)
         unified_draw_scale = round(draw_scale *
             DRAW_SCALE_GRANULARITY_FACTOR)
         try:
-            self.load_font_info(name, bold, italic,
+            self._load_font_info(name, bold, italic,
                 px_size=px_size,
                 draw_scale=draw_scale,
                 display_dpi=display_dpi)
@@ -261,21 +256,26 @@ class FontManager(object):
             if name.lower() == "sans" or \
                     name.lower() == "sans serif" or \
                     name.lower() == "arial":
+                self.mutex.release()
                 return self.get_font("Tex Gyre Adventor",
                     bold=bold, italic=italic, px_size=px_size,
                     draw_scale=draw_scale, display_dpi=display_dpi)
             elif name.lower() == "serif" or \
                     name.lower() == "times new roman":
+                self.mutex.release()
                 return self.get_font("Tex Gyre Heros",
                     bold=bold, italic=italic, px_size=px_size,
                     draw_scale=draw_scale, display_dpi=display_dpi)
+            self.mutex.release()
             raise e
-        return self.font_by_sizedpistyle_cache[
+        result = self.font_by_sizedpistyle_cache[
             (unified_draw_scale, display_dpi,
             (name, bold, italic,
             round(px_size * 10)))]
+        self.mutex.release()
+        return result
 
-    def load_font_info(self, name, bold, italic, px_size=12,
+    def _load_font_info(self, name, bold, italic, px_size=12,
             draw_scale=1.0, display_dpi=96):
         display_dpi = round(display_dpi)
         style = (name, bold, italic, round(px_size * 10))
@@ -297,7 +297,7 @@ class FontManager(object):
             self.font_by_sizedpistyle_cache[(
                 unified_draw_scale, display_dpi, style
                 )] = f
-        self.limit_cache()
+        self._limit_cache()
 
 
 font_manager_singleton = None
