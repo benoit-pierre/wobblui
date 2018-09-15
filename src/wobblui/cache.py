@@ -52,7 +52,10 @@ class KeyValueCache(object):
                     self.destroy_func(
                         self.cache_key_to_value[self.cache_queries[0]])
             finally:
-                self.cache_key_to_value.pop(self.cache_queries[0])
+                try:
+                    self.cache_key_to_value.pop(self.cache_queries[0])
+                except KeyError:
+                    pass
                 self.cache_keys.discard(self.cache_queries[0])
                 self.cache_queries = self.cache_queries[1:]
         self.cache_key_to_value[key] = value
