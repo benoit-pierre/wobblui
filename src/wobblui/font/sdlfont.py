@@ -116,6 +116,6 @@ def get_thread_safe_sdl_font(path, px_size):
         return load_job.result
     else:
         job_queue.put(load_job)
-        job_queue.wait_for_done()
-        return job_queue.result
+        load_job.wait_for_done()
+        return load_job.result
 
