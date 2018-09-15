@@ -19,10 +19,13 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+import threading
+
 class KeyValueCache(object):
     def __init__(self, size=5000, destroy_func=None):
         self.size = size
         self.destroy_func = destroy_func
+        self.mutex = threading.Lock()
         self.clear()        
 
     def clear(self):
@@ -42,21 +45,33 @@ class KeyValueCache(object):
 
     @property
     def values(self):
-        return self.cache_key_to_value.values()
+        result = None
+        self.mutex.acquire()
+        result = self.cache_key_to_value.values()
+        self.mutex.release()
+        return result
 
     def get(self, key):
+        self.mutex.acquire()
+        result = None
         if key in self.cache_keys:
-            return self.cache_key_to_value[key]
-        return None
+            result = self.cache_key_to_value[key]
+        self.mutex.release()
+        return result
 
     def add(self, key, value):
+        self.mutex.acquire()
         if key in self.cache_keys:
+            self.mutex.release()
             return
         if len(self.cache_queries) > self.size:
             try:
                 if self.destroy_func != None:
                     self.destroy_func(
                         self.cache_key_to_value[self.cache_queries[0]])
+            except Exception as e:
+                self.mutex.release()
+                raise e
             finally:
                 try:
                     self.cache_key_to_value.pop(self.cache_queries[0])
@@ -67,4 +82,5 @@ class KeyValueCache(object):
         self.cache_key_to_value[key] = value
         self.cache_queries.append(key)
         self.cache_keys.add(key)
+        self.mutex.release()
 
