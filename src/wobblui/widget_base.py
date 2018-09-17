@@ -206,14 +206,26 @@ class WidgetBase(object):
                 [mouse_id, x, y], internal_data=internal_data)
         self.mousemove = Event("mousemove", owner=self,
             special_pre_event_func=mousemove_pre)
-        self.mousedown = Event("mousedown", owner=self)
-        self.mousewheel = Event("mousewheel", owner=self)
+        def mousedown_pre(mouse_id, button_id, x, y, internal_data=None):
+            self._pre_mouse_event_handling("mousedown",
+                [mouse_id, button_id, x, y], internal_data=internal_data)
+        self.mousedown = Event("mousedown", owner=self,
+            special_pre_event_func=mousedown_pre)
+        def mousewheel_pre(mouse_id, x, y, internal_data=None):
+            self._pre_mouse_event_handling("mousewheel",
+                [mouse_id, x, y], internal_data=internal_data)
+        self.mousewheel = Event("mousewheel", owner=self,
+            special_pre_event_func=mousewheel_pre)
         self.stylechanged = Event("stylechanged", owner=self)
         self.keyup = Event("keyup", owner=self)
         self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
         self.doubleclick = Event("doubleclick", owner=self)
-        self.mouseup = Event("mouseup", owner=self)
+        def mouseup_pre(mouse_id, button_id, x, y, internal_data=None):
+            self._pre_mouse_event_handling("mouseup",
+                [mouse_id, button_id, x, y], internal_data=internal_data)
+        self.mouseup = Event("mouseup", owner=self,
+            special_pre_event_func=mouseup_pre)
         self.relayout = Event("relayout", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         self.moved = Event("moved", owner=self,
