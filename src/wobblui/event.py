@@ -61,11 +61,12 @@ class Event(object):
            using: `yourwidget.on_myevent.register(my_callback).` All
            user callbacks run in the order they were registered.
 
-           User registered callbacks will run **first** in case the option
+           User registered callbacks will run **first** if the option
            `allow_preventing_widget_callback_by_user_callbacks` is
-           True (the default), and by returning `True` to indicate
-           they fully handled the event they can prevent the widget's
-           own `on_myevent` callback, which runs **last**.
+           `True` (the default). If any of these user callbacks returns
+           `True` to indicate it handled the event, it will prevent
+           the widget's own `on_myevent` callback, which runs **last**,
+           and any other follow-up user callbacks from being called.
 
            If you don't want this behavor, set the option to `False`,
            and the order will **switch**: `on_myevent` will run first,
