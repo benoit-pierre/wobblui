@@ -192,9 +192,17 @@ class Event(object):
                 return True
         return False
 
+
     """ Trigger the event, issuing all the callbacks. The internal
         event data is only for internal use by certain wobblui
         core widgets, and won't be passed to any of the callbacks.
+
+        @param internal_data only used internally by core widgets
+        @param user_callbacks_only only used in rare cases where you'd
+                                   want to run an event's user callbacks,
+                                   but not the core widget callbacks
+                                   (needed e.g. by ContainerWithSlidingMenu
+                                   due to its close bond to an inner Menu)
     """
     def __call__(self, *args, internal_data=None,
             user_callbacks_only=False):
