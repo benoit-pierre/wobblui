@@ -33,6 +33,7 @@ from wobblui.color import Color
 from wobblui.event import Event, ForceDisabledDummyEvent,\
     InternalOnlyDummyEvent
 from wobblui.gfx import draw_dashed_line
+from wobblui.mouse import cursor_seen_during_mousemove
 from wobblui.keyboard import enable_text_events
 from wobblui.perf import Perf
 from wobblui.timer import schedule
@@ -200,7 +201,11 @@ class WidgetBase(object):
                 "touchend", owner=self,
                 special_pre_event_func=touchend_pre)
             self.has_native_touch_support = False
-        self.mousemove = Event("mousemove", owner=self)
+        def mousemove_pre(mouse_id, x, y, internal_data=None):
+            self._pre_mouse_event_handling("mousemove",
+                [mouse_id, x, y], internal_data=internal_data)
+        self.mousemove = Event("mousemove", owner=self,
+            special_pre_event_func=mousemove_pre)
         self.mousedown = Event("mousedown", owner=self)
         self.mousewheel = Event("mousewheel", owner=self)
         self.stylechanged = Event("stylechanged", owner=self)
@@ -223,6 +228,20 @@ class WidgetBase(object):
         else:
             self.unfocus = ForceDisabledDummyEvent("unfocus", owner=self)
         add_widget(self)
+
+    @property
+    def cursor(self):
+        if not hasattr(self, "_cursor") or \
+                self._cursor is None:
+            self._cursor = self.get_default_cursor() or "normal"
+        return self._cursor
+
+    @cursor.setter
+    def cursor(self, v):
+        self._cursor = str(v)
+
+    def get_default_cursor(self):
+        return "normal"
 
     def set_invisible(self, v):
         self.invisible = v
@@ -660,6 +679,13 @@ class WidgetBase(object):
             self.last_touch_x = None
             self.last_touch_y = None
             self.touch_scrolling = False
+
+        # Update cursor:
+        if not is_post and event_name == "mousemove" and \
+                x >= self.abs_x and y >= self.abs_y and \
+                x < self.abs_x + self.width and \
+                y < self.abs_y + self.height:
+            cursor_seen_during_mousemove(self.cursor)
 
         # Obtain touch start and diff info:
         orig_touch_start_x = self.touch_start_x

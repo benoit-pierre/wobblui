@@ -70,6 +70,9 @@ class TextEntry(Widget):
         self.text_obj.set_html(self.html)
         self.needs_relayout = True
 
+    def get_default_cursor(self):
+        return "text"
+
     def set_text(self, v):
         self.text = (v.replace("\r\n", "\n").\
             replace("\r", "\n").partition("\n")[0])

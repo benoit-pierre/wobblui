@@ -31,6 +31,8 @@ from wobblui.keyboard import internal_update_text_events,\
     internal_update_keystate_keydown, \
     internal_update_keystate_keyup, \
     clean_global_shortcuts
+from wobblui.mouse import cursors_seen_during_mousemove,\
+    reset_cursors_seen_during_mousemove, set_cursor
 from wobblui.osinfo import is_android
 from wobblui.perf import Perf
 import wobblui.font.sdlfont as sdlfont
@@ -468,10 +470,19 @@ def _handle_event(event):
                     internal_data=[float(event.motion.x),
                         float(event.motion.y)])
         else:
+            reset_cursors_seen_during_mousemove()
             w.mousemove(int(event.motion.which),
                 float(event.motion.x), float(event.motion.y),
                 internal_data=[float(event.motion.x),
                     float(event.motion.y)])
+            special_cursor = False
+            for cursor_seen in cursors_seen_during_mousemove:
+                if cursor_seen not in ["arrow", "normal"]:
+                    set_cursor(cursor_seen)
+                    special_cursor = True
+                    break
+            if not special_cursor:
+                set_cursor("normal")
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
         widget = get_active_text_widget()
