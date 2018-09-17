@@ -151,12 +151,12 @@ class ContainerWithSlidingMenu(Widget):
         def menu_focused():
             if self._disabled:
                 return
-            self.focus(user_callbacks_only=True, ignore_disabled=True)
+            self.focus(user_callbacks_only=True)
         self.menu.focus.register(menu_focused)
         def menu_unfocused():
             if self._disabled:
                 return
-            self.unfocus(user_callbacks_only=True, ignore_disabled=True)
+            self.unfocus(user_callbacks_only=True)
         self.menu.unfocus.register(menu_unfocused)
         super().add(self.menu)
 

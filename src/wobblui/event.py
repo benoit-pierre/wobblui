@@ -197,7 +197,7 @@ class Event(object):
         core widgets, and won't be passed to any of the callbacks.
     """
     def __call__(self, *args, internal_data=None,
-            user_callbacks_only=False, ignore_disabled=False):
+            user_callbacks_only=False):
         global config
         if config.get("debug_events") is True:
             logdebug("EVENT TRIGGER: " + str(self.name) +
@@ -209,7 +209,7 @@ class Event(object):
                 if self.on_object != None else
                 "<no_associated_object>")
         try:
-            if self._disabled and not ignore_disabled:
+            if self._disabled:
                 return True
             # Trigger special pre-func if given:
             if self.special_pre_event_func != None and \
