@@ -135,9 +135,14 @@ def event_loop(app_cleanup_callback=None):
         while True:
             max_sleep = maximum_sleep_time()
             sleep_amount = event_loop_ms * 0.001
-            if max_sleep != None and not sdlfont.process_jobs():
+            had_jobs = False
+            if max_sleep != None:
+                had_jobs = sdlfont.process_jobs()
                 sleep_amount = max(0, min(sleep_amount, max_sleep))
-            if sleep_amount > 0.001:
+                if had_jobs:
+                    sleep_amount = 0
+                    event_loop_ms = min(10, event_loop_ms)
+            if sleep_amount > 0.0005:
                 time.sleep(sleep_amount)
             result = do_event_processing(ui_active=True)
             if result == "appquit":
