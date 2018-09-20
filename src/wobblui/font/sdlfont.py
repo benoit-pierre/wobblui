@@ -27,16 +27,31 @@ import threading
 from wobblui.cache import KeyValueCache
 from wobblui.sdlinit import initialize_sdl
 
-class SDLFontSizeJob(object):
-    def __init__(self, sdl_font, text):
-        self.sdl_font = sdl_font
-        self.text = text
+shutdown_in_progress = False
+def stop_queue_for_process_shutdown():
+    global shutdown_in_progress
+    shutdown_in_progress = True
+
+class ThreadJob(object):
+    def __init__(self):
         self.result = None
         self.result_waiter = threading.Event()
 
     def wait_for_done(self):
-        self.result_waiter.wait()
+        global shutdown_in_progress
+        while True:
+            if not self.result_waiter.wait(0.2) is True:
+                if shutdown_in_progress:
+                    raise SystemExit
+                continue
+            break
         return self.result
+
+class SDLFontSizeJob(ThreadJob):
+    def __init__(self, sdl_font, text):
+        super().__init__()
+        self.sdl_font = sdl_font
+        self.text = text
 
     def execute(self):
         width = ctypes.c_int32()
@@ -47,14 +62,9 @@ class SDLFontSizeJob(object):
         self.result = (int(width.value), int(height.value))
         self.result_waiter.set()
 
-class SDLFontCloseJob(object):
+class SDLFontCloseJob(ThreadJob):
     def __init__(self, sdl_font):
         self.sdl_font = sdl_font
-        self.result_waiter = threading.Event()
-
-    def wait_for_done(self):
-        self.result_waiter.wait()
-        return
 
     def execute(self):
         sdlttf.TTF_CloseFont(self.sdl_font.font)

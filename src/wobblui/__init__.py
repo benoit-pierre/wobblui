@@ -167,7 +167,8 @@ def event_loop(app_cleanup_callback=None):
                     event_loop_ms = min(
                         event_loop_ms + 1,
                         500)
-    except KeyboardInterrupt as e:
+    except (SystemExit, KeyboardInterrupt) as e:
+        sdlfont.stop_queue_for_process_shutdown()
         app_cleanup_callback()
 
         # Get __del__ processed on as many things as possible
