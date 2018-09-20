@@ -27,7 +27,9 @@ import weakref
 
 from wobblui.color import Color
 from wobblui.event import Event
-from wobblui.gfx import clear_renderer, draw_rectangle
+import wobblui.font.manager
+import wobblui.gfx
+from wobblui.gfx import draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
@@ -94,6 +96,18 @@ class Window(WidgetBase):
         self._renderer = old_renderer
         self.update()
 
+    def on_renderer_to_be_destroyed(self, renderer):
+        """ Called when a renderer will be destroyed. This will
+            clear out all textures to avoid a crash. """
+
+        logdebug("Processing renderer loss...")
+        wobblui.font.manager.Font.clear_global_cache_textures()
+        old_renderer = self._renderer
+        for child in self.children:
+            child.renderer_update()
+        self._renderer = old_renderer
+        wobblui.gfx.clear_renderer(renderer)
+
     def internal_app_reopen(self):
         if self.is_closed:
             return
@@ -107,13 +121,9 @@ class Window(WidgetBase):
                 sdl.SDL_WINDOW_RESIZABLE)
             unhide = True
             if self._renderer != None:
-                old_renderer = self._renderer
+                self.on_renderer_to_be_destroyed()
+                sdl.SDL_DestroyRenderer(self._renderer)
                 self._renderer = None
-                for child in self.children:
-                    child.renderer_update()
-                clear_renderer(old_renderer)
-                sdl.SDL_DestroyRenderer(old_renderer)
-                self.renderer = None
         if self._renderer is None:
             if config.get("software_renderer"):
                 self._renderer = \
@@ -150,15 +160,13 @@ class Window(WidgetBase):
         if close_window or sdl.SDL_GetPlatform().decode("utf-8",
                 "replace").lower() == "android":
             if self._renderer != None:
-                my_renderer = self._renderer
+                self.on_renderer_to_be_destroyed(self._renderer)
+                sdl.SDL_DestroyRenderer(self._renderer)
                 self._renderer = None
                 for child in self.children:
-                    child.renderer_update()
                     if close_window:
                         if child.parent == self:
-                            child.internal_override_parent(self)
-                clear_renderer(my_renderer)
-                sdl.SDL_DestroyRenderer(my_renderer)
+                            child.internal_override_parent(None)
             self._renderer = None
             if close_window:
                 if self._sdl_window != None:

@@ -30,6 +30,7 @@ from wobblui.cache import KeyValueCache
 from wobblui.color import Color
 import wobblui.font.info
 import wobblui.font.sdlfont as sdlfont
+from wobblui.woblog import logdebug
 from wobblui.sdlinit import initialize_sdl
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
@@ -52,10 +53,8 @@ class Font(object):
         self.mutex = threading.Lock()
 
     @staticmethod
-    def clear_global_cache(self):
-        sdlfont.clear_global_cache()
-        for v in rendered_words_cache:
-            sdl.SDL_DestroyTexture(v)
+    def clear_global_cache_textures():
+        logdebug("Clearing global texture cache")
         rendered_words_cache.clear()
 
     def __repr__(self):
