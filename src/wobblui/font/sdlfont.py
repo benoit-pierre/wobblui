@@ -64,6 +64,7 @@ class SDLFontSizeJob(ThreadJob):
 
 class SDLFontCloseJob(ThreadJob):
     def __init__(self, sdl_font):
+        super().__init__()
         self.sdl_font = sdl_font
 
     def execute(self):
