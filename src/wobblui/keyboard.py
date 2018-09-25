@@ -209,14 +209,19 @@ def get_matching_shortcuts(keys):
     return matching
 
 virtual_keys_pressed = set()
+keys_active_widget_aware = set()
 physical_keys_pressed = set()
 
 def internal_update_keystate_keydown(vkey, pkey,
-        trigger_shortcuts=True):
-    global virtual_keys_pressed, physical_keys_pressed
+        trigger_shortcuts=True,
+        active_widget_aware_of_keydown=True):
+    global virtual_keys_pressed, physical_keys_pressed,\
+        keys_active_widget_aware
     clean_global_shortcuts()
     virtual_keys_pressed.add(vkey)
     physical_keys_pressed.add(pkey)
+    if active_widget_aware_of_keydown:
+        keys_active_widget_aware.add(pkey)
     if trigger_shortcuts:
         shortcuts = get_matching_shortcuts(virtual_keys_pressed)
         for shortcut in shortcuts:
@@ -224,9 +229,17 @@ def internal_update_keystate_keydown(vkey, pkey,
                 shortcut[1]()
 
 def internal_update_keystate_keyup(vkey, pkey):
-    global virtual_keys_pressed, physical_keys_pressed
+    global virtual_keys_pressed, physical_keys_pressed,\
+        virtual_keys_active_widget_aware,\
+        physical_keys_active_widget_aware
+    widget_key_aware = (vkey in
+        keys_active_widget_aware)
     virtual_keys_pressed.discard(vkey)
     physical_keys_pressed.discard(pkey)
+
+    # Return info on whether the active widget was aware of this
+    # keypress, and should get an according key up event:
+    return widget_key_aware
 
 def get_modifiers():
     """ Get currently pressed modifier keys. """

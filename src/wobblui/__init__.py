@@ -169,7 +169,8 @@ def event_loop(app_cleanup_callback=None):
                         500)
     except (SystemExit, KeyboardInterrupt) as e:
         sdlfont.stop_queue_for_process_shutdown()
-        app_cleanup_callback()
+        if app_cleanup_callback != None:
+            app_cleanup_callback()
 
         # Get __del__ processed on as many things as possible
         # to allow them to wrap up things cleanly:
@@ -238,6 +239,11 @@ def debug_describe_event(event):
             ",y:" + str(event.wheel.y) + ")"
     return t
 
+def do_event_processing_if_on_main_thread(ui_active=True):
+    if threading.current_thread() != threading.main_thread():
+        return
+    do_event_processing(ui_active=ui_active)
+
 _last_clean_shortcuts_ts = None
 def do_event_processing(ui_active=True):
     global _last_clean_shortcuts_ts
@@ -296,9 +302,14 @@ def do_event_processing(ui_active=True):
                 # Update keystate while avoiding global shortcuts:
                 if event.type == sdl.SDL_KEYDOWN or \
                         event.type == sdl.SDL_KEYUP:
-                    _process_key_event(event, trigger_shortcuts=False)
-                # Skip regular processing of this event:
-                continue
+                    _process_key_event(event, trigger_shortcuts=False,
+                        force_no_widget_can_receive_new_input=True)
+
+                # Update touch state:
+                if (event.type == sdl.SDL_MOUSEBUTTONUP
+                        or event.type == sdl.SDL_MOUSEBUTTONDOWN):
+                    _process_mouse_click_event(event,
+                        force_no_widget_can_receive_new_input=True)
         try:
             perf_id = Perf.start("sdlevent_" + str(
                 debug_describe_event(event)) + "_processing")
@@ -314,9 +325,98 @@ def do_event_processing(ui_active=True):
     internal_trigger_check(idle=False)
     internal_update_text_events()
     redraw_windows()
+    sdlfont.process_jobs()
     return True
 
-def _process_key_event(event, trigger_shortcuts=True):
+def _process_mouse_click_event(event,
+        force_no_widget_can_receive_new_input=False):
+    global capture_enabled, touch_pressed, \
+        mouse_ids_button_ids_pressed
+    _debug_mouse_fakes_touch = (
+        config.get("mouse_fakes_touch_events") is True)
+
+    if event.type != sdl.SDL_MOUSEBUTTONDOWN and \
+            event.type != sdl.SDL_MOUSEBUTTONUP:
+        raise TypeError("invalid event type")
+
+    # A few preparations:
+    sdl_touch_mouseid = 4294967295
+    if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
+        sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
+    w = get_window_by_sdl_id(event.button.windowID)
+    if w is None or w.is_closed:
+        return
+    if w.hidden:
+        w.set_hidden(False)
+    capture_enabled = (len(mouse_ids_button_ids_pressed) > 0 or
+        touch_pressed)
+
+    # Swap button 2 and 3, since SDL maps them unintuitively
+    # (SDL: middle 2, right 3 - ours: middle 3, right 2)
+    if event.button.button == 2:
+        event.button.button = 3
+    elif event.button.button == 3:
+        event.button.button = 2
+
+    # Actually send off event:
+    if event.type == sdl.SDL_MOUSEBUTTONDOWN:
+        if force_no_widget_can_receive_new_input:
+            return
+        if event.button.which == sdl_touch_mouseid or \
+                _debug_mouse_fakes_touch:
+            touch_pressed = True
+            w.touchstart(
+                float(event.button.x), float(event.button.y))
+        else:
+            mouse_ids_button_ids_pressed.add(
+                (int(event.button.which),
+                int(event.button.button)))
+            w.mousedown(int(event.button.which),
+                int(event.button.button),
+                float(event.button.x), float(event.button.y),
+                internal_data=[float(event.button.x),
+                float(event.button.y)])
+        if not capture_enabled:
+            if config.get("capture_debug"):
+                logdebug("wobblui.py: debug: mouse capture engage")
+            sdl.SDL_CaptureMouse(sdl.SDL_TRUE)
+    else:
+        if event.button.which == sdl_touch_mouseid or \
+                _debug_mouse_fakes_touch:
+            if force_no_widget_can_receive_new_input and \
+                    not touch_pressed:
+                # This was an ignored gesture. Don't do anything.
+                return
+            touch_pressed = False
+            w.touchend(
+                float(event.button.x), float(event.button.y),
+                internal_data=[float(event.button.x),
+                float(event.button.y)])
+        else:
+            if force_no_widget_can_receive_new_input and \
+                    not (int(event.button.which),
+                    int(event.button.button)) in \
+                    mouse_ids_button_ids_pressed:
+                # This click was ignored from the start. Ignore.
+                return
+            w.mouseup(int(event.button.which),
+                int(event.button.button),
+                float(event.button.x), float(event.button.y),
+                internal_data=[float(event.button.x),
+                float(event.button.y)])
+            mouse_ids_button_ids_pressed.discard(
+                (int(event.button.which),
+                int(event.button.button)))
+        if capture_enabled and \
+                (len(mouse_ids_button_ids_pressed) == 0 and
+                not touch_pressed):
+            if config.get("capture_debug"):
+                logdebug("wobblui.py: debug: mouse capture release")
+            sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
+ 
+
+def _process_key_event(event, trigger_shortcuts=True,
+        force_no_widget_can_receive_new_input=False):
     virtual_key = sdl_vkey_map(event.key.keysym.sym)
     physical_key = sdl_key_map(event.key.keysym.scancode)
     shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
@@ -339,14 +439,18 @@ def _process_key_event(event, trigger_shortcuts=True):
         modifiers.add("alt")
     if event.type == sdl.SDL_KEYDOWN:
         internal_update_keystate_keydown(virtual_key,
-            physical_key, trigger_shortcuts=trigger_shortcuts)
-        w.keydown(virtual_key, physical_key, modifiers)
-        if virtual_key.lower() == "return":
-            w.textinput("\n", get_modifiers())
+            physical_key, trigger_shortcuts=trigger_shortcuts,
+            active_widget_aware_of_keydown=(
+                not force_no_widget_can_receive_new_input))
+        if not force_no_widget_can_receive_new_input:
+            w.keydown(virtual_key, physical_key, modifiers)
+            if virtual_key.lower() == "return":
+                w.textinput("\n", get_modifiers())
     else:
-        internal_update_keystate_keyup(virtual_key,
-            physical_key)
-        w.keyup(virtual_key, physical_key, modifiers)
+        widget_is_aware = internal_update_keystate_keyup(
+            virtual_key, physical_key)
+        if widget_is_aware:
+            w.keyup(virtual_key, physical_key, modifiers)
 
 def loading_screen_fix():
     if sdl.SDL_GetPlatform().decode(
@@ -379,65 +483,7 @@ def _handle_event(event):
         return
     elif event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
-        sdl_touch_mouseid = 4294967295
-        if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
-            sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
-        w = get_window_by_sdl_id(event.button.windowID)
-        if w is None or w.is_closed:
-            return
-        if w.hidden:
-            w.set_hidden(False)
-        capture_enabled = (len(mouse_ids_button_ids_pressed) > 0 or
-            touch_pressed)
-        # Swap button 2 and 3, since SDL maps them unintuitively
-        # (SDL: middle 2, right 3 - ours: middle 3, right 2)
-        if event.button.button == 2:
-            event.button.button = 3
-        elif event.button.button == 3:
-            event.button.button = 2
-        # Actually send off event:
-        if event.type == sdl.SDL_MOUSEBUTTONDOWN:
-            if event.button.which == sdl_touch_mouseid or \
-                    _debug_mouse_fakes_touch:
-                touch_pressed = True
-                w.touchstart(
-                    float(event.button.x), float(event.button.y))
-            else:
-                mouse_ids_button_ids_pressed.add(
-                    (int(event.button.which),
-                    int(event.button.button)))
-                w.mousedown(int(event.button.which),
-                    int(event.button.button),
-                    float(event.button.x), float(event.button.y),
-                    internal_data=[float(event.button.x),
-                    float(event.button.y)])
-            if not capture_enabled:
-                if config.get("capture_debug"):
-                    logdebug("wobblui.py: debug: mouse capture engage")
-                sdl.SDL_CaptureMouse(sdl.SDL_TRUE)
-        else:
-            if event.button.which == sdl_touch_mouseid or \
-                    _debug_mouse_fakes_touch:
-                touch_pressed = False
-                w.touchend(
-                    float(event.button.x), float(event.button.y),
-                    internal_data=[float(event.button.x),
-                    float(event.button.y)])
-            else:
-                w.mouseup(int(event.button.which),
-                    int(event.button.button),
-                    float(event.button.x), float(event.button.y),
-                    internal_data=[float(event.button.x),
-                    float(event.button.y)])
-                mouse_ids_button_ids_pressed.discard(
-                    (int(event.button.which),
-                    int(event.button.button)))
-            if capture_enabled and \
-                    (len(mouse_ids_button_ids_pressed) == 0 and
-                    not touch_pressed):
-                if config.get("capture_debug"):
-                    logdebug("wobblui.py: debug: mouse capture release")
-                sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
+        _process_mouse_click_event(event)
     elif event.type == sdl.SDL_MOUSEWHEEL:
         sdl_touch_mouseid = 4294967295
         if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
