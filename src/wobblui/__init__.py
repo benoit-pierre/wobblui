@@ -132,6 +132,7 @@ def sdl_key_map(key):
 def event_loop(app_cleanup_callback=None):
     event_loop_ms = 10
     try:
+        font_no_sleep_counter = 0
         while True:
             max_sleep = maximum_sleep_time()
             sleep_amount = event_loop_ms * 0.001
@@ -140,8 +141,12 @@ def event_loop(app_cleanup_callback=None):
                 had_jobs = sdlfont.process_jobs()
                 sleep_amount = max(0, min(sleep_amount, max_sleep))
                 if had_jobs:
+                    font_no_sleep_counter = 10
                     sleep_amount = 0
                     event_loop_ms = min(10, event_loop_ms)
+            if font_no_sleep_counter > 0:
+                font_no_sleep_counter -= 1
+                sleep_amount = 0
             if sleep_amount > 0.0005:
                 time.sleep(sleep_amount)
             result = do_event_processing(ui_active=True)

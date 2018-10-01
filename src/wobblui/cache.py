@@ -52,6 +52,11 @@ class KeyValueCache(object):
         return result
 
     def get(self, key):
+        if not key in self.cache_keys:
+            # Without mutex for speed.
+            # May race and be wrong, but then it'll just be added
+            # to the cache twice which isn't bad.
+            return None
         self.mutex.acquire()
         result = None
         if key in self.cache_keys:
