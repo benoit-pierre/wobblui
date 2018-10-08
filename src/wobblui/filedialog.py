@@ -286,10 +286,19 @@ class FileOrDirChooserDialog(Widget):
                     self.listing_data = [entry for entry in \
                         self.listing_data if entry[1]]
                 if self.file_filter != "*":
-                    if self.file_filter.startswith("*"):
-                        self.listing_data = [entry for entry in \
-                            self.listing_data if entry[0].lower().endswith(
-                            self.file_filter[1:]) or entry[1]]
+                    filters = self.file_filter.replace(" ", ",").split(",")
+                    filters = [f.strip() for f in filters if\
+                        len(f.strip()) > 0]
+                    print("FILTERS: " + str(filters))
+                    def is_filtered(name):
+                        for filefilter in filters:
+                            if filefilter.startswith("*"):
+                                if name.lower().endswith(filefilter[1:]):
+                                    return False
+                        return True
+                    self.listing_data = [entry for entry in \
+                        self.listing_data if not is_filtered(
+                        entry[0].lower()) or entry[1]]
                 for item in self.listing_data:
                     t = item[0]
                     if len(t) > 50:
