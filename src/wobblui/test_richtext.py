@@ -3,10 +3,12 @@ import sys
 import time
 
 from wobblui.richtext import RichText
+from wobblui.uiconf import config
 
 def test_perf(capsys):
     try:
         with capsys.disabled():  # ensure perf data is printed
+            config.set("perf_debug", True)
             i = 0
             while i < 5:
                 obj = RichText()

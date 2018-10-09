@@ -101,16 +101,26 @@ class RichTextFragment(RichTextObj):
         self.forced_text_color = None
         if force_text_color != None:
             self.forced_text_color = Color(force_text_color)
-        self.text = text
+        self._text = text
         self.font_family = font_family
         self.bold = bold
         self.surrounding_tags = copy.copy(surrounding_tags)
         self.italic = italic
+        self._cached_parts = None
         self.px_size = px_size
         self.align = None
         self.draw_scale = 1.0
         self._width_cache = dict()
         self._cached_height = None
+
+    @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, v):
+        self._cached_parts = None
+        self._text = v
 
     def has_block_tag(self):
         for tag in self.surrounding_tags:
@@ -309,17 +319,22 @@ class RichTextFragment(RichTextObj):
 
     @property
     def parts(self):
+        if self._cached_parts != None:
+            return copy.copy(self._cached_parts)
         last_i = -1
-        split_before_chars = set([" ", "\n", "\r"])
-        split_after_chars = set([",", ".", ":",
-            "!", "'", "\"", "-", "=", "?",
-            "/", "\\"])
+
+        # The characters we want to split at & a search regex for them
+        split_before_chars = " \n\r"
+        split_after_chars = ",.:!'\"-=?/\\"
+
+        # Actually split at the characters given above:
         result = []
         i = 0
         while i < len(self.text):
             c = self.text[i]
             if c in split_after_chars or (i + 1 < len(self.text)
                     and self.text[i + 1] in split_before_chars):
+                # Found a split!
                 part = self.text[last_i + 1:i + 1]
                 if len(part) > 0:
                     result.append(part)
@@ -329,7 +344,8 @@ class RichTextFragment(RichTextObj):
             part = self.text[last_i + 1:]
             if len(part) > 0:
                 result.append(part)
-        return result
+        self._cached_parts = result
+        return copy.copy(self._cached_parts)
 
 class RichTextLinebreak(RichTextObj):
     def __init__(self):
