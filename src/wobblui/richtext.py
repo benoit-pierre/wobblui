@@ -51,12 +51,18 @@ class RichTextObj(object):
         self.x = None
         self.y = None
         self.width = None
-        self.height = None
         self.italic = False
         self.bold = False
         self.font_family = "Sans Serif"
         self.px_size = 12
         self.draw_scale = 1.0
+
+    def compute_height(self):
+        return None
+
+    @property
+    def height(self):
+        return self.compute_height()
 
     def copy(self):
         return copy.copy(self)
@@ -120,6 +126,7 @@ class RichTextFragment(RichTextObj):
     @text.setter
     def text(self, v):
         self._cached_parts = None
+        self._cached_height = None
         self._text = v
 
     def has_block_tag(self):
@@ -230,7 +237,7 @@ class RichTextFragment(RichTextObj):
         self._width_cache[index] = w
         return w
 
-    def get_height(self):
+    def compute_height(self):
         if self._cached_height != None:
             return self._cached_height
         font = font_manager().get_font(self.font_family,
@@ -466,10 +473,8 @@ class RichText(object):
 
     def copy(self):
         new_text = copy.copy(self)
-        new_fragments = []
-        for fragment in self.fragments:
-            new_fragments.append(fragment.copy())
-        new_text.fragments = new_fragments
+        new_text.fragments = [fragment.copy()
+            for fragment in self.fragments]
         return new_text
 
     def layout(self, max_width=None, align_if_none=None):
@@ -650,11 +655,10 @@ class RichText(object):
                 split_before.y = current_y
                 split_before.width = next_width
                 layout_w = max(layout_w, current_x + next_width)
-                split_before.height = split_before.get_height()
                 if max_height_seen_in_line is None:
-                    max_height_seen_in_line = split_before.get_height()
+                    max_height_seen_in_line = split_before.height
                 max_height_seen_in_line = max(
-                    max_height_seen_in_line, split_before.get_height())
+                    max_height_seen_in_line, split_before.height)
                 old_max_height_seen_in_line = max_height_seen_in_line
                 current_line_elements += 1
                 layout_w = max(layout_w, current_x)
@@ -667,7 +671,6 @@ class RichText(object):
                 added.x = current_x
                 added.y = current_y
                 added.width = added.get_width()
-                added.height = added.get_height()
                 if max_height_seen_in_line is None:
                     max_height_seen_in_line = added.height
                 max_height_seen_in_line = max(
@@ -757,7 +760,6 @@ class RichText(object):
             self.fragments[i].x = None
             self.fragments[i].y = None
             self.fragments[i].width = None
-            self.fragments[i].height = None
             if i == 0 or not isinstance(simple_fragments[-1],
                     RichTextFragment) or \
                     not simple_fragments[-1].has_same_formatting_as(
