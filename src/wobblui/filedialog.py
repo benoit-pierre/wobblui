@@ -289,7 +289,6 @@ class FileOrDirChooserDialog(Widget):
                     filters = self.file_filter.replace(" ", ",").split(",")
                     filters = [f.strip() for f in filters if\
                         len(f.strip()) > 0]
-                    print("FILTERS: " + str(filters))
                     def is_filtered(name):
                         for filefilter in filters:
                             if filefilter.startswith("*"):
