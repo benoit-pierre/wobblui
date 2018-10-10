@@ -24,12 +24,17 @@ import ctypes
 import html
 import sdl2 as sdl
 import string
+import sys
+import threading
+import time
+import traceback
 
 from wobblui.color import Color
 import wobblui.cssparse as cssparse
 import nettools.htmlparse as htmlparse
 from wobblui.font.manager import font_manager
 from wobblui.perf import Perf
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class TagInfo(object):
     def __init__(self, tag_name, is_block=False):
@@ -478,6 +483,31 @@ class RichText(object):
         return new_text
 
     def layout(self, max_width=None, align_if_none=None):
+        done = False
+        def stuck_check():
+            nonlocal done
+            seconds_passed = 0
+            while not done:
+                time.sleep(1)
+                seconds_passed += 1
+                if seconds_passed > 30.0:
+                    logwarning("Still layouting after " +
+                        str(seconds_passed) + " seconds!!! Stuck?")
+                    try:
+                        logwarning("Layouter stack: " + str(
+                            traceback.format_stack(
+                            sys._current_frames()[
+                            threading.main_thread().ident])))
+                    except Exception as e:
+                        logerror("Failed to print stack: " + str(e))
+        t = threading.Thread(target=stuck_check)
+        t.start()
+        result = self._layout_unprotected(max_width=max_width,
+                align_if_none=align_if_none)
+        done = True
+        return result
+
+    def _layout_unprotected(self, max_width=None, align_if_none=None):
         perf_id = Perf.start("richtext_layout")
         perf_1 = Perf.start("richtext_layout_1")
         self.simplify()
