@@ -129,11 +129,33 @@ def sdl_key_map(key):
         return "space"
     return str("scancode-" + str(key))
 
+stuck_thread = None
+last_alive_time = None
+def stuck_check():
+    global last_alive_time
+    while True:
+        time.sleep(5)
+        if last_alive_time != None and \
+                last_alive_time + 60.0 < time.monotonic():
+            logwarning("Application appears stuck, UI processing " +
+                "not called for >60 seconds!")
+            logwarning("Backtraces of all threads will follow.")
+            for th in threading.enumerate():
+                logwarning(str(th))
+                logwarning(str("\n".join(
+                    traceback.format_stack(sys._current_frames()[th.ident]))))
+
 def event_loop(app_cleanup_callback=None):
+    global stuck_thread, last_alive_time
+    if stuck_thread is None:
+        stuck_thread = threading.Thread(target=stuck_check, daemon=True)
+        stuck_thread.start()
+    last_alive_time = time.monotonic()
     event_loop_ms = 10
     try:
         font_no_sleep_counter = 0
         while True:
+            last_alive_time = time.monotonic()
             max_sleep = maximum_sleep_time()
             sleep_amount = event_loop_ms * 0.001
             had_jobs = False
@@ -251,10 +273,11 @@ def do_event_processing_if_on_main_thread(ui_active=True):
 
 _last_clean_shortcuts_ts = None
 def do_event_processing(ui_active=True):
-    global _last_clean_shortcuts_ts
+    global _last_clean_shortcuts_ts, last_alive_time
     if threading.current_thread() != threading.main_thread():
         raise RuntimeError("UI events can't be processed " +
             "from another thread")
+    last_alive_time = time.monotonic()
     if _last_clean_shortcuts_ts is None:
         _last_clean_shortcuts_ts = time.monotonic()
     if _last_clean_shortcuts_ts + 1.0 < time.monotonic():
