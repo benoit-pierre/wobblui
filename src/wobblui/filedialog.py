@@ -328,8 +328,8 @@ class FileOrDirChooserDialog(Widget):
     def on_redraw(self):
         outer_padding = max(0, round(self.outer_padding * self.dpi_scale))
         border_c = Color.black
-        if self.style != None and False:
-            border_c = Color(self.style.get("border"))
+        if self.style != None:
+            border_c = Color(self.style.get("window_bg"))
         draw_rectangle(self.renderer, outer_padding, outer_padding,
             self.width - outer_padding * 2,
             self.height - outer_padding * 2, color=border_c)
