@@ -99,7 +99,7 @@ class Label(ScrollbarDrawingWidget):
         # Draw label text:
         for fragment in self.text_obj.fragments:
             # Bail out if we arrived at text below our viewport:
-            if fragment.y - self.scroll_y_offset > content_height:
+            if fragment.y - self.scroll_y_offset > self.height:
                 break
             # Skip if above our viewport:
             if fragment.y - self.scroll_y_offset + fragment.height <\
