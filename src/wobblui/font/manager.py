@@ -81,8 +81,7 @@ class Font(object):
         if result != None:
             return result
         font = self.get_sdl_font()
-        result =  sdlfont.get_thread_safe_render_size(
-            font, text)
+        result = sdlfont.get_thread_safe_render_size(font, text)
         render_size_cache.add(str((unique_key, text)), result)
         return result
 
@@ -216,10 +215,10 @@ class FontManager(object):
 
     def get_font(self, name, bold=False, italic=False, px_size=12,
             draw_scale=1.0, display_dpi=96):
-        self.mutex.acquire()
         display_dpi = round(display_dpi)
         unified_draw_scale = round(draw_scale *
             DRAW_SCALE_GRANULARITY_FACTOR)
+        self.mutex.acquire()
         try:
             self._load_font_info(name, bold, italic,
                 px_size=px_size,
