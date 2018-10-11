@@ -3,12 +3,12 @@
 
 from pythonforandroid.recipe import CythonRecipe
 
-class Nettools(CythonRecipe):
+class NettoolsRecipe(CythonRecipe):
     version = 'master'
     url = 'https://github.com/JonasT/nettools/archive/{version}.zip'
     name = 'nettools'
 
-    depends = ['nettools']
+    depends = []
 
-recipe = WobbluiRecipe()
+recipe = NettoolsRecipe()
 
