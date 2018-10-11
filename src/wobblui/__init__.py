@@ -363,6 +363,8 @@ def _process_mouse_click_event(event,
     _debug_mouse_fakes_touch = (
         config.get("mouse_fakes_touch_events") is True)
 
+    Perf.chain("mouseevent")
+
     if event.type != sdl.SDL_MOUSEBUTTONDOWN and \
             event.type != sdl.SDL_MOUSEBUTTONUP:
         raise TypeError("invalid event type")
@@ -393,17 +395,20 @@ def _process_mouse_click_event(event,
         if event.button.which == sdl_touch_mouseid or \
                 _debug_mouse_fakes_touch:
             touch_pressed = True
+            Perf.chain("mouseevent", "callback_prep")
             w.touchstart(
                 float(event.button.x), float(event.button.y))
         else:
             mouse_ids_button_ids_pressed.add(
                 (int(event.button.which),
                 int(event.button.button)))
+            Perf.chain("mouseevent", "callback_prep")
             w.mousedown(int(event.button.which),
                 int(event.button.button),
                 float(event.button.x), float(event.button.y),
                 internal_data=[float(event.button.x),
                 float(event.button.y)])
+            Perf.chain('mouseevent', "callback")
         if not capture_enabled:
             if config.get("capture_debug"):
                 logdebug("wobblui.py: debug: mouse capture engage")
@@ -416,10 +421,12 @@ def _process_mouse_click_event(event,
                 # This was an ignored gesture. Don't do anything.
                 return
             touch_pressed = False
+            Perf.chain("mouseevent", "callback_prep")
             w.touchend(
                 float(event.button.x), float(event.button.y),
                 internal_data=[float(event.button.x),
                 float(event.button.y)])
+            Perf.chain("mouseevent", "callback")
         else:
             if force_no_widget_can_receive_new_input and \
                     not (int(event.button.which),
@@ -427,11 +434,13 @@ def _process_mouse_click_event(event,
                     mouse_ids_button_ids_pressed:
                 # This click was ignored from the start. Ignore.
                 return
+            Perf.chain("mouseevent", "callback_prep")
             w.mouseup(int(event.button.which),
                 int(event.button.button),
                 float(event.button.x), float(event.button.y),
                 internal_data=[float(event.button.x),
                 float(event.button.y)])
+            Perf.chain("mouseevent", "callback")
             mouse_ids_button_ids_pressed.discard(
                 (int(event.button.which),
                 int(event.button.button)))
@@ -441,7 +450,7 @@ def _process_mouse_click_event(event,
             if config.get("capture_debug"):
                 logdebug("wobblui.py: debug: mouse capture release")
             sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
- 
+    Perf.stop("mouseevent")
 
 def _process_key_event(event, trigger_shortcuts=True,
         force_no_widget_can_receive_new_input=False):

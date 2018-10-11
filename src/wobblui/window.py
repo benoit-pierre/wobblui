@@ -49,12 +49,27 @@ def get_focused_window():
 
 def get_window_by_sdl_id(sdl_id):
     global all_windows
+    result = None
+    seen = set()
+    new_refs = []
     for w_ref in all_windows:
         w = w_ref()
         if w is None or w.sdl_window_id != int(sdl_id):
+            if w != None:
+                if str(id(w)) in seen:
+                    logerror("Duplicate window in all_windows list: " +
+                        str(w))
+                seen.add(str(id(w)))
+                new_refs.append(w_ref)
             continue
-        return w
-    return None
+        result = w
+        if str(id(w)) in seen:
+            logerror("Duplicate window in all_windows list: " +
+                str(w))
+        seen.add(str(id(w)))
+        new_refs.append(w_ref)
+    all_windows = new_refs
+    return result
 
 class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,

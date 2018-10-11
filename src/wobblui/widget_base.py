@@ -23,6 +23,7 @@ import copy
 import ctypes
 import functools
 import math
+import random
 import sdl2 as sdl
 import sys
 import time
@@ -362,16 +363,19 @@ class WidgetBase(object):
                 internal_data=internal_data)
 
     def _internal_on_touchstart(self, x, y, internal_data=None):
+        print("TOUCHSTART")
         self._post_mouse_event_handling("touchstart",
             [x, y],
             internal_data=internal_data)
 
     def _internal_on_touchmove(self, x, y, internal_data=None):
+        print("TOUCHMOVE")
         self._post_mouse_event_handling("touchmove",
             [x, y],
             internal_data=internal_data)
 
     def _internal_on_touchend(self, x, y, internal_data=None):
+        print("TOUCHEND")
         self._post_mouse_event_handling("touchend",
             [x, y],
             internal_data=internal_data)
@@ -627,9 +631,15 @@ class WidgetBase(object):
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
 
+        r = str(random.random()).replace(".", "")
+        chain_id = "_pre_or_post_mouse_event_handling" + r +\
+            str(self)
+        Perf.chain(chain_id)
+
         now = time.monotonic()
         if hasattr(self, "no_mouse_events") and \
                 self.no_mouse_events is True:
+            Perf.stop(chain_id)
             return
 
         # First, extract relevant event parameters:
@@ -718,6 +728,8 @@ class WidgetBase(object):
                 touch_hitpoint_check_x = self.touch_start_x
                 touch_hitpoint_check_y = self.touch_start_y
 
+        Perf.chain(chain_id, "preparations_done")
+
         # *** BASIC TOUCH STATE UPDATE, ONLY ON PRE-CALLBACK ***
         if not is_post:
             # Update touch start and last touch point:
@@ -771,6 +783,8 @@ class WidgetBase(object):
             if event_name.startswith("touch"):
                 self.schedule_infinite_scroll_check(x, y,
                     stop_event=(event_name == "touchend"))
+
+        Perf.chain(chain_id, "touchstate_update_done")
 
         # See what we want to use for the hit check for propagation:
         # (This needs to happen both in pre and post handler!!)
@@ -880,13 +894,17 @@ class WidgetBase(object):
                     self._in_touch_fake_event_processing = False
                     self._prevent_mouse_event_propagate = False
 
+        Perf.chain(chain_id, "fakemouse_events_done")
+
         # *** EVENT PROPAGATION, ONLY POST-CALLBACK HANDLING ***
         if not is_post:
+            Perf.stop(chain_id)
             return
 
         # Pass on event to child widgets:
         if hasattr(self, "_prevent_mouse_event_propagate") and \
                 self._prevent_mouse_event_propagate is True:
+            Perf.stop(chain_id)
             return
         child_list = copy.copy(self.children)
         check_widget_overlap = False
@@ -899,6 +917,7 @@ class WidgetBase(object):
         rel_y = y - self.abs_y
         hit_check_rx = hit_check_x - self.abs_x
         hit_check_ry = hit_check_y - self.abs_y
+        Perf.chain(chain_id, "propagate_start")
         for child in child_list:
             if child.parent != self or (child.type != "window" and
                     child.parent_window is None):
@@ -987,17 +1006,23 @@ class WidgetBase(object):
                     if not child.mousemove(mouse_id,
                             rel_x - child.x, rel_y - child.y,
                             internal_data=internal_data):
+                        Perf.chain(chain_id, "propagate_end")
+                        Perf.stop(chain_id)
                         return True
                 elif event_name == "mousewheel":
                     if not child.mousewheel(mouse_id, float(wx),
                             float(wy),
                             internal_data=internal_data):
+                        Perf.chain(chain_id, "propagate_end")
+                        Perf.stop(chain_id)
                         return True
                 else:
                     if not getattr(child, event_name)(mouse_id,
                             event_args[1],
                             rel_x - child.x, rel_y - child.y,
                             internal_data=internal_data):
+                        Perf.chain(chain_id, "propagate_end")
+                        Perf.stop(chain_id)
                         return True
             else:
                 if event_name.startswith("touch") and \
@@ -1036,6 +1061,8 @@ class WidgetBase(object):
                         rel_x - child.x, rel_y - child.y,
                         internal_data=internal_data)
         # Done!
+        Perf.chain(chain_id, "propagate_end")
+        Perf.stop(chain_id)
 
     def __del__(self):
         if hasattr(self, "sdl_texture") and \

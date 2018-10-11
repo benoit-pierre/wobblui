@@ -1,3 +1,4 @@
+#cython: language_level=3, boundscheck=False
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md

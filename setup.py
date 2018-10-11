@@ -1,6 +1,7 @@
 
+from setuptools import setup, Extension, Command
 
-
+from Cython.Build import cythonize
 import setuptools
 
 with open("README.md", "r") as fh:
@@ -29,6 +30,7 @@ setuptools.setup(
     description="A simple, universal and " +
         "cross-platform UI toolkit for Python 3",
     packages=setuptools.find_packages("src"),
+    ext_modules = [Extension("wobblui.woblog", ["src/wobblui/woblog.c"])],
     package_dir={'':'src'},
     package_data={
         "wobblui": ["font/packaged-fonts/*.ttf",
