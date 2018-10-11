@@ -63,7 +63,7 @@ class RichTextObj(object):
         self.draw_scale = 1.0
 
     def compute_height(self):
-        return None
+        raise RuntimeError("abstract function not implemented")
 
     @property
     def height(self):
@@ -369,6 +369,9 @@ class RichTextLinebreak(RichTextObj):
         t = "<RichTextLinebreak x:" + str(self.x) +\
             " y: " + str(self.y) + ">"
         return t
+
+    def compute_height(self):
+        return 0
 
     def to_html(self, previous_richtext_obj=None,
             next_richtext_obj=None):
