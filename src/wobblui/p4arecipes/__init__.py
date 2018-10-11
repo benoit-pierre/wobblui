@@ -13,7 +13,7 @@ def copy_to_recipe_folder(folder_dir):
             if os.path.exists(os.path.join(folder_dir, f)):
                 os.remove(os.path.join(folder_dir, f))
             shutil.copyfile(os.path.join(
-                os.path.dirname(__file__, f)), os.path.join(
+                os.path.dirname(__file__), f), os.path.join(
                 folder_dir, f))
 
 def potential_site_package_dirs():
@@ -27,16 +27,18 @@ def potential_site_package_dirs():
         pass
     dirs = [dirpath for dirpath in output.split("\n") if \
         len(dirpath) > 0] + dirs
+    dirs += [dirpath for dirpath in sys.path if \
+        len(dirpath) > 0]
     return dirs    
 
 def install():
     for dirpath in potential_site_package_dirs():
-        p4a_path = os.path.join(dirpath, "python-for-android")
+        p4a_path = os.path.join(dirpath, "pythonforandroid")
         if os.path.exists(p4a_path):
             print("Installing to python-for-android package: " + 
                 str(p4a_path))
             copy_to_recipe_folder(os.path.join(p4a_path,
-                "pythonforandroid", "recipes"))
+                "recipes"))
 
 if __name__ == "__main__":
     install()
