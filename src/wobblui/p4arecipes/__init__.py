@@ -10,7 +10,7 @@ import sys
 def copy_to_recipe_folder(folder_dir):
     for f in os.listdir(os.path.dirname(__file__)):
         if f.endswith(".py") and not f.startswith("__init__"):
-            folder_name = os.path.basename(f)
+            folder_name = os.path.basename(f).rpartition(".")[0]
             if os.path.exists(os.path.join(folder_dir,
                     folder_name, "__init__.py")):
                 os.remove(os.path.join(folder_dir,
