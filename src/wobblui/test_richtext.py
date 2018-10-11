@@ -8,9 +8,11 @@ from wobblui.uiconf import config
 def test_perf(capsys):
     try:
         with capsys.disabled():  # ensure perf data is printed
-            config.set("perf_debug", True)
+            config.set("perf_debug", False)
+            text_setting_times = 0.0
+            layouting_times = 0.0
             i = 0
-            while i < 5:
+            while i < 20:
                 obj = RichText()
                 test_text = ("Lorem ipsum - this is a " +
                     "test text. It is very long.") * 50
@@ -19,11 +21,15 @@ def test_perf(capsys):
                 t2 = time.monotonic()
                 obj.layout(max_width=100)
                 t3 = time.monotonic()
-                print("Times: setting text: " +
-                    str(round((t2 - t1) * 1000.0)) + "ms" +
-                    ", layouting: " +
-                    str(round((t3 - t2) * 1000.0)) + "ms",
-                    file=sys.stderr, flush=True)
+                text_setting_times += (t2 - t1)
+                layouting_times += (t3 - t2)
                 i += 1
+            text_setting_times /= i
+            layouting_times /= i
+            print("Times: setting text: " +
+                str(round(text_setting_times * 1000)) + "ms" +
+                ", layouting: " +
+                str(round(layouting_times * 1000)) + "ms",
+                    file=sys.stderr, flush=True)
     except Exception as e:
         raise e
