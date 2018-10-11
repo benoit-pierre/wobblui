@@ -648,14 +648,30 @@ class RichText(object):
                     if current_line_elements == 0:
                         # Have to break up into individual letters:
                         part_amount = 1  # partial word (more than zero)
-                        letters = max(1, len(next_element.parts[0]))
-                        next_width = next_element.get_width_up_to_length(
-                            letters)
-                        while letters > 1 and \
-                                current_x + next_width > max_width:
-                            letters -= 1
+                        max_letters = max(1, len(next_element.parts[0]))
+                        letters = max_letters
+                        jump_letters = -max(2, round(max_letters / 2))
+                        while True:
+                            letters = max(1, min(max_letters,
+                                letters + jump_letters))
                             next_width = next_element.get_width_up_to_length(
                                 letters)
+                            if current_x + next_width < max_width:
+                                if letters == max_letters:
+                                    break
+                                jump_letters = max(1, abs(
+                                    round(jump_letters / 2.0)))
+                                continue
+                            else:
+                                if letters <= 1:
+                                    break
+                                if jump_letters <= 2 and \
+                                        next_element.get_width_up_to_length(
+                                        letters - 1) + current_x < max_width:
+                                    letters -= 1
+                                    break
+                                jump_letters = -max(1, abs(
+                                    round(jump_letters / 2.0)))
                     break
                 previously_downwards = True
                 jump_amount = -max(1, abs(round(jump_amount / 2.0)))

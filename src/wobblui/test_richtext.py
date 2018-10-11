@@ -19,7 +19,7 @@ def test_perf(capsys):
                 t1 = time.monotonic()
                 obj.set_text(test_text)
                 t2 = time.monotonic()
-                obj.layout(max_width=100)
+                obj.layout(max_width=(100 / max(1, i)))
                 t3 = time.monotonic()
                 text_setting_times += (t2 - t1)
                 layouting_times += (t3 - t2)
