@@ -327,11 +327,13 @@ class HBox(Box):
 class CenterBox(Widget):
     def __init__(self, padding=0,
             child_minimum_width=0,
-            expand_vertically=False):
+            expand_vertically=False,
+            expand_horizontally=False):
         super().__init__(is_container=True)
         self.padding = padding
         self.child_minimum_width = child_minimum_width
         self.expand_vertically = expand_vertically
+        self.expand_horizontally = expand_horizontally
 
     def do_redraw(self):
         self.draw_children()
@@ -359,10 +361,14 @@ class CenterBox(Widget):
             return
         outer_padding = (self.padding * self.dpi_scale)
         child = self._children[0]
-        nat_width = child.get_natural_width()
-        child.width = min(round(self.width -
-            outer_padding * 2),
-            max(self.child_minimum_width, nat_width))
+        if self.expand_horizontally:
+            nat_width = child.get_natural_width()
+            child.width = min(max(1, round(self.width -
+                outer_padding * 2)),
+                max(self.child_minimum_width, nat_width))
+        else:
+            child.width = max(1, round(self.width -
+                outer_padding * 2))
         if not self.expand_vertically:
             child.height = min(round(self.height -
                 outer_padding * 2), child.get_natural_height(
