@@ -43,11 +43,16 @@ from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 CHOSEN_NOTHING=-1
 
 class FileOrDirChooserDialog(Widget):
-    def __init__(self, window, choose_dir=False, confirm_text="Open",
+    def __init__(self, window, choose_dir=False, confirm_text=None,
             title=None, can_choose_nothing=False,
             cancel_text="Cancel",
             choose_nonexisting=False, outer_padding=2.0,
             start_directory=None, file_filter="*"):
+        if confirm_text == None:
+            if choose_dir:
+                confirm_text = "Choose Folder"
+            else:
+                confirm_text = "Choose File"
         self.debug = (config.get("debug_file_dialog") is True)
         if self.debug:
             logdebug("wobblui.filedialog " + str(id(self)) + ": " +
@@ -64,18 +69,12 @@ class FileOrDirChooserDialog(Widget):
         self.listing_data = None
         self.listing_path = None
         self.file_filter = file_filter
-        topbar = Topbar()
-        if title == None:
-            topbar.add_to_top(Label("Choose a " +
-                ("File:" if not choose_dir else "Folder:")))
-        else:
-            topbar.add_to_top(Label(title))
         vbox = VBox()
         nav_hbox = HBox()
         self.location_label = Label("")
         nav_hbox.add(self.location_label, expand=True,
             shrink=True)
-        self.up_button = Button("To Parent Folder...")
+        self.up_button = Button("To Parent")
         self.up_button.set_image(stock_image("outandup"),
             scale_to_width=25.0)
         def go_up():
@@ -126,8 +125,7 @@ class FileOrDirChooserDialog(Widget):
         buttons_row.add(self.cancel_button, expand=False)
         buttons_row.add(self.okay_button, expand=False)
         vbox.add(buttons_row, expand=False)
-        topbar.add(vbox)
-        super().add(topbar)
+        super().add(vbox)
 
     def can_access_dir(self, path):
         try:
@@ -306,7 +304,7 @@ class FileOrDirChooserDialog(Widget):
                     if item[1]:
                         side_text = "(Folder)"
                     self.contents_list.add(t, side_text=side_text)
-            self.location_label.set_html("<b>Location:</b> " +
+            self.location_label.set_html("<b>At:</b> " +
                 html.escape(os.path.normpath(os.path.abspath(
                     self.current_path))))
             self.needs_redraw = True
@@ -363,7 +361,7 @@ class FileOrDirChooserDialog(Widget):
         return round(600 * self.dpi_scale)
 
 class FileChooserDialog(FileOrDirChooserDialog):
-    def __init__(self, window, confirm_text="Open",
+    def __init__(self, window, confirm_text=None,
             title=None,
             can_choose_nothing=False,
             choose_nonexisting=False, outer_padding=15.0,
