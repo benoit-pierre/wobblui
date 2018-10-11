@@ -132,6 +132,7 @@ class RichTextFragment(RichTextObj):
     def text(self, v):
         self._cached_parts = None
         self._cached_height = None
+        self._width_cache = dict()
         self._text = v
 
     def has_block_tag(self):
