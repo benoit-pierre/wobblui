@@ -483,31 +483,6 @@ class RichText(object):
         return new_text
 
     def layout(self, max_width=None, align_if_none=None):
-        done = False
-        def stuck_check():
-            nonlocal done
-            seconds_passed = 0
-            while not done:
-                time.sleep(1)
-                seconds_passed += 1
-                if seconds_passed > 30.0:
-                    logwarning("Still layouting after " +
-                        str(seconds_passed) + " seconds!!! Stuck?")
-                    try:
-                        logwarning("Layouter stack: " + str(
-                            traceback.format_stack(
-                            sys._current_frames()[
-                            threading.main_thread().ident])))
-                    except Exception as e:
-                        logerror("Failed to print stack: " + str(e))
-        t = threading.Thread(target=stuck_check)
-        t.start()
-        result = self._layout_unprotected(max_width=max_width,
-                align_if_none=align_if_none)
-        done = True
-        return result
-
-    def _layout_unprotected(self, max_width=None, align_if_none=None):
         perf_id = Perf.start("richtext_layout")
         perf_1 = Perf.start("richtext_layout_1")
         self.simplify()
@@ -588,14 +563,30 @@ class RichText(object):
         Perf.stop(perf_1)
         perf_1 = Perf.start("fragment loop")
         fragment_count = len(self.fragments)
+        prev_i = -1
+        stuck_warning_start_time = time.monotonic()
         i = 0
         while i < fragment_count:
+            if stuck_warning_start_time + 30.0 < time.monotonic():
+                logwarning("This is the layouting loop of wobblui. I'm " +
+                    "doing this for a long time already. Am I stuck???")
+                logwarning("Elements layouted so far: " +
+                    str(layouted_elements))
+                logwarning("Loop progress: " + str(i) + "/" +
+                    str(fragment_count))
+                stuck_warning_start_time = time.monotonic()
             # Get next element:
             perf_10 = Perf.start("before fitting loop")
             next_element = self.fragments[i]
             if left_over_fragment != None:
                 next_element = left_over_fragment
                 left_over_fragment = None
+            else:
+                if i <= prev_i:
+                    raise RuntimeError("no partial element but " +
+                        "haven't increased the index either - " +
+                        "layouting stuck???")
+                prev_i = i
             if isinstance(next_element, RichTextLinebreak):
                 layouted_elements.append(RichTextLinebreak())
                 layouted_elements[-1].x = current_x
@@ -670,8 +661,14 @@ class RichText(object):
             Perf.stop(perf_2)
             perf_9 = Perf.start("after fitting loop")
             if part_amount == 0:
+                if len(layouted_elements) > 0 and\
+                        isinstance(layouted_elements[-1],
+                        RichTextLinebreak):
+                    raise RuntimeError("fitted no elements after " +
+                        "a line break - layouting bug???")
                 add_line_break()
                 # Don't increase i, we need to add the element next line.
+                prev_i = i - 1  # avoid no progress alert
                 Perf.stop(perf_9)
                 continue
             old_max_height_seen_in_line = None
