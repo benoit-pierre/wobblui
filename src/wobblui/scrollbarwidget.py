@@ -55,3 +55,4 @@ class ScrollbarDrawingWidget(Widget):
             self.scrollbar_width - 2 * border_width,
             self.scrollbar_height - 2 * border_width,
             color=c)
+
