@@ -7,9 +7,7 @@ from pythonforandroid.recipe import CythonRecipe
 class WobbluiRecipe(CythonRecipe):
     version = 'master'
     url = 'https://github.com/JonasT/wobblui/archive/{version}.zip'
-    name = 'wobblui'
-
-    depends = ['nettools']
+    depends = ['python3crystax', 'nettools']
 
 recipe = WobbluiRecipe()
 
