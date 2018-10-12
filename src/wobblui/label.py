@@ -171,6 +171,8 @@ class Label(ScrollbarDrawingWidget):
         text_obj_copy.draw_scale = self.dpi_scale
         (w, h) = text_obj_copy.layout(max_width=given_width)
         self.natural_size_cache["natural_height"][given_width] = h
+        if given_width is None:
+            self.natural_size_cache["natural_width"] = w
         return h
 
     @property
