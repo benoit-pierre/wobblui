@@ -188,7 +188,7 @@ cdef class RichTextFragment(RichTextObj):
         return False
 
     def __repr__(self):
-        t = "<RichTextFragment '" +\
+        cdef str t = "<RichTextFragment '" +\
             str(self.text).replace("'", "'\"'\"'") + "'"
         if self.x != None or self.y != None:
             t += " x:" + str(self.x) +\
@@ -238,13 +238,14 @@ cdef class RichTextFragment(RichTextObj):
         Perf.stop(perf_id)
 
     def get_width(self):
-        return self.get_width_up_to_length(len(self.text))
+        cdef int i = self.get_width_up_to_length(len(self.text))
+        return i
 
     def get_width_up_to_length(self, int index):
         index = max(0, min(index, len(self.text)))
         if index in self._width_cache:
             return self._width_cache[index]
-        text_part = self.text[:index]
+        cdef str text_part = self.text[:index]
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
@@ -261,6 +262,7 @@ cdef class RichTextFragment(RichTextObj):
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
             draw_scale=self.draw_scale)
+        cdef int w, h
         (w, h) = font.render_size(self.text)
         self._cached_height = max(0, h)
         return h
@@ -344,16 +346,17 @@ cdef class RichTextFragment(RichTextObj):
     @property
     def parts(self):
         if self._cached_parts != None:
-            return copy.copy(self._cached_parts)
-        last_i = -1
+            return self._cached_parts
+        cdef int last_i = -1
+        cdef str part, c
 
         # The characters we want to split at & a search regex for them
-        split_before_chars = " \n\r"
-        split_after_chars = ",.:!'\"-=?/\\"
+        cdef str split_before_chars = " \n\r"
+        cdef str split_after_chars = ",.:!'\"-=?/\\"
 
         # Actually split at the characters given above:
         result = []
-        i = 0
+        cdef int i = 0
         while i < len(self.text):
             c = self.text[i]
             if c in split_after_chars or (i + 1 < len(self.text)
@@ -369,7 +372,7 @@ cdef class RichTextFragment(RichTextObj):
             if len(part) > 0:
                 result.append(part)
         self._cached_parts = result
-        return copy.copy(self._cached_parts)
+        return self._cached_parts
 
 cdef class RichTextLinebreak(RichTextObj):
     cdef public str text
@@ -405,7 +408,13 @@ cdef class RichTextLinebreak(RichTextObj):
             return ""
         return "<br/>"
 
-class RichText(object):
+cdef class RichText(object):
+    cdef public str default_font_family
+    cdef str _cached_text
+    cdef int _px_size
+    cdef public double draw_scale
+    cdef public object fragments
+
     def __init__(self, text="", font_family="Tex Gyre Heros",
             px_size=12, draw_scale=1.0):
         super().__init__()
@@ -484,8 +493,8 @@ class RichText(object):
         (w, h) = obj.get_font().render_size(" ")
         return (0, 0, h)
 
-    def draw(self, renderer, x, y, color=None, draw_scale=None):
-        assert(renderer != None and x != None and y != None)
+    def draw(self, renderer, int x, int y, color=None, draw_scale=None):
+        assert(renderer != None)
         for fragment in self.fragments:
             if isinstance(fragment, RichTextLinebreak):
                 continue
@@ -500,19 +509,22 @@ class RichText(object):
         return new_text
 
     def layout(self, max_width=None, align_if_none=None):
-        if max_width == -1:
-            max_width = None
+        if max_width == None:
+            max_width = -1
+        return self._layout_internal(max_width, align_if_none)
+
+    def _layout_internal(self, int max_width, align_if_none):
         perf_id = Perf.start("richtext_layout")
         perf_1 = Perf.start("richtext_layout_1")
         self.simplify()
         layouted_elements = []
         layout_line_indexes = []
-        current_line_elements = 0
-        layout_w = 0
-        layout_h = 0
-        current_x = 0
-        current_y = 0
-        max_height_seen_in_line = None
+        cdef int current_line_elements = 0
+        cdef int layout_w = 0
+        cdef int layout_h = 0
+        cdef int current_x = 0
+        cdef int current_y = 0
+        cdef int max_height_seen_in_line = -1
         left_over_fragment = None
 
         # Helper function to start a new line:
@@ -521,6 +533,7 @@ class RichText(object):
                 current_line_elements,\
                 max_height_seen_in_line,\
                 layout_w, layout_h
+            cdef int clen, forawrd_start, substract_ending
             if current_line_elements > 0:
                 clen = len(layouted_elements)
                 assert(clen > 0)
@@ -537,7 +550,7 @@ class RichText(object):
                     clen - substract_ending))
             line_alignment = None
             current_x = 0
-            if max_height_seen_in_line != None:
+            if max_height_seen_in_line >= 0:
                 current_y += max_height_seen_in_line
             else:
                 current_y += max(1, font_manager().get_font(
@@ -546,16 +559,16 @@ class RichText(object):
                     px_size=self.px_size).\
                     render_size(" ")[1])
             layout_h = max(layout_h, current_y)
-            max_height_seen_in_line = None
+            max_height_seen_in_line = -1
             current_line_elements = 0
 
         # Helper function to shift elements in a specific line to
         # adapt to different alignments:
-        def adjust_line_alignment(start_index, end_index):
+        def adjust_line_alignment(int start_index, int end_index):
             nonlocal current_line_elements, layout_w, layouted_elements
             line_alignment = None
-            elements_width = 0
-            k = start_index
+            cdef int elements_width = 0
+            cdef int k = start_index
             while k < end_index:
                 if hasattr(layouted_elements[k], "align") and \
                         layouted_elements[k].align != None:
@@ -566,9 +579,10 @@ class RichText(object):
                 line_alignment = align_if_none
             if line_alignment == "left" or line_alignment == None:
                 return
-            align_to_width = max_width or layout_w
+            cdef int align_to_width = (max_width
+                                       if max_width >= 0 else layout_w)
             layout_w = align_to_width
-            shift_space = max(0, align_to_width - elements_width)
+            cdef int shift_space = max(0, align_to_width - elements_width)
             if line_alignment == "center" or line_alignment == "right":
                 shift_width = shift_space
                 if line_alignment == "center":
@@ -581,10 +595,23 @@ class RichText(object):
 
         Perf.stop(perf_1)
         perf_1 = Perf.start("fragment loop")
-        fragment_count = len(self.fragments)
-        prev_i = -1
-        stuck_warning_start_time = time.monotonic()
-        i = 0
+
+        # Variables for outer fragment loop:
+        cdef int fragment_count = len(self.fragments)
+        cdef int prev_i = -1
+        cdef double stuck_warning_start_time = time.monotonic()
+        cdef int i = 0
+
+        # Variables for inner fitting loop:
+        cdef int partial = False
+        cdef int letters = -1
+        cdef int max_part_amount
+        cdef int previously_downwards = True
+        cdef int jump_amount
+        cdef int next_width = -1
+        cdef int part_amount
+        cdef int max_letters
+
         while i < fragment_count:
             if stuck_warning_start_time + 30.0 < time.monotonic():
                 logwarning("This is the layouting loop of wobblui. I'm " +
@@ -629,7 +656,7 @@ class RichText(object):
 
             # See how much we can fit into the line with binary search:
             partial = False
-            letters = None
+            letters = -1
             Perf.stop(perf_10)
             perf_2 = Perf.start("fitting loop")
             max_part_amount = part_amount
@@ -638,16 +665,17 @@ class RichText(object):
             # immediately exit. Boundary enforcements will prevent jumping
             # outside of valid range anyway:
             jump_amount = -max(2, round(part_amount / 2.0))
-            next_width = None
+            next_width = -1
             while True:
                 part_amount = max(1, min(max_part_amount,
                     part_amount + jump_amount))
-                letters = len("".join(next_element.parts[:part_amount]))
+                letters = len("".join(
+                    next_element.parts[:part_amount]))
                 next_width = next_element.\
                     get_width_up_to_length(letters)
 
                 # If it fits, continue binary search upwards:
-                if max_width is None or \
+                if max_width < 0 or \
                         current_x + next_width <= max_width:
                     if (part_amount >= max_part_amount or (
                             previously_downwards and abs(jump_amount) <= 1)):
@@ -666,7 +694,8 @@ class RichText(object):
                     if current_line_elements == 0:
                         # Have to break up into individual letters:
                         part_amount = 1  # partial word (more than zero)
-                        max_letters = max(1, len(next_element.parts[0]))
+                        max_letters = max(1,
+                            len(next_element.parts[0]))
                         letters = max_letters
                         jump_letters = -max(2, round(max_letters / 2))
                         while True:
@@ -706,7 +735,7 @@ class RichText(object):
                 prev_i = i - 1  # avoid no progress alert
                 Perf.stop(perf_9)
                 continue
-            old_max_height_seen_in_line = None
+            old_max_height_seen_in_line = -1
             if partial and letters < len(next_element.text):
                 assert(letters > 0)
                 split_before = next_element.copy()
@@ -717,8 +746,8 @@ class RichText(object):
                 split_before.y = current_y
                 split_before.width = next_width
                 layout_w = max(layout_w, current_x + next_width)
-                if max_height_seen_in_line is None:
-                    max_height_seen_in_line = split_before.height
+                if max_height_seen_in_line < 0:
+                    max_height_seen_in_line = max(0, split_before.height)
                 max_height_seen_in_line = max(
                     max_height_seen_in_line, split_before.height)
                 old_max_height_seen_in_line = max_height_seen_in_line
@@ -733,7 +762,7 @@ class RichText(object):
                 added.x = current_x
                 added.y = current_y
                 added.width = added.get_width()
-                if max_height_seen_in_line is None:
+                if max_height_seen_in_line < 0:
                     max_height_seen_in_line = added.height
                 max_height_seen_in_line = max(
                     max_height_seen_in_line, added.height)
@@ -770,7 +799,8 @@ class RichText(object):
         Perf.stop(perf_id)
         return (layout_w, layout_h)
  
-    def set_text(self, text):
+    def set_text(self, str text):
+        self._cached_text = text
         parts = text.replace("\r\n", "\n").\
             replace("\r", "\n").split("\n")
         self.fragments = self.fragments[:1]
@@ -794,8 +824,8 @@ class RichText(object):
 
     @property
     def html(self):
-        t = ""
-        i = -1
+        cdef str t = ""
+        cdef int i = -1
         for fragment in self.fragments:
             i += 1
             prev_fragment = None
@@ -809,7 +839,9 @@ class RichText(object):
 
     @property
     def text(self):
-        t = ""
+        if self._cached_text != None:
+            return self._cached_text
+        cdef str t = ""
         for fragment in self.fragments:
             t += fragment.text
         self._cached_text = t
@@ -817,7 +849,7 @@ class RichText(object):
 
     def simplify(self):
         simple_fragments = []
-        i = 0
+        cdef int i = 0
         while i < len(self.fragments):
             self.fragments[i].x = 0
             self.fragments[i].y = 0
