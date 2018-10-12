@@ -19,8 +19,10 @@ class Label(ScrollbarDrawingWidget):
         font_family = self.style.get("widget_font_family")
         self.px_size = self.get_intended_text_size()
         self._layout_height = 0
+        self._layout_width = 0
         self.scroll_y_offset = 0
         self.natural_size_cache = dict()
+        self.known_dpi_scale = self.dpi_scale
         self.text_obj = RichText(font_family=font_family,
             px_size=self.px_size,
             draw_scale=self.dpi_scale)
@@ -35,7 +37,10 @@ class Label(ScrollbarDrawingWidget):
         self._user_set_color = color
 
     def on_stylechanged(self):
-        self.natural_size_cache = dict()
+        self.font_size_refresh()
+        if self.dpi_scale != self.known_dpi_scale:
+            self.known_dpi_scale = self.dpi_scale
+            self.natural_size_cache = dict()
 
     def get_intended_text_size(self):
         if self.style == None:
@@ -137,6 +142,19 @@ class Label(ScrollbarDrawingWidget):
         layout_max_width = self.width
         if self._max_width >= 0 and self._max_width < layout_max_width:
             layout_max_width = self._max_width
+        if "natural_width" in self.natural_size_cache and \
+                "natural_height" in self.natural_size_cache and \
+                None in self.natural_size_cache["natural_height"]:
+            if layout_max_width > self.natural_size_cache["natural_width"] \
+                    and self._layout_width == \
+                    self.natural_size_cache["natural_width"]:
+                # Nothing changed, max width is larger than our natural size
+                # and we layouted at this width before.
+                # -> We can just copy over the results.
+                self._layout_width = self.natural_size_cache["natural_width"]
+                self._layout_height = self.natural_size_cache\
+                    ["natural_height"][None]
+                return
         (self._layout_width, self._layout_height) = self.text_obj.layout(
             max_width=layout_max_width, align_if_none=self._current_align)
 
@@ -161,6 +179,10 @@ class Label(ScrollbarDrawingWidget):
         self.font_size_refresh()
         if given_width != None:
             given_width = max(0, round(given_width))
+            if "natural_width" in self.natural_size_cache:
+                if self.natural_size_cache["natural_width"] >= given_width:
+                    # Width is irrelevant, the layout is thinner!
+                    given_width = None
         if not "natural_height" in self.natural_size_cache:
             self.natural_size_cache["natural_height"] = dict()
         if given_width in self.natural_size_cache\
