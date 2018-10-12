@@ -21,8 +21,12 @@ freely, subject to the following restrictions:
 
 import threading
 
-class KeyValueCache(object):
-    def __init__(self, size=5000, destroy_func=None):
+cdef class KeyValueCache(object):
+    cdef int size
+    cdef object destroy_func, mutex
+    cdef object cache_keys, cache_key_to_value, cache_queries
+
+    def __init__(self, int size=5000, destroy_func=None):
         self.size = size
         self.destroy_func = destroy_func
         self.mutex = threading.Lock()
@@ -30,8 +34,7 @@ class KeyValueCache(object):
 
     def clear(self):
         _got_error = None
-        if self.destroy_func != None and \
-                hasattr(self, "cache_Key_to_value"):
+        if self.destroy_func != None:
             for v in self.values:
                 try:
                     self.destroy_func(v)
@@ -47,11 +50,15 @@ class KeyValueCache(object):
     def values(self):
         result = None
         self.mutex.acquire()
+        if self.cache_key_to_value is None:
+            self.cache_keys = dict()
+            self.cache_key_to_value = dict()
+            self.cache_queries = list()
         result = self.cache_key_to_value.values()
         self.mutex.release()
         return result
 
-    def get(self, key):
+    def get(self, object key):
         if not key in self.cache_keys:
             # Without mutex for speed.
             # May race and be wrong, but then it'll just be added
@@ -64,7 +71,7 @@ class KeyValueCache(object):
         self.mutex.release()
         return result
 
-    def add(self, key, value):
+    def add(self, object key, object value):
         self.mutex.acquire()
         if key in self.cache_keys:
             self.mutex.release()
