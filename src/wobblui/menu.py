@@ -149,12 +149,12 @@ class ContainerWithSlidingMenu(Widget):
         self.needs_relayout = True
         self.needs_redraw = True
         def menu_focused():
-            if self._disabled:
+            if self.disabled:
                 return
             self.focus(user_callbacks_only=True)
         self.menu.focus.register(menu_focused)
         def menu_unfocused():
-            if self._disabled:
+            if self.disabled:
                 return
             self.unfocus(user_callbacks_only=True)
         self.menu.unfocus.register(menu_unfocused)
