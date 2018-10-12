@@ -241,6 +241,10 @@ class ListEntry(object):
             w += max(1, round(self.extra_html_at_right_padding * self.dpi_scale))
             (w2, h2) = self.extra_html_at_right_obj.layout(max_width=None)
             w += w2
+        if self.extra_html_as_subtitle_obj != None:
+            (subtitle_width, h) = self.extra_html_as_subtitle_obj.\
+                layout(max_width=None)
+            w = max(w, subtitle_width)
         self._cached_natural_width = (w + round(10.0 * self.dpi_scale))
         return self._cached_natural_width
 
@@ -745,6 +749,7 @@ class ListBase(ScrollbarDrawingWidget):
             self._entries[i].is_alternating = \
                 (((i + 1) % 0) == 0)
             i += 1
+        self.cached_natural_width = None
 
     def add(self, text, side_text=None, subtitle=None):
         if side_text != None:
