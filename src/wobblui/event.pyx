@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -28,7 +29,7 @@ from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DEBUG_EVENT=False
 
-class Event(object):
+cdef class Event(object):
     """ This is a generic event for use by any widgets.
 
         An event consists of a name, special callback functions
@@ -100,6 +101,12 @@ class Event(object):
         @param allow_preventing_widget_callback_by_user_callbacks Control
                                        event order. See text above!
     """
+    cdef public object funcs, on_object
+    cdef int _disabled
+    cdef object special_post_event_func, special_pre_event_func
+    cdef public str name
+    cdef public int widget_must_get_event
+
     def __init__(self, name, owner=None,
             special_pre_event_func=None,
             special_post_event_func=None,
@@ -164,7 +171,7 @@ class Event(object):
     """ This handles the native widget callback `on_<eventname>`.
     """
     def native_widget_callback(self, *args,
-            internal_data=None, only_internal=False):
+            internal_data=None, int only_internal=False):
         # Call the special internal callback function provided by a
         # few of the wobblui core widget (not meant to be used by
         # user-defined widgets, it's purely needed by e.g. the mouse
@@ -206,7 +213,7 @@ class Event(object):
                                    due to its close bond to an inner Menu)
     """
     def __call__(self, *args, internal_data=None,
-            user_callbacks_only=False):
+            int user_callbacks_only=False):
         global config
         if config.get("debug_events") is True:
             logdebug("EVENT TRIGGER: " + str(self.name) +
@@ -255,13 +262,12 @@ class Event(object):
                         not user_callbacks_only:
                     self.special_post_event_func(*args,
                         internal_data=internal_data)
-            return True
         finally:
             # Stop perf measurement.
             if perf_id != None:
                 Perf.stop(perf_id)
 
-class ForceDisabledDummyEvent(Event):
+cdef class ForceDisabledDummyEvent(Event):
     """ This is a special variant that is always disabled. It's meant
         to be used for events that aren't available because the widget
         was instantiated in some configuration where this event makes
@@ -280,7 +286,7 @@ class ForceDisabledDummyEvent(Event):
     def enable(self):
         return
 
-class InternalOnlyDummyEvent(Event):
+cdef class InternalOnlyDummyEvent(Event):
     """ A special event type to indicate that this event is not
         supported by, or made publicly available by the widget,
         and registering to it is considered a user mistake - and

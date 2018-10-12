@@ -58,10 +58,12 @@ setuptools.setup(
         "cross-platform UI toolkit for Python 3",
     packages=setuptools.find_packages("src"),
     ext_modules = [
+        Extension("wobblui.event", ["src/wobblui/event.c"]),
         Extension("wobblui.font.manager", ["src/wobblui/font/manager.c"]),
         Extension("wobblui.font.sdlfont", ["src/wobblui/font/sdlfont.c"]),
         Extension("wobblui.perf", ["src/wobblui/perf.c"]),
         Extension("wobblui.richtext", ["src/wobblui/richtext.c"]),
+        Extension("wobblui.widget", ["src/wobblui/widget.c"]),
         Extension("wobblui.widget_base", ["src/wobblui/widget_base.c"]),
         Extension("wobblui.woblog", ["src/wobblui/woblog.c"]),
         ],

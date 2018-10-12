@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -25,10 +26,12 @@ from wobblui.widget_base import all_widgets, tab_sort, WidgetBase
 from wobblui.window import Window
 
 class Widget(WidgetBase):
-    def __init__(self, is_container=False, can_get_focus=False,
-            takes_text_input=False, generate_double_click_for_touches=False,
-            has_native_touch_support=False,
-            fake_mouse_even_with_native_touch_support=False):
+    def __init__(self,
+            int is_container=False, int can_get_focus=False,
+            int takes_text_input=False,
+            int generate_double_click_for_touches=False,
+            int has_native_touch_support=False,
+            int fake_mouse_even_with_native_touch_support=False):
         super().__init__(is_container=is_container,
             can_get_focus=can_get_focus,
             takes_text_input=takes_text_input,
@@ -100,3 +103,4 @@ class Widget(WidgetBase):
         if isinstance(widget, Widget):
             return (self.parent_window == widget.parent_window)
         return True
+

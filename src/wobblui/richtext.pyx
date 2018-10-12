@@ -56,6 +56,7 @@ cdef class RichTextObj(object):
     cdef public int x, y, width, italic, bold, px_size
     cdef public double draw_scale
     cdef public str font_family
+    cdef str _text
 
     def __init__(self):
         self.x = 0
@@ -113,7 +114,6 @@ cdef class RichTextFragment(RichTextObj):
     cdef public object forced_text_color, surrounding_tags, align
     cdef object _cached_parts, _width_cache
     cdef int _cached_height
-    cdef str _text
 
     def __init__(self, text, font_family, int bold, int italic,
             int px_size, surrounding_tags=[],
@@ -374,7 +374,7 @@ cdef class RichTextFragment(RichTextObj):
 cdef class RichTextLinebreak(RichTextObj):
     def __init__(self):
         super().__init__()
-        self.text = "\n"
+        self._text = "\n"
 
     def __repr__(self):
         t = "<RichTextLinebreak x:" + str(self.x) +\
