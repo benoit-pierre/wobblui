@@ -135,7 +135,7 @@ class Label(ScrollbarDrawingWidget):
     def on_relayout(self):
         self.font_size_refresh()
         layout_max_width = self.width
-        if self._max_width != None and self._max_width < layout_width:
+        if self._max_width >= 0 and self._max_width < layout_max_width:
             layout_max_width = self._max_width
         (self._layout_width, self._layout_height) = self.text_obj.layout(
             max_width=layout_max_width, align_if_none=self._current_align)

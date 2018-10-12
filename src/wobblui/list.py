@@ -41,6 +41,7 @@ class ListEntry(object):
             extra_html_at_right_scale=0.8, is_alternating=False,
             with_visible_bg=False):
         self.with_visible_bg = with_visible_bg
+        self._max_width = -1
         self._cached_natural_width = None
         self._cached_render_tex = None
         self._width = 0
@@ -114,7 +115,7 @@ class ListEntry(object):
             self.extra_html_as_subtitle_obj.\
                 set_html(self.extra_html_as_subtitle)
 
-        self._max_width = None
+        self._max_width = -1
         self.need_size_update = True
         self.dpi_scale = dpi_scale
 
@@ -255,7 +256,7 @@ class ListEntry(object):
 
     @width.setter
     def width(self, v):
-        if self._max_width != None:
+        if self._max_width >= 0:
             v = min(self._max_width, v)
         if self._width != v:
             self._width = v
@@ -286,6 +287,8 @@ class ListEntry(object):
     def max_width(self, v):
         if v != None:
             v = int(round(v))
+        else:
+            v = -1
         if self._max_width != v:
             self._max_width = v
             self.need_size_update = True
@@ -305,7 +308,7 @@ class ListEntry(object):
         padding_vertical = max(0,
             round(self.vertical_padding * self.dpi_scale))
         mw = self.max_width
-        if mw != None:
+        if mw >= 0:
             mw = min(self.width, mw) - padding * 2
         else:
             mw = max(1, self.width - padding * 2)

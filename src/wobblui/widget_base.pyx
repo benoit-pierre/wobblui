@@ -44,7 +44,59 @@ from wobblui.widgetman import add_widget, all_widgets, \
     get_widget_id, get_add_id, tab_sort
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
-class WidgetBase(object):
+cdef class WidgetBase(object):
+    cdef public str type
+    cdef public int _focusable
+    cdef public int needs_redraw
+    cdef public int id
+    cdef public int added_order
+    cdef public int no_mouse_events  # disables callbacks AND propagation
+    cdef public int continue_infinite_scroll_when_uncofused
+    cdef public int fake_mouse_even_with_native_touch_support
+    cdef public int has_native_touch_support, takes_text_input
+    cdef public int _prevent_mouse_event_propagate
+    cdef public int needs_relayout
+    cdef public int generate_double_click_for_touches 
+    cdef public int _x, _y, _width, _height, _max_width, _max_height
+    cdef public int is_container
+    cdef public object _children
+    cdef object _parent
+    cdef int _disabled, _is_focused, _invisible
+    cdef object _cursor
+
+    # Event processing internal state:
+    cdef public int _in_touch_fake_event_processing
+    cdef public int last_mouse_move_was_inside
+    cdef public object last_mouse_down_presses
+    cdef public object last_mouse_click_with_time
+    cdef public int last_touch_was_inside
+    cdef public int last_touch_was_pressed
+    cdef public int _cached_previous_natural_width
+    cdef public int _cached_previous_natural_height
+    cdef public double last_touch_event_ts
+    cdef public double touch_vel_x, touch_vel_y
+    cdef public int last_seen_infinitescroll_touch_x,\
+        last_seen_infinitescroll_touch_y, touch_in_progress,\
+        have_scheduled_scroll_checker
+    cdef public double last_infinite_ts  # for drag-fast-and-let-go scrolling
+    cdef public object touch_start_x, touch_start_y  # nullable
+    cdef public double touch_max_ever_distance
+    cdef public double touch_start_time
+    cdef public int last_touch_x, last_touch_y, touch_scrolling
+    cdef public int long_click_callback_id, have_long_click_callback
+
+    # Drawing technical details:
+    cdef public object sdl_texture
+    cdef public int sdl_texture_width, sdl_texture_height
+    cdef public object restore_old_target
+
+    # Event objects:
+    cdef public object textinput, parentchanged, multitouchstart,\
+        multitouchmove, multitouchend, touchstart, touchmove, touchend,\
+        mousemove, mousedown, mouseup, mousewheel, stylechanged,\
+        keyup, keydown, click, doubleclick, relayout, moved, resized,\
+        focus, unfocus
+
     def __init__(self, is_container=False,
             can_get_focus=False,
             takes_text_input=False,
@@ -75,8 +127,8 @@ class WidgetBase(object):
         self._y = 0
         self._width = 64
         self._height = 64
-        self._max_width = None
-        self._max_height = None
+        self._max_width = -1
+        self._max_height = -1
         self.is_container = is_container
         self._children = []
         self._parent = None
@@ -86,14 +138,14 @@ class WidgetBase(object):
         self.sdl_texture_width = -1
         self.sdl_texture_height = -1
 
-        self.restore_old_target = -1
+        self.restore_old_target = None
         def start_redraw(internal_data=None):
             self_value = self_ref()
             if self_value is None or self_value.renderer is None:
                 return
             if self_value.needs_relayout:
                 self_value.relayout()
-            if self_value.restore_old_target != -1:
+            if self_value.restore_old_target != None:
                 raise RuntimeError("nested redraw on " +
                     str(self_value) + ", this is forbidden")
             dpi_scale = self_value.style.dpi_scale
@@ -142,7 +194,7 @@ class WidgetBase(object):
                 self_value.do_redraw()
             sdl.SDL_SetRenderTarget(self_value.renderer,
                 self_value.restore_old_target)
-            self_value.restore_old_target = -1
+            self_value.restore_old_target = None
             self_value.post_redraw()
         self.redraw = Event("redraw", owner=self,
             special_post_event_func=end_redraw,
@@ -334,12 +386,11 @@ class WidgetBase(object):
         current_natural_width = self.get_natural_width()
         current_natural_height = self.get_natural_height(
             given_width=current_natural_width)
-        if hasattr(self, "_cached_previous_natural_width"):
-            if self._cached_previous_natural_width == \
-                    current_natural_width and \
-                    self._cached_previous_natural_height ==\
-                    current_natural_height:
-                need_parent_relayout = False
+        if self._cached_previous_natural_width == \
+                current_natural_width and \
+                self._cached_previous_natural_height ==\
+                current_natural_height:
+            need_parent_relayout = False
         self._cached_previous_natural_width = current_natural_width
         self._cached_previous_natural_height = current_natural_height
         if self.parent != None and need_parent_relayout:
@@ -431,35 +482,35 @@ class WidgetBase(object):
         now = time.monotonic()
 
         # Track how this touch drag is going:
-        if not hasattr(self, "touch_vel_x"):
-            self.touch_vel_x = 0
-            self.touch_vel_y = 0
-        if hasattr(self, "last_touch_event_ts"):
+        if self.last_touch_event_ts != 0:
             old_ts = self.last_touch_event_ts
         else:
             old_ts = now
-        self.last_touch_event_ts = now
+            self.last_seen_infinitescroll_touch_x = x
+            self.last_seen_infinitescroll_touch_y = y
+        self.last_touch_event_ts = max(1, now)
         self.touch_in_progress = (not stop_event)
-        if hasattr(self, "last_seen_touch_x") and not stop_event:
+        if not stop_event:
             duration = max(0.001, now - old_ts)
             self.touch_vel_x = \
                 max(-90 * self.dpi_scale,
                 min(90 * self.dpi_scale,
-                (x - self.last_seen_touch_x) * 0.02 / duration))
+                (x - float(self.last_seen_infinitescroll_touch_x))
+                    * 0.02 / duration))
             self.touch_vel_y = \
                 max(-90 * self.dpi_scale,
                 min(90 * self.dpi_scale,
-                (y - self.last_seen_touch_y) * 0.02 / duration))
+                (y - float(self.last_seen_infinitescroll_touch_y))
+                    * 0.02 / duration))
         if stop_event and abs(self.touch_vel_x) < 5.0 * self.dpi_scale \
                 and abs(self.touch_vel_y) < 5.0 * self.dpi_scale:
             self.touch_vel_x = 0
             self.touch_vel_y = 0
-        self.last_seen_touch_x = x
-        self.last_seen_touch_y = y
+        self.last_seen_infinitescroll_touch_x = x
+        self.last_seen_infinitescroll_touch_y = y
 
         # Schedule checker to see if user keeps finger still:
-        if hasattr(self, "have_scheduled_scroll_checker") \
-                and self.have_scheduled_scroll_checker:
+        if self.have_scheduled_scroll_checker:
             return
         self.have_scheduled_scroll_checker = True
         self_ref = weakref.ref(self)
@@ -483,7 +534,7 @@ class WidgetBase(object):
                 and not self.continue_infinite_scroll_when_unfocused):
             self.touch_vel_x = 0
             self.touch_vel_y = 0
-            self.last_infinite_ts = None
+            self.last_infinite_ts = 0
 
         # See if we should continue moving infinitely:
         continue_moving = abs(self.touch_vel_x) > 2.0 * self.dpi_scale or \
@@ -491,9 +542,8 @@ class WidgetBase(object):
         faked_event = False
         if not self.touch_in_progress and continue_moving:
             faked_event = True
-            if not hasattr(self, "last_infinite_ts") or \
-                    self.last_infinite_ts is None:
-                self.last_infinite_ts = now
+            if self.last_infinite_ts == 0:
+                self.last_infinite_ts = max(0.1, now)
             duration = min(1.0, now - self.last_infinite_ts)
             i = 0
             while i < 5:
@@ -503,8 +553,8 @@ class WidgetBase(object):
             self.last_infinite_ts = now
             effective_vel_x = self.touch_vel_x * duration
             effective_vel_y = self.touch_vel_y * duration
-            self.last_seen_touch_x += effective_vel_x
-            self.last_seen_touch_y += effective_vel_y
+            self.last_seen_infinitescroll_touch_x += effective_vel_x
+            self.last_seen_infinitescroll_touch_y += effective_vel_y
             scalar = 0.3
             self._prevent_mouse_event_propagate = True
             try:
@@ -512,12 +562,12 @@ class WidgetBase(object):
                     effective_vel_x * scalar,
                     effective_vel_y * scalar,
                     internal_data=[
-                    self.last_seen_touch_x + self.abs_x,
-                    self.last_seen_touch_y + self.abs_y])
+                    self.last_seen_infinitescroll_touch_x + self.abs_x,
+                    self.last_seen_infinitescroll_touch_y + self.abs_y])
             finally:
                 self._prevent_mouse_event_propagate = False
         else:
-            self.last_infinite_ts = None
+            self.last_infinite_ts = 0
         if self.touch_in_progress or continue_moving:
             if faked_event:
                 return 0.01  # keep high rate to scroll smoothly
@@ -636,8 +686,7 @@ class WidgetBase(object):
         Perf.chain(chain_id)
 
         now = time.monotonic()
-        if hasattr(self, "no_mouse_events") and \
-                self.no_mouse_events is True:
+        if self.no_mouse_events == True:
             Perf.stop(chain_id)
             return
 
@@ -692,15 +741,6 @@ class WidgetBase(object):
         touch_hitpoint_check_x = x  # type: can be None!
         touch_hitpoint_check_y = y
         cdef int treat_as_touch_start = False
-        # Make sure all variables we're going to use exist:
-        if not hasattr(self, "touch_start_x"):
-            self.touch_start_x = None
-            self.touch_start_y = None
-            self.touch_max_ever_distance = 0.0
-            self.touch_start_time = 0.0
-            self.last_touch_x = None
-            self.last_touch_y = None
-            self.touch_scrolling = False
 
         # Update cursor:
         if not is_post and event_name == "mousemove" and \
@@ -745,9 +785,6 @@ class WidgetBase(object):
                 self.last_touch_y = y
                 
                 # Schedule test for long-press click:
-                if not hasattr(self, "long_click_callback_id"):
-                    self.long_click_callback_id = 0
-                    self.have_long_click_callback = False
                 self.long_click_callback_id += 1
                 curr_id = self.long_click_callback_id
                 self_ref = weakref.ref(self)
@@ -900,8 +937,7 @@ class WidgetBase(object):
             return
 
         # Pass on event to child widgets:
-        if hasattr(self, "_prevent_mouse_event_propagate") and \
-                self._prevent_mouse_event_propagate is True:
+        if self._prevent_mouse_event_propagate == True:
             Perf.stop(chain_id)
             return
         child_list = copy.copy(self.children)
@@ -1063,8 +1099,7 @@ class WidgetBase(object):
         Perf.stop(chain_id)
 
     def __del__(self):
-        if hasattr(self, "sdl_texture") and \
-                self.sdl_texture != None:
+        if self.sdl_texture != None:
             sdl.SDL_DestroyTexture(self.sdl_texture)
             self.sdl_texture = None
         return
@@ -1163,14 +1198,18 @@ class WidgetBase(object):
     def set_max_width(self, w):
         if w != None:
             w = max(0, int(w))
+        else:
+            w = -1
         if self._max_width == w:
             return
-        self._max_width = w
+        self._max_width = w 
         self.resized()
 
     def set_max_height(self, w):
         if w != None:
             w = max(0, int(w))
+        else:
+            w = -1
         if self._max_height == w:
             return
         self._max_height = w
@@ -1178,23 +1217,23 @@ class WidgetBase(object):
 
     @property
     def width(self):
-        if self._max_width != None:
+        if self._max_width >= 0:
             return min(self._max_width, self._width)
         return self._width
 
     @property
     def height(self):
-        if self._max_height != None:
+        if self._max_height >= 0:
             return min(self._max_height, self._height)
         return self._height
 
     @width.setter
-    def width(self, v):
+    def width(self, int v):
         if self._width != v:
             self.size_change(v, self.height)
 
     @height.setter
-    def height(self, h):
+    def height(self, int h):
         if self._height != h:
             self.size_change(self.width, h)
 
@@ -1228,7 +1267,7 @@ class WidgetBase(object):
             key=functools.cmp_to_key(tab_sort))
         return sorted_candidates
 
-    def size_change(self, w, h):
+    def size_change(self, int w, int h):
         self._width = w
         self._height = h
         self.needs_relayout = True
