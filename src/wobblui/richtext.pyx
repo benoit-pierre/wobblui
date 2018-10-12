@@ -52,11 +52,15 @@ class TagInfo(object):
             return True
         return False
 
-class RichTextObj(object):
+cdef class RichTextObj(object):
+    cdef public int x, y, width, italic, bold, px_size
+    cdef public double draw_scale
+    cdef public str font_family
+
     def __init__(self):
-        self.x = None
-        self.y = None
-        self.width = None
+        self.x = 0
+        self.y = 0
+        self.width = -1
         self.italic = False
         self.bold = False
         self.font_family = "Sans Serif"
@@ -105,7 +109,12 @@ class RichTextObj(object):
         return t
 
 fragment_draw_rect = None
-class RichTextFragment(RichTextObj):
+cdef class RichTextFragment(RichTextObj):
+    cdef public object forced_text_color, surrounding_tags, align
+    cdef object _cached_parts, _width_cache
+    cdef int _cached_height
+    cdef str _text
+
     def __init__(self, text, font_family, int bold, int italic,
             int px_size, surrounding_tags=[],
             str force_text_color=None):
@@ -123,7 +132,7 @@ class RichTextFragment(RichTextObj):
         self.align = None
         self.draw_scale = 1.0
         self._width_cache = dict()
-        self._cached_height = None
+        self._cached_height = -1
 
     @property
     def text(self):
@@ -132,7 +141,7 @@ class RichTextFragment(RichTextObj):
     @text.setter
     def text(self, str v):
         self._cached_parts = None
-        self._cached_height = None
+        self._cached_height = -1
         self._width_cache = dict()
         self._text = str(v)
 
@@ -231,7 +240,7 @@ class RichTextFragment(RichTextObj):
     def get_width(self):
         return self.get_width_up_to_length(len(self.text))
 
-    def get_width_up_to_length(self, index):
+    def get_width_up_to_length(self, int index):
         index = max(0, min(index, len(self.text)))
         if index in self._width_cache:
             return self._width_cache[index]
@@ -240,19 +249,20 @@ class RichTextFragment(RichTextObj):
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
             draw_scale=self.draw_scale)
+        cdef int w, h
         (w, h) = font.render_size(text_part)
         self._width_cache[index] = w
         return w
 
     def compute_height(self):
-        if self._cached_height != None:
+        if self._cached_height >= 0:
             return self._cached_height
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
             draw_scale=self.draw_scale)
         (w, h) = font.render_size(self.text)
-        self._cached_height = h
+        self._cached_height = max(0, h)
         return h
 
     def has_same_formatting_as(self, obj):
@@ -361,7 +371,7 @@ class RichTextFragment(RichTextObj):
         self._cached_parts = result
         return copy.copy(self._cached_parts)
 
-class RichTextLinebreak(RichTextObj):
+cdef class RichTextLinebreak(RichTextObj):
     def __init__(self):
         super().__init__()
         self.text = "\n"
@@ -805,9 +815,9 @@ class RichText(object):
         simple_fragments = []
         i = 0
         while i < len(self.fragments):
-            self.fragments[i].x = None
-            self.fragments[i].y = None
-            self.fragments[i].width = None
+            self.fragments[i].x = 0
+            self.fragments[i].y = 0
+            self.fragments[i].width = -1
             if i == 0 or not isinstance(simple_fragments[-1],
                     RichTextFragment) or \
                     not simple_fragments[-1].has_same_formatting_as(
