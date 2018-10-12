@@ -110,7 +110,7 @@ def clear_renderer(renderer):
             sdl.SDL_DestroyTexture(dashed_texture_store[entry])
             continue
         new_dashed_store[entry] = dashed_texture_store[entry]
-    dashed_texture_store[entry] = new_dashed_store
+    dashed_texture_store = new_dashed_store
 
 def draw_dashed_line(
         renderer, x1, y1, x2, y2, color=None,
