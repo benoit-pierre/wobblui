@@ -164,6 +164,8 @@ cdef class Font(object):
         sdl.SDL_QueryTexture(tex, None, None,
             ctypes.byref(w), ctypes.byref(h))
         sdl.SDL_FreeSurface(surface)
+        w = int(w.value)
+        h = int(h.value)
         rendered_words_cache.add(key, (w, h, tex))
         return (w, h, tex)
 

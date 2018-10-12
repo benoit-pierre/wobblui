@@ -1,3 +1,4 @@
+#cython: language_level=3, boundscheck=False
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -33,7 +34,7 @@ import weakref
 from wobblui.color import Color
 from wobblui.event import Event, ForceDisabledDummyEvent,\
     InternalOnlyDummyEvent
-from wobblui.gfx import draw_dashed_line
+from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.mouse import cursor_seen_during_mousemove
 from wobblui.keyboard import enable_text_events
 from wobblui.perf import Perf
@@ -346,19 +347,19 @@ class WidgetBase(object):
 
     def _internal_on_multitouchstart(self, finger_id, x, y,
             internal_data=None):
-        for child in children:
+        for child in self.children:
             child.multitouchstart(finger_id, x, y,
                 internal_data=internal_data)
 
     def _internal_on_multitouchmove(self, finger_id, x, y,
             internal_data=None):
-        for child in children:
+        for child in self.children:
             child.multitouchstart(finger_id, x, y,
                 internal_data=internal_data)
 
     def _internal_on_multitouchend(self, finger_id, x, y,
             internal_data=None):
-        for child in children:
+        for child in self.children:
             child.multitouchstart(finger_id, x, y,
                 internal_data=internal_data)
 

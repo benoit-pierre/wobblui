@@ -62,6 +62,7 @@ setuptools.setup(
         Extension("wobblui.font.sdlfont", ["src/wobblui/font/sdlfont.c"]),
         Extension("wobblui.perf", ["src/wobblui/perf.c"]),
         Extension("wobblui.richtext", ["src/wobblui/richtext.c"]),
+        Extension("wobblui.widget_base", ["src/wobblui/widget_base.c"]),
         Extension("wobblui.woblog", ["src/wobblui/woblog.c"]),
         ],
     package_dir={'':'src'},
