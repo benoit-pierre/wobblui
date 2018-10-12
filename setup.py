@@ -47,7 +47,11 @@ setuptools.setup(
     description="A simple, universal and " +
         "cross-platform UI toolkit for Python 3",
     packages=setuptools.find_packages("src"),
-    ext_modules = [Extension("wobblui.woblog", ["src/wobblui/woblog.c"])],
+    ext_modules = [
+        Extension("wobblui.woblog", ["src/wobblui/woblog.c"]),
+        Extension("wobblui.font.manager", ["src/wobblui/font/manager.c"]),
+        Extension("wobblui.font.sdlfont", ["src/wobblui/font/sdlfont.c"]),
+        ],
     package_dir={'':'src'},
     package_data={
         "wobblui": ["font/packaged-fonts/*.ttf",
