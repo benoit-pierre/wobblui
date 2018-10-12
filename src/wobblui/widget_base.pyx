@@ -184,36 +184,37 @@ class WidgetBase(object):
                 "multitouchmove", owner=self)
             self.multitouchend = InternalOnlyDummyEvent(
                 "multitouchend", owner=self)
-            def touchstart_pre(x, y, internal_data=None):
+            def touchstart_pre(int x, int y, internal_data=None):
                 self._pre_mouse_event_handling("touchstart",
                     [x, y], internal_data=internal_data)
             self.touchstart = InternalOnlyDummyEvent(
                 "touchstart", owner=self,
                 special_pre_event_func=touchstart_pre)
-            def touchmove_pre(x, y, internal_data=None):
+            def touchmove_pre(int x, int y, internal_data=None):
                 self._pre_mouse_event_handling("touchmove",
                     [x, y], internal_data=internal_data)
             self.touchmove = InternalOnlyDummyEvent(
                 "touchmove", owner=self,
                 special_pre_event_func=touchmove_pre)
-            def touchend_pre(x, y, internal_data=None):
+            def touchend_pre(int x, int y, internal_data=None):
                 self._pre_mouse_event_handling("touchend",
                     [x, y], internal_data=internal_data)
             self.touchend = InternalOnlyDummyEvent(
                 "touchend", owner=self,
                 special_pre_event_func=touchend_pre)
             self.has_native_touch_support = False
-        def mousemove_pre(mouse_id, x, y, internal_data=None):
+        def mousemove_pre(int mouse_id, int x, int y, internal_data=None):
             self._pre_mouse_event_handling("mousemove",
                 [mouse_id, x, y], internal_data=internal_data)
         self.mousemove = Event("mousemove", owner=self,
             special_pre_event_func=mousemove_pre)
-        def mousedown_pre(mouse_id, button_id, x, y, internal_data=None):
+        def mousedown_pre(int mouse_id, int button_id, int x, int y,
+                internal_data=None):
             self._pre_mouse_event_handling("mousedown",
                 [mouse_id, button_id, x, y], internal_data=internal_data)
         self.mousedown = Event("mousedown", owner=self,
             special_pre_event_func=mousedown_pre)
-        def mousewheel_pre(mouse_id, x, y, internal_data=None):
+        def mousewheel_pre(int mouse_id, int x, int y, internal_data=None):
             self._pre_mouse_event_handling("mousewheel",
                 [mouse_id, x, y], internal_data=internal_data)
         self.mousewheel = Event("mousewheel", owner=self,
@@ -363,38 +364,38 @@ class WidgetBase(object):
             child.multitouchstart(finger_id, x, y,
                 internal_data=internal_data)
 
-    def _internal_on_touchstart(self, x, y, internal_data=None):
+    def _internal_on_touchstart(self, int x, int y, internal_data=None):
         self._post_mouse_event_handling("touchstart",
             [x, y],
             internal_data=internal_data)
 
-    def _internal_on_touchmove(self, x, y, internal_data=None):
+    def _internal_on_touchmove(self, int x, int y, internal_data=None):
         self._post_mouse_event_handling("touchmove",
             [x, y],
             internal_data=internal_data)
 
-    def _internal_on_touchend(self, x, y, internal_data=None):
+    def _internal_on_touchend(self, int x, int y, internal_data=None):
         self._post_mouse_event_handling("touchend",
             [x, y],
             internal_data=internal_data)
 
-    def _internal_on_mousedown(self, mouse_id, button, x, y,
+    def _internal_on_mousedown(self, int mouse_id, int button, int x, int y,
             internal_data=None):
         self._post_mouse_event_handling("mousedown",
             [mouse_id, button, x, y],
             internal_data=internal_data)
 
-    def _internal_on_mouseup(self, mouse_id, button, x, y,
+    def _internal_on_mouseup(self, int mouse_id, int button, int x, int y,
             internal_data=None):
         self._post_mouse_event_handling("mouseup",
             [mouse_id, button, x, y],
             internal_data=internal_data)
 
-    def _internal_on_mousemove(self, mouse_id, x, y, internal_data=None):
+    def _internal_on_mousemove(self, int mouse_id, int x, int y, internal_data=None):
         self._post_mouse_event_handling("mousemove", [mouse_id, x, y],
             internal_data=internal_data)
 
-    def _internal_on_mousewheel(self, mouse_id, x, y, internal_data=None):
+    def _internal_on_mousewheel(self, int mouse_id, double x, double y, internal_data=None):
         self._post_mouse_event_handling("mousewheel",
             [mouse_id, float(x), float(y)],
             internal_data=internal_data)
@@ -421,7 +422,7 @@ class WidgetBase(object):
         self.touch_vel_x = 0
         self.touch_vel_y = 0
 
-    def schedule_infinite_scroll_check(self, x, y, stop_event=False):
+    def schedule_infinite_scroll_check(self, int x, int y, stop_event=False):
         # If this widget wants to handle its own touch without faked
         # mouse events, abort (since this is for faking a mouse wheel):
         if self.has_native_touch_support and \
@@ -534,9 +535,9 @@ class WidgetBase(object):
         return self._pre_or_post_mouse_event_handling(event_name,
             event_args, internal_data=None, is_post=False)
 
-    def draw_selection_drag_handle(self, x, y, line_height):
-        x = round(x)
-        y = round(y)
+    def draw_selection_drag_handle(self, double _x, double _y, line_height):
+        cdef int x = round(_x)
+        cdef int y = round(_y)
         c = Color.black
         if self.style != None and self.style.has(
                 "touch_selection_drag_handles"):
@@ -601,7 +602,7 @@ class WidgetBase(object):
                     self_value._prevent_mouse_event_propagate = False
         return test_long_click 
 
-    def consider_mouse_click_focus(self, hit_check_x, hit_check_y):
+    def consider_mouse_click_focus(self, int hit_check_x, int hit_check_y):
         event_descends_into_child = False
         for child in self.children:
             rel_x = hit_check_x - self.abs_x
@@ -623,8 +624,8 @@ class WidgetBase(object):
                 if p != None and not p.focused:
                     p.focus()
 
-    def _pre_or_post_mouse_event_handling(self, event_name,
-            event_args, internal_data=None, is_post=False):
+    def _pre_or_post_mouse_event_handling(self, str event_name,
+            event_args, internal_data=None, int is_post=False):
         # If we arrived here, the internal event wasn't prevented from
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
@@ -641,10 +642,11 @@ class WidgetBase(object):
             return
 
         # First, extract relevant event parameters:
-        wx = None
-        wy = None
-        x = None
-        y = None
+        cdef int wx = 0
+        cdef int wy = 0
+        cdef int x = 0
+        cdef int y = 0
+        cdef int mouse_id = -1
         mouse_id = event_args[0]
         if event_name == "mousedown" or event_name == "mouseup":
             x = event_args[2]
@@ -687,9 +689,9 @@ class WidgetBase(object):
 
         # Process starting point, hit point and overall
         # movement for touch gestures:
-        touch_hitpoint_check_x = x
+        touch_hitpoint_check_x = x  # type: can be None!
         touch_hitpoint_check_y = y
-        treat_as_touch_start = False
+        cdef int treat_as_touch_start = False
         # Make sure all variables we're going to use exist:
         if not hasattr(self, "touch_start_x"):
             self.touch_start_x = None
@@ -710,8 +712,8 @@ class WidgetBase(object):
         # Obtain touch start and diff info:
         orig_touch_start_x = self.touch_start_x
         orig_touch_start_y = self.touch_start_y
-        diff_x = 0
-        diff_y = 0
+        cdef int diff_x = 0
+        cdef int diff_y = 0
         if event_name == "touchstart" or \
                 (event_name.startswith("touch") and \
                 self.touch_start_x is None):
@@ -786,14 +788,12 @@ class WidgetBase(object):
 
         # See what we want to use for the hit check for propagation:
         # (This needs to happen both in pre and post handler!!)
-        hit_check_x = x
-        hit_check_y = y
+        cdef int hit_check_x = x
+        cdef int hit_check_y = y
         if event_name.startswith("touch"):
-            hit_check_x = touch_hitpoint_check_x
-            hit_check_y = touch_hitpoint_check_y
-            if hit_check_x is None:  # fallback
-                hit_check_x = x
-                hit_check_y = y
+            if touch_hitpoint_check_x != None:
+                hit_check_x = touch_hitpoint_check_x
+                hit_check_y = touch_hitpoint_check_y
 
         # *** FAKE MOUSE TOUCH EVENTS (only in pre handler) ***
         if not is_post:
@@ -905,16 +905,16 @@ class WidgetBase(object):
             Perf.stop(chain_id)
             return
         child_list = copy.copy(self.children)
-        check_widget_overlap = False
+        cdef int check_widget_overlap = False
         if hasattr(self, "get_children_in_strict_mouse_event_order"):
             child_list = copy.copy(
                 self.get_children_in_strict_mouse_event_order())
             check_widget_overlap = True
-        force_no_more_matches = False
-        rel_x = x - self.abs_x
-        rel_y = y - self.abs_y
-        hit_check_rx = hit_check_x - self.abs_x
-        hit_check_ry = hit_check_y - self.abs_y
+        cdef int force_no_more_matches = False
+        cdef int rel_x = x - self.abs_x
+        cdef int rel_y = y - self.abs_y
+        cdef int hit_check_rx = hit_check_x - self.abs_x
+        cdef int hit_check_ry = hit_check_y - self.abs_y
         Perf.chain(chain_id, "propagate_start")
         for child in child_list:
             if child.parent != self or (child.type != "window" and

@@ -397,7 +397,7 @@ def _process_mouse_click_event(event,
             touch_pressed = True
             Perf.chain("mouseevent", "callback_prep")
             w.touchstart(
-                float(event.button.x), float(event.button.y))
+                int(event.button.x), int(event.button.y))
         else:
             mouse_ids_button_ids_pressed.add(
                 (int(event.button.which),
@@ -405,9 +405,9 @@ def _process_mouse_click_event(event,
             Perf.chain("mouseevent", "callback_prep")
             w.mousedown(int(event.button.which),
                 int(event.button.button),
-                float(event.button.x), float(event.button.y),
-                internal_data=[float(event.button.x),
-                float(event.button.y)])
+                int(event.button.x), int(event.button.y),
+                internal_data=[int(event.button.x),
+                int(event.button.y)])
             Perf.chain('mouseevent', "callback")
         if not capture_enabled:
             if config.get("capture_debug"):
@@ -423,9 +423,9 @@ def _process_mouse_click_event(event,
             touch_pressed = False
             Perf.chain("mouseevent", "callback_prep")
             w.touchend(
-                float(event.button.x), float(event.button.y),
-                internal_data=[float(event.button.x),
-                float(event.button.y)])
+                int(event.button.x), int(event.button.y),
+                internal_data=[int(event.button.x),
+                int(event.button.y)])
             Perf.chain("mouseevent", "callback")
         else:
             if force_no_widget_can_receive_new_input and \
@@ -437,9 +437,9 @@ def _process_mouse_click_event(event,
             Perf.chain("mouseevent", "callback_prep")
             w.mouseup(int(event.button.which),
                 int(event.button.button),
-                float(event.button.x), float(event.button.y),
-                internal_data=[float(event.button.x),
-                float(event.button.y)])
+                int(event.button.x), int(event.button.y),
+                internal_data=[int(event.button.x),
+                int(event.button.y)])
             Perf.chain("mouseevent", "callback")
             mouse_ids_button_ids_pressed.discard(
                 (int(event.button.which),
