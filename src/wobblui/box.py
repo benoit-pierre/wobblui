@@ -327,11 +327,13 @@ class HBox(Box):
 class CenterBox(Widget):
     def __init__(self, padding=0,
             child_minimum_width=0,
+            child_fixed_width=-1,
             expand_vertically=False,
             expand_horizontally=False):
         super().__init__(is_container=True)
         self.padding = padding
         self.child_minimum_width = child_minimum_width
+        self.child_fixed_width = child_fixed_width
         self.expand_vertically = expand_vertically
         self.expand_horizontally = expand_horizontally
 
@@ -341,6 +343,9 @@ class CenterBox(Widget):
     def get_natural_width(self):
         if len(self._children) == 0:
             return 0
+        if self.child_fixed_width > 0:
+            return (self.padding * 2 * self.dpi_scale) + \
+                self.child_fixed_width * self.dpi_scale
         min_width = round(self.dpi_scale * self.child_minimum_width) 
         return max(min_width,
             self._children[0].get_natural_width()) +\
@@ -361,14 +366,22 @@ class CenterBox(Widget):
             return
         outer_padding = (self.padding * self.dpi_scale)
         child = self._children[0]
-        if not self.expand_horizontally:
-            nat_width = child.get_natural_width()
-            child.width = min(max(1, round(self.width -
-                outer_padding * 2)),
-                max(self.child_minimum_width, nat_width))
+
+        if self.child_fixed_width > 0:
+            # Completely fixed size for child.
+            child.width = min(self.dpi_scale * self.child_fixed_width,
+                max(1, round(self.width - outer_padding * 2)))
         else:
-            child.width = max(1, round(self.width -
-                outer_padding * 2))
+            # Give child natural width or expand it fully:
+            if not self.expand_horizontally:
+                nat_width = child.get_natural_width()
+                child.width = min(max(1, round(self.width -
+                    outer_padding * 2)),
+                    max(self.child_minimum_width * self.dpi_scale,
+                    nat_width))
+            else:
+                child.width = max(1, round(self.width -
+                    outer_padding * 2))
         if not self.expand_vertically:
             child.height = min(round(self.height -
                 outer_padding * 2), child.get_natural_height(
