@@ -361,7 +361,7 @@ class CenterBox(Widget):
             return
         outer_padding = (self.padding * self.dpi_scale)
         child = self._children[0]
-        if self.expand_horizontally:
+        if not self.expand_horizontally:
             nat_width = child.get_natural_width()
             child.width = min(max(1, round(self.width -
                 outer_padding * 2)),
