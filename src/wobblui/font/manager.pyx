@@ -218,7 +218,16 @@ cdef class Font(object):
         self.mutex.release()
         return result
 
-class FontManager(object):
+cdef class FontManager(object):
+    cdef public int cache_size
+    cdef public object font_by_sizedpistyle_cache,\
+        font_by_sizedpistyle_cache_times,\
+        font_metrics_by_styledpi_cache,\
+        load_debug_info_shown,\
+        missing_fonts,\
+        avg_letter_width_cache,\
+        mutex 
+
     def __init__(self):
         self.font_by_sizedpistyle_cache = dict()
         self.font_by_sizedpistyle_cache_times = dict()
@@ -316,8 +325,7 @@ class FontManager(object):
                 )] = f
         self._limit_cache()
 
-
-font_manager_singleton = None
+cdef object font_manager_singleton = None
 def font_manager():
     global font_manager_singleton
     if font_manager_singleton is None:
