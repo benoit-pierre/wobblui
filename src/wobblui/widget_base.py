@@ -363,19 +363,16 @@ class WidgetBase(object):
                 internal_data=internal_data)
 
     def _internal_on_touchstart(self, x, y, internal_data=None):
-        print("TOUCHSTART")
         self._post_mouse_event_handling("touchstart",
             [x, y],
             internal_data=internal_data)
 
     def _internal_on_touchmove(self, x, y, internal_data=None):
-        print("TOUCHMOVE")
         self._post_mouse_event_handling("touchmove",
             [x, y],
             internal_data=internal_data)
 
     def _internal_on_touchend(self, x, y, internal_data=None):
-        print("TOUCHEND")
         self._post_mouse_event_handling("touchend",
             [x, y],
             internal_data=internal_data)

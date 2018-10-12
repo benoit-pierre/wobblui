@@ -1,4 +1,4 @@
-#cython: language_level=3, boundscheck=False
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -20,8 +20,10 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 import ctypes
 import functools
+from libc.stdlib cimport malloc, free
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import threading
@@ -42,16 +44,40 @@ rendered_words_cache = KeyValueCache(size=500,
     destroy_func=lambda x: sdl.SDL_DestroyTexture(x[2]))
 
 _reuse_draw_rect = sdl.SDL_Rect()
-class Font(object):
-    def __init__(self, font_family,
-            pixel_size, italic=False, bold=False):
-        self.font_family = font_family
+cdef class Font(object):
+    cdef int italic, bold, pixel_size
+    cdef char* font_family_bytes
+    cdef char* _unique_key
+    cdef double _avg_letter_width
+    cdef object _sdl_font, mutex
+
+    def __init__(self, str font_family,
+            int pixel_size, int italic=False, int bold=False):
+        assert(font_family != None)
+        font_family_bytes = font_family.encode("utf-8", "replace")
+        array = <char *>PyMem_Malloc((len(font_family_bytes) + 1) * sizeof(char))
+        if not array:
+            raise MemoryError()
+        cdef int i = 0
+        while i < len(font_family_bytes):
+            array[i] = font_family_bytes[i]
+            i += 1
+        array[len(font_family_bytes)] = 0
+        self.font_family_bytes = array
         self.pixel_size = pixel_size
         self.italic = italic
         self.bold = bold
-        self._avg_letter_width = None
+        self._avg_letter_width = 0
         self._sdl_font = None
         self.mutex = threading.Lock()
+
+    def __dealloc__(self):
+        PyMem_Free(self.font_family_bytes)
+        PyMem_Free(self._unique_key)
+
+    @property
+    def font_family(self):
+        return self.font_family_bytes.decode("utf-8", "replace")
 
     @staticmethod
     def clear_global_cache_textures():
@@ -67,27 +93,37 @@ class Font(object):
 
     @property
     def unique_key(self):
-        return str(self.__repr__())
+        if self._unique_key != NULL:
+            return self._unique_key
+        key_bytes = str(self.__repr__()).encode("utf-8", "replace")
+        array = <char *>PyMem_Malloc((len(key_bytes) + 1) * sizeof(char))
+        if not array:
+            raise MemoryError()
+        cdef int i = 0
+        while i < len(key_bytes):
+            array[i] = key_bytes[i]
+            i += 1
+        array[len(key_bytes)] = 0
+        self._unique_key = array
+        return self._unique_key
 
-    def render_size(self, text):
+    def render_size(self, str text):
         global render_size_cache
         if len(text) == 0:
             return (0, 0)
         unique_key = self.unique_key
-        try:
-            text = text.encode("utf-8", "replace")
-        except AttributeError:
-            pass
-        result = render_size_cache.get(str((unique_key, text)))
+        text_bytes = text.encode("utf-8", "replace")
+        result = render_size_cache.get(str((unique_key, text_bytes)))
         if result != None:
             return result
         font = self.get_sdl_font()
-        result = sdlfont.get_thread_safe_render_size(font, text)
-        render_size_cache.add(str((unique_key, text)), result)
+        result = sdlfont.get_thread_safe_render_size(font, text_bytes)
+        render_size_cache.add(str((unique_key, text_bytes)), result)
         return result
 
-    def draw_at(self, renderer, text, x, y, color=Color.black):
+    def draw_at(self, renderer, str text, int x, int y, color=Color.black):
         global _reuse_draw_rect
+        cdef int w, h
         (w, h, tex) = self.get_cached_rendered_sdl_texture(
             renderer, text, color=Color.white)
         assert(tex != None)
@@ -100,9 +136,9 @@ class Font(object):
             color.red, color.green, color.blue)
         sdl.SDL_RenderCopy(renderer, tex, None, tg)
 
-    def get_cached_rendered_sdl_texture(self, renderer, text, color=None):
+    def get_cached_rendered_sdl_texture(self, renderer, str text, color=None):
         global rendered_words_cache
-        key = str((self.font_family, self.italic, self.bold,
+        cdef str key = str((self.font_family, self.italic, self.bold,
             self.pixel_size, str(ctypes.addressof(
                 renderer.contents)))) + "_" + text
         value = rendered_words_cache.get(key)
@@ -114,11 +150,11 @@ class Font(object):
         else:
             c = sdl.SDL_Color(0, 0, 0)
         try:
-            text = text.encode("utf-8", "replace")
+            text_bytes = text.encode("utf-8", "replace")
         except AttributeError:
             pass
         surface = sdlttf.TTF_RenderUTF8_Blended(
-            font.font, text, c)
+            font.font, text_bytes, c)
         tex = sdl.SDL_CreateTextureFromSurface(renderer, surface)
         sdl.SDL_SetTextureBlendMode(tex, sdl.SDL_BLENDMODE_BLEND)
         w = ctypes.c_int32()
@@ -167,7 +203,7 @@ class Font(object):
 
     def get_average_letter_width(self):
         self.mutex.acquire()
-        if self._avg_letter_width != None:
+        if self._avg_letter_width > 0:
             result = self._avg_letter_width
             self.mutex.release()
             return result
@@ -176,7 +212,7 @@ class Font(object):
         (width, height) = self.render_size(test_str)
         result = (width / float(len(test_str)))
         self.mutex.acquire()
-        self._avg_letter_width = result
+        self._avg_letter_width = max(0.001, result)
         self.mutex.release()
         return result
 
@@ -208,16 +244,16 @@ class FontManager(object):
             del(self.font_by_sizedpistyle_cache[remove_this[1]])
             del(self.font_by_sizedpistyle_cache_times[remove_this[1]])
 
-    def get_word_size(self, word, font_name,
-            bold=False, italic=False,
-            px_size=12, display_dpi=96):
+    def get_word_size(self, str word, str font_name,
+            int bold=False, int italic=False,
+            int px_size=12, int display_dpi=96):
         return self.get_font(font_name, bold, italic,
             px_size=px_size, display_dpi=display_dpi).render_size(word)
 
-    def get_font(self, name, bold=False, italic=False, px_size=12,
-            draw_scale=1.0, display_dpi=96):
-        display_dpi = round(display_dpi)
-        unified_draw_scale = round(draw_scale *
+    def get_font(self, str name,
+            int bold=False, int italic=False, int px_size=12,
+            double draw_scale=1.0, int display_dpi=96):
+        cdef int unified_draw_scale = round(draw_scale *
             DRAW_SCALE_GRANULARITY_FACTOR)
         self.mutex.acquire()
         try:
@@ -253,8 +289,9 @@ class FontManager(object):
         self.mutex.release()
         return result
 
-    def _load_font_info(self, name, bold, italic, px_size=12,
-            draw_scale=1.0, display_dpi=96):
+    def _load_font_info(self,
+            str name, int bold, int italic, int px_size=12,
+            double draw_scale=1.0, int display_dpi=96):
         display_dpi = round(display_dpi)
         style = (name, bold, italic, round(px_size * 10))
         unified_draw_scale = round(draw_scale *

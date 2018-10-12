@@ -1,4 +1,4 @@
-#cython: language_level=3, boundscheck=False
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -28,12 +28,14 @@ import threading
 from wobblui.cache import KeyValueCache
 from wobblui.sdlinit import initialize_sdl
 
-shutdown_in_progress = False
+cdef int shutdown_in_progress = False
 def stop_queue_for_process_shutdown():
     global shutdown_in_progress
     shutdown_in_progress = True
 
-class ThreadJob(object):
+cdef class ThreadJob(object):
+    cdef object result, result_waiter
+
     def __init__(self):
         self.result = None
         self.result_waiter = threading.Event()
@@ -48,8 +50,11 @@ class ThreadJob(object):
             break
         return self.result
 
-class SDLFontSizeJob(ThreadJob):
-    def __init__(self, sdl_font, text):
+cdef class SDLFontSizeJob(ThreadJob):
+    cdef object sdl_font
+    cdef bytes text
+
+    def __init__(self, object sdl_font, text):
         super().__init__()
         self.sdl_font = sdl_font
         self.text = text
@@ -63,7 +68,9 @@ class SDLFontSizeJob(ThreadJob):
         self.result = (int(width.value), int(height.value))
         self.result_waiter.set()
 
-class SDLFontCloseJob(ThreadJob):
+cdef class SDLFontCloseJob(ThreadJob):
+    cdef object sdl_font
+
     def __init__(self, sdl_font):
         super().__init__()
         self.sdl_font = sdl_font
@@ -72,7 +79,7 @@ class SDLFontCloseJob(ThreadJob):
         sdlttf.TTF_CloseFont(self.sdl_font.font)
         self.result_waiter.set()
 
-def get_sdl_font(font_path, px_size):
+def get_sdl_font(str font_path, int px_size):
     font = sdlttf.TTF_OpenFont(
         font_path.encode("utf-8"),
         px_size)
@@ -82,8 +89,11 @@ def get_sdl_font(font_path, px_size):
             "font: " + str(error_msg))
     return SDLFontWrapper(font)
 
-class SDLFontLoadJob(object):
-    def __init__(self, font_path, px_size):
+cdef class SDLFontLoadJob(ThreadJob):
+    cdef str font_path
+    cdef int px_size
+
+    def __init__(self, str font_path, int px_size):
         self.font_path = font_path
         self.px_size = max(1, round(px_size))
         self.result = None
@@ -118,8 +128,9 @@ def process_jobs():
 def is_main_thread():
     return (threading.current_thread() == threading.main_thread())
 
-def get_thread_safe_render_size(sdl_ttf_font, text):
-    size_job = SDLFontSizeJob(sdl_ttf_font, text)
+def get_thread_safe_render_size(sdl_ttf_font, char* text):
+    text_bytes = bytes(text)
+    size_job = SDLFontSizeJob(sdl_ttf_font, text_bytes)
     if is_main_thread():
         size_job.execute()
         return size_job.result

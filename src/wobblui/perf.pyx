@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -26,72 +27,74 @@ import time
 from wobblui.uiconf import config
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
-class Perf(object):
-    perf_start_times = dict()
-    perf_measurements = dict()
-    perf_id = 0
-    lock = threading.Lock()
+cdef class _PerfClass(object):
+    cdef object perf_start_times
+    cdef object perf_measurements
+    cdef long perf_id
+    cdef object lock
 
-    @classmethod
-    def start(cls, name):
-        return cls._start_do(name, type="normal")
+    def __init__(self):
+        self.perf_start_times = dict()
+        self.perf_measurements = dict()
+        self.perf_id = 0
+        self.lock = threading.Lock()
 
-    @classmethod
-    def _start_do(cls, name, type="normal", chain_step_name=None):
+    def start(self, str name):
+        return self._start_do(name, type="normal")
+
+    def _start_do(self, str name, str type="normal", chain_step_name=None):
         now = time.monotonic()
-        cls.lock.acquire()
+        self.lock.acquire()
         if type == "normal":
-            cls.perf_id += 1
-            perf_id = cls.perf_id
+            self.perf_id += 1
+            perf_id = str(self.perf_id)
         else:
             perf_id = "chain_" + name
         if type == "normal":
-            cls.perf_start_times[perf_id] = (type, name, now)
+            self.perf_start_times[perf_id] = (type, name, now)
         elif type == "chain":
-            if not perf_id in cls.perf_start_times or \
+            if not perf_id in self.perf_start_times or \
                     chain_step_name is None:
-                cls.perf_start_times[perf_id] =\
+                self.perf_start_times[perf_id] =\
                     (type, name, [])
-            cls.perf_start_times[perf_id][2].append(
+            self.perf_start_times[perf_id][2].append(
                 (chain_step_name, now))
         else:
             raise RuntimeError("unknown perf type: " + str(type))
-        cls.lock.release()
+        self.lock.release()
         return perf_id
 
-    @classmethod
-    def chain(cls, chain_name, step_name=None):
-        return cls._start_do(chain_name,
+    def chain(self, str chain_name, step_name=None):
+        return self._start_do(chain_name,
             type="chain", chain_step_name=step_name)
 
-    @classmethod
-    def stop(cls, perf_id, debug=None, expected_max_duration=None,
+    def stop(self, str perf_id, debug=None, expected_max_duration=None,
             do_print=False):
         global config
-        now = time.monotonic()
-        cls.lock.acquire()
-        if not perf_id in cls.perf_start_times:
-            if "chain_" + perf_id in cls.perf_start_times:
+        cdef double now = time.monotonic()
+        self.lock.acquire()
+        if not perf_id in self.perf_start_times:
+            if "chain_" + perf_id in self.perf_start_times:
                 perf_id = "chain_" + perf_id
             else:
                 raise ValueError("invalid perf id")
         is_chain = False
-        if cls.perf_start_times[perf_id][0] == "normal":
-            start_time = cls.perf_start_times[perf_id][2]
-        elif cls.perf_start_times[perf_id][0] == "chain":
+        if self.perf_start_times[perf_id][0] == "normal":
+            start_time = self.perf_start_times[perf_id][2]
+        elif self.perf_start_times[perf_id][0] == "chain":
             is_chain = True
-            start_time = cls.perf_start_times[perf_id][2][0][1]
+            start_time = self.perf_start_times[perf_id][2][0][1]
         else:
             raise RuntimeError("unexpected perf type")
-        perf_name = cls.perf_start_times[perf_id][1]
+        perf_name = self.perf_start_times[perf_id][1]
         duration = now - start_time
-        if not perf_name in cls.perf_measurements:
-            cls.perf_measurements[perf_name] = list()
-        cls.perf_measurements[perf_name].append((now, duration))
-        if len(cls.perf_measurements[perf_name]) > 40:
-            cls.perf_measurements[perf_name] = \
-                cls.perf_measurements[perf_name][20:]
-        cls.lock.release()
+        if not perf_name in self.perf_measurements:
+            self.perf_measurements[perf_name] = list()
+        self.perf_measurements[perf_name].append((now, duration))
+        if len(self.perf_measurements[perf_name]) > 40:
+            self.perf_measurements[perf_name] = \
+                self.perf_measurements[perf_name][20:]
+        self.lock.release()
         if config.get("perf_debug") or do_print:
             note = "" 
             if expected_max_duration != None:
@@ -109,10 +112,10 @@ class Perf(object):
                 t = "perf[CHAIN]: " +\
                     str(perf_name) + note + " -> "
                 i = 1
-                while i < len(cls.perf_start_times[perf_id][2]):
-                    time_diff = (cls.perf_start_times[perf_id][2][i][1] -
-                        cls.perf_start_times[perf_id][2][i - 1][1])
-                    step_name = cls.perf_start_times[perf_id][2][i][0]
+                while i < len(self.perf_start_times[perf_id][2]):
+                    time_diff = (self.perf_start_times[perf_id][2][i][1] -
+                        self.perf_start_times[perf_id][2][i - 1][1])
+                    step_name = self.perf_start_times[perf_id][2][i][0]
                     t += str(step_name) + ":" +\
                         str(round(time_diff * 1000000.0) / 1000.0) + "ms "
                     i += 1
@@ -120,15 +123,16 @@ class Perf(object):
                     or len(str(debug)) == 0) else "  " + str(debug))
                 logdebug(t)
 
-    @staticmethod
-    def values(cls, name, startswith=False):
-        cls.lock.acquire()
+    def values(self, name, startswith=False):
+        self.lock.acquire()
         measurements = dict()
-        for pname in cls.perf_measurements:
+        for pname in self.perf_measurements:
             if pname == name or (startswith and
                     pname.startswith(name)):
                 measurements[pname] = copy.copy(
-                    cls.perf_measurements[pname])
-        cls.lock.release()
+                    self.perf_measurements[pname])
+        self.lock.release()
         return measurements
+
+Perf = _PerfClass()
 

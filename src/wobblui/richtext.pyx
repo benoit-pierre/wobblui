@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -105,9 +106,9 @@ class RichTextObj(object):
 
 fragment_draw_rect = None
 class RichTextFragment(RichTextObj):
-    def __init__(self, text, font_family, bold, italic,
-            px_size, surrounding_tags=[],
-            force_text_color=None):
+    def __init__(self, text, font_family, int bold, int italic,
+            int px_size, surrounding_tags=[],
+            str force_text_color=None):
         super().__init__()
         self.forced_text_color = None
         if force_text_color != None:
@@ -129,11 +130,11 @@ class RichTextFragment(RichTextObj):
         return self._text
 
     @text.setter
-    def text(self, v):
+    def text(self, str v):
         self._cached_parts = None
         self._cached_height = None
         self._width_cache = dict()
-        self._text = v
+        self._text = str(v)
 
     def has_block_tag(self):
         for tag in self.surrounding_tags:

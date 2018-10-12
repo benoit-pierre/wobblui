@@ -1,6 +1,7 @@
 
 from setuptools import setup, Extension, Command
 from distutils.command.build_ext import build_ext
+from setuptools.command.install import install
 from Cython.Build import cythonize
 import os
 import setuptools
@@ -23,6 +24,14 @@ with open("requirements.txt") as fh:
     dependencies = [l.strip() for l in fh.read().replace("\r\n", "\n").\
         split("\n") if len(l.strip()) > 0]
 
+class force_build_ext_install_hook(install):
+    def run(self, *args, **kwargs):
+        import subprocess, sys
+        subprocess.check_output([sys.executable,
+            "setup.py", "build_ext"],
+            cwd=os.path.dirname(__file__))
+        super().run(*args, **kwargs)
+
 class cythonize_build_ext_hook(build_ext):
     def run(self):
         for root, dirs, files in os.walk(os.path.abspath(
@@ -41,16 +50,19 @@ class cythonize_build_ext_hook(build_ext):
 setuptools.setup(
     name="wobblui",
     version=package_version,
-    cmdclass={"build_ext": cythonize_build_ext_hook},
+    cmdclass={
+        "build_ext": cythonize_build_ext_hook},
     author="Jonas Thiem",
     author_email="jonas@thiem.email",
     description="A simple, universal and " +
         "cross-platform UI toolkit for Python 3",
     packages=setuptools.find_packages("src"),
     ext_modules = [
-        Extension("wobblui.woblog", ["src/wobblui/woblog.c"]),
         Extension("wobblui.font.manager", ["src/wobblui/font/manager.c"]),
         Extension("wobblui.font.sdlfont", ["src/wobblui/font/sdlfont.c"]),
+        Extension("wobblui.perf", ["src/wobblui/perf.c"]),
+        Extension("wobblui.richtext", ["src/wobblui/richtext.c"]),
+        Extension("wobblui.woblog", ["src/wobblui/woblog.c"]),
         ],
     package_dir={'':'src'},
     package_data={
