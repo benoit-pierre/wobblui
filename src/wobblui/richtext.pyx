@@ -500,6 +500,8 @@ class RichText(object):
         return new_text
 
     def layout(self, max_width=None, align_if_none=None):
+        if max_width == -1:
+            max_width = None
         perf_id = Perf.start("richtext_layout")
         perf_1 = Perf.start("richtext_layout_1")
         self.simplify()
