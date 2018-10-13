@@ -1028,6 +1028,7 @@ cdef class RichText(object):
         htmlparse.depth_first_walker(html, visit_item,
             visit_out_callback=leave_item)
         self.fragments = state["fragments"]
+        self._cached_text = None
         self.simplify()
 
 def test_process_html(html):
