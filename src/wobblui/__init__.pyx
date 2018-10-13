@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -43,7 +44,7 @@ from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
-def redraw_windows(layout_only=False):
+def redraw_windows(int layout_only=False):
     for w_ref in all_windows:
         w = w_ref()
         if w is None or w.hidden:
@@ -65,7 +66,7 @@ def redraw_windows(layout_only=False):
             logerror("*** ERROR HANDLING WINDOW ***")
             logerror(str(traceback.format_exc()))
 
-def sdl_vkey_map(key):
+def sdl_vkey_map(int key):
     if key >= sdl.SDLK_0 and key <= sdl.SDLK_9:
         return chr(ord("0") + (key - sdl.SDLK_0))
     if key >= sdl.SDLK_a and key <= sdl.SDLK_z:
@@ -101,7 +102,7 @@ def sdl_vkey_map(key):
         return "back"
     return str("scancode-" + str(key))
 
-def sdl_key_map(key):
+def sdl_key_map(int key):
     if key >= sdl.SDL_SCANCODE_0 and key <= sdl.SDL_SCANCODE_9:
         return chr(ord("0") + (key - sdl.SDL_SCANCODE_0))
     if key >= sdl.SDL_SCANCODE_A and key <= sdl.SDL_SCANCODE_Z:
@@ -151,7 +152,7 @@ def event_loop(app_cleanup_callback=None):
         stuck_thread = threading.Thread(target=stuck_check, daemon=True)
         stuck_thread.start()
     last_alive_time = time.monotonic()
-    event_loop_ms = 10
+    cdef int event_loop_ms = 10
     try:
         font_no_sleep_counter = 0
         while True:

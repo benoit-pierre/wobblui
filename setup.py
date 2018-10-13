@@ -56,7 +56,7 @@ setuptools.setup(
     author_email="jonas@thiem.email",
     description="A simple, universal and " +
         "cross-platform UI toolkit for Python 3",
-    packages=setuptools.find_packages("src"),
+    packages=["wobblui"] + ["wobblui." + p for p in setuptools.find_packages("src/wobblui")],
     ext_modules = [
         Extension("wobblui", ["src/wobblui/__init__.c"]),
         Extension("wobblui.cache", ["src/wobblui/cache.c"]),
