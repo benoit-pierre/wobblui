@@ -152,6 +152,8 @@ def event_loop(app_cleanup_callback=None):
         stuck_thread = threading.Thread(target=stuck_check, daemon=True)
         stuck_thread.start()
     last_alive_time = time.monotonic()
+    cdef int max_sleep
+    cdef int had_jobs
     cdef int event_loop_ms = 10
     try:
         font_no_sleep_counter = 0
@@ -209,7 +211,7 @@ def event_loop(app_cleanup_callback=None):
         raise e
 
 def sdl_event_name(event):
-    ev_no = event.type
+    cdef int ev_no = event.type
     if ev_no == sdl.SDL_MOUSEBUTTONDOWN:
         return "mousebuttondown"
     elif ev_no == sdl.SDL_MOUSEBUTTONUP:
@@ -250,7 +252,7 @@ def sdl_event_name(event):
     return "unknown-" + str(ev_no)
 
 def debug_describe_event(event):
-    t = sdl_event_name(event)
+    cdef str t = sdl_event_name(event)
     if event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
         t += "(which:" + str(event.button.which) +\
@@ -273,7 +275,7 @@ def do_event_processing_if_on_main_thread(ui_active=True):
     do_event_processing(ui_active=ui_active)
 
 _last_clean_shortcuts_ts = None
-def do_event_processing(ui_active=True):
+def do_event_processing(int ui_active=True):
     global _last_clean_shortcuts_ts, last_alive_time
     if threading.current_thread() != threading.main_thread():
         raise RuntimeError("UI events can't be processed " +
@@ -371,7 +373,7 @@ def _process_mouse_click_event(event,
         raise TypeError("invalid event type")
 
     # A few preparations:
-    sdl_touch_mouseid = 4294967295
+    cdef int sdl_touch_mouseid = 4294967295
     if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
         sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
     w = get_window_by_sdl_id(event.button.windowID)
@@ -453,8 +455,9 @@ def _process_mouse_click_event(event,
             sdl.SDL_CaptureMouse(sdl.SDL_FALSE)
     Perf.stop("mouseevent")
 
-def _process_key_event(event, trigger_shortcuts=True,
-        force_no_widget_can_receive_new_input=False):
+def _process_key_event(event,
+        int trigger_shortcuts=True,
+        int force_no_widget_can_receive_new_input=False):
     virtual_key = sdl_vkey_map(event.key.keysym.sym)
     physical_key = sdl_key_map(event.key.keysym.scancode)
     shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
@@ -507,7 +510,9 @@ mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
     global mouse_ids_button_ids_pressed, touch_pressed,\
         annoying_sdl_hack_spacebar_outstanding
-    _debug_mouse_fakes_touch = (
+    cdef int x, y
+    cdef str text
+    cdef int _debug_mouse_fakes_touch = (
         config.get("mouse_fakes_touch_events") is True)
     if event.type == sdl.SDL_QUIT:
         window = get_focused_window()
