@@ -69,7 +69,8 @@ def image_to_sdl_surface(pil_image):
             err_msg = err_msg.decode("utf-8", "replace")
         except AttributeError:
             pass
-        raise ValueError("failed to load image with SDL Image: " +
+        raise ValueError(
+            "failed to load image with SDL Image: " +
             str(err_msg))
     return sdl_image
 
