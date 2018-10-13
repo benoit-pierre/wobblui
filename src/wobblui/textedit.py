@@ -220,7 +220,6 @@ class TextEditBase(Widget):
             text = text.partition("\n")[0]
         if len(text) == 0:
             return
-        print("FIRST CHAR INSERT: " + str(ord(text)))
         if self.selection_length != 0:
             self.del_selection()
         self.insert_at(self.cursor_offset, text)
@@ -230,7 +229,6 @@ class TextEditBase(Widget):
             replace("\r", "\n")
         if not self.multiline:
             text = text.partition("\n")[0]
-        print("INSERT: '" + str(text) + "'")
         if self.hide_with_character:
             self.text_obj.set_text(self.text)
         self.text_obj.insert_text_at_offset(
@@ -241,8 +239,6 @@ class TextEditBase(Widget):
         if self.hide_with_character != None:
             self.text_obj.set_text(
                 self.hide_with_character * len(self.text))
-        print("Text obj text: '" + str(self.text_obj.text) + "'")
-        print(str(self.text_obj.fragments))
         self.needs_relayout = True
         self.needs_redraw = True
 
@@ -417,8 +413,6 @@ class TextEditBase(Widget):
         if self.style.has("topbar_text_size") and self.in_topbar():
             self.text_obj.px_size = \
                 int(self.style.get("topbar_text_size"))
-        print("LAYOUTING WITH TEXT OBJ TEXT: '" + str(self.text_obj.text) +
-            "'")
         (w, self._layout_height) = self.text_obj.layout(max_width=None)
 
     def get_natural_width(self):
