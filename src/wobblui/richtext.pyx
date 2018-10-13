@@ -386,6 +386,12 @@ cdef class RichTextLinebreak(RichTextObj):
             " y: " + str(self.y) + ">"
         return t
 
+    def character_index_to_offset(self, c):
+        (w, h) = self.get_font().render_size(" ")
+        if c == 0:
+            return (self.x, self.y, h)
+        return (0, self.y + h, h)
+
     def compute_height(self):
         return 0
 
@@ -436,10 +442,16 @@ cdef class RichText(object):
         return t
 
     def remove_char_before_offset(self, offset):
+        self._cached_text = None
         c = offset - 1
         i = 0
         while i < len(self.fragments):
             fragment = self.fragments[i]
+            if isinstance(fragment, RichTextLinebreak) and \
+                    c == 0:
+                self.fragments = self.fragments[:i] +\
+                    self.fragments[i + 1:]
+                return
             if c < len(fragment.text) or i == len(self.fragments) - 1:
                 fragment.text = fragment.text[:c] +\
                     fragment.text[c + 1:]
@@ -451,13 +463,76 @@ cdef class RichText(object):
         if len(self.fragments) == 0:
             self.set_text(text)
             return
+        lines = text.replace("\r\n", "\n").\
+            replace("\r", "\n").split("\n")
+        if len(lines) == 0:
+            return
+        self._cached_text = None
         c = offset
         i = 0
         while i < len(self.fragments):
             fragment = self.fragments[i]
-            if c < len(fragment.text) or i == len(self.fragments) - 1:
-                fragment.text = fragment.text[:c] + text +\
-                    fragment.text[c:]
+            if c < len(fragment.text) or i == len(self.fragments) - 1 or \
+                    (c == len(fragment.text) and i < len(self.fragments) - 1
+                    and isinstance(self.fragments[i + 1], RichTextLinebreak)):
+                fragment_ending = ""
+                insert_after = i
+                k = 0
+                if not isinstance(fragment, RichTextLinebreak):
+                    # Insert first line directly into this text fragment,
+                    # instead of making a separate new one:
+                    fragment_ending = fragment.text[c:]
+                    fragment.text = fragment.text[:c] + lines[0]
+                    if len(lines) == 1:
+                        fragment.text += fragment_ending
+                    if len(fragment.text) == 0:
+                        # Can happen when inserting '\n' at the start
+                        # of a fragment (-> c=0, lines = ['', '']).
+                        # When that happens: SCRAP fragment
+                        self.fragments = self.fragments[:i] +\
+                            self.fragments[i + 1:]
+                        insert_after -= 1
+                    k += 1  # don't reinsert first line later
+                else:
+                    # It's a linebreak. See where want to insert:
+                    if c > 0:
+                        # Insert AFTER linebreak.
+                        insert_after = i
+                    else:
+                        # Insert BEFORE linebreak.
+                        insert_after = i - 1
+
+                # Insert all the lines:
+                while k < len(lines):
+                    inserted_line = []
+                    if k > 0:
+                        inserted_line = [RichTextLinebreak()]
+                    if len(lines[k]) > 0 or (k == len(lines) - 1 and
+                            len(fragment_ending) > 0):
+                        fragment_text = lines[k]
+                        if k == len(lines) - 1:
+                            fragment_text += fragment_ending
+                        font_family = self.default_font_family
+                        px_size = self.px_size
+                        bold = False
+                        italic = False
+                        if insert_after >= 0:
+                            font_family = \
+                                self.fragments[insert_after].font_family
+                            pixel_size =\
+                                self.fragments[insert_after].px_size
+                            bold =\
+                                self.fragments[insert_after].bold
+                            italic =\
+                                self.fragments[insert_after].italic
+                        inserted_line += [RichTextFragment(
+                            fragment_text, font_family, bold,
+                            italic, px_size)]
+                    self.fragments = self.fragments[:insert_after + 1] +\
+                        inserted_line +\
+                        self.fragments[insert_after + 1:]
+                    insert_after += 1
+                    k += 1
                 return
             c -= len(fragment.text)
             i += 1
@@ -777,7 +852,7 @@ cdef class RichText(object):
         Perf.stop(perf_1)
         perf_1 = Perf.start("ending")
 
-        # Record last line pair if not empty:
+        # Record start/end indexes of last line if not empty:
         if current_line_elements > 0:
             clen = len(layouted_elements)
             assert(clen >= current_line_elements)
@@ -788,6 +863,15 @@ cdef class RichText(object):
                 forward_start = 1
             layout_line_indexes.append((
                 clen - current_line_elements + forward_start, clen))
+
+        # If layout ends in linebreak, add height of another default
+        # style line to the end:
+        if len(layouted_elements) > 0 and \
+                isinstance(layouted_elements[-1], RichTextLinebreak):
+            dummy_fragment = RichTextFragment(
+                " ", self.default_font_family, False, False,
+                self.px_size)
+            layout_h += dummy_fragment.height
 
         # Adjust line elements:
         for (start, end) in layout_line_indexes:
