@@ -47,6 +47,35 @@ class cythonize_build_ext_hook(build_ext):
                 cythonize(full_path)
         super().run()
 
+def extensions():
+    base = os.path.normpath(os.path.abspath(
+            os.path.join(
+            os.path.dirname(__file__), "src")))
+    result = []
+    for root, dirs, files in os.walk(base):
+        for f in files:
+            if not f.endswith(".pyx"):
+                continue
+            full_path = os.path.normpath(os.path.abspath(
+                os.path.join(root, f)))
+            assert(full_path.startswith(base))
+            module = full_path[len(base):].\
+                replace(os.path.sep, ".").replace("/", ".")
+            if module.endswith(".pyx"):
+                module = module[:-len(".pyx")]
+            if module.startswith("."):
+                module = module[1:]
+            if module.endswith("."):
+                module = module[:1]
+            if module.endswith(".__init__"):
+                module = module[:-len(".__init__")]
+            c_relpath = full_path[len(base):].rpartition(".")[0] + ".c"
+            if c_relpath.startswith(os.path.sep):
+                c_relpath = c_relpath[1:]
+            c_relpath = os.path.join('src', c_relpath)
+            result.append(Extension(module, [c_relpath]))
+    return result
+
 setuptools.setup(
     name="wobblui",
     version=package_version,
@@ -57,18 +86,7 @@ setuptools.setup(
     description="A simple, universal and " +
         "cross-platform UI toolkit for Python 3",
     packages=["wobblui"] + ["wobblui." + p for p in setuptools.find_packages("src/wobblui")],
-    ext_modules = [
-        Extension("wobblui", ["src/wobblui/__init__.c"]),
-        Extension("wobblui.cache", ["src/wobblui/cache.c"]),
-        Extension("wobblui.event", ["src/wobblui/event.c"]),
-        Extension("wobblui.font.manager", ["src/wobblui/font/manager.c"]),
-        Extension("wobblui.font.sdlfont", ["src/wobblui/font/sdlfont.c"]),
-        Extension("wobblui.perf", ["src/wobblui/perf.c"]),
-        Extension("wobblui.richtext", ["src/wobblui/richtext.c"]),
-        Extension("wobblui.widget", ["src/wobblui/widget.c"]),
-        Extension("wobblui.widget_base", ["src/wobblui/widget_base.c"]),
-        Extension("wobblui.woblog", ["src/wobblui/woblog.c"]),
-        ],
+    ext_modules = extensions(),
     package_dir={'':'src'},
     package_data={
         "wobblui": ["font/packaged-fonts/*.ttf",
