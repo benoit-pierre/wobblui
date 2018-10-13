@@ -157,7 +157,7 @@ cdef class Event(object):
         clear all callbacks instead.
     """
     def unregister(self, func):
-        found = False
+        cdef int found = False
         new_funcs = []
         for f in self.funcs:
             if f != func:
@@ -218,7 +218,7 @@ cdef class Event(object):
         if config.get("debug_events") is True:
             logdebug("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
-        perf_id = None
+        cdef str perf_id = None
         if self.name == "redraw":
             perf_id = Perf.start("Event_redraw_" +
                 str(self.on_object.__class__.__name__)
