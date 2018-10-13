@@ -31,9 +31,10 @@ from wobblui.widget import Widget
 
 class TextEditBase(Widget):
     def __init__(self, text="", color=None, hide_with_character=None,
-            is_multiline=False):
+            is_multiline=False, minimum_lines_height=1):
         super().__init__(can_get_focus=True,
             takes_text_input=True)
+        self.minimum_lines_height = minimum_lines_height
         self.hide_with_character = hide_with_character
         self.type = "textentry"
         self.html = ""
@@ -148,13 +149,42 @@ class TextEditBase(Widget):
         self.needs_redraw = True
 
     def mouse_offset_to_cursor_offset(self, x, y):
+        first_of_line = True
         c = 0
         while c < len(self.text):
+            # Get coordinates around this character:
             (x1, y1, h) = self.text_obj.character_index_to_offset(c)
             (x2, y2, h) = self.text_obj.character_index_to_offset(c + 1)
-            if self.text[c] == "\n":
+            if y1 + h * 1.2 < y:
+                # Skip if in some above, irrelevant line
                 c += 1
                 continue
+
+            # See if this is the beginning of the line:
+            first_of_line = False
+            if c <= 0:
+                first_of_line = True
+            elif self.text[c - 1] == "\n":
+                first_of_line = True
+
+            # See if this is the end of the line:
+            last_of_line = False
+            if c == len(self.text) - 1:
+                last_of_line = True
+            elif self.text[c + 1] == "\n":
+                last_of_line = True
+
+            # Special handling for line breaks:
+            if self.text[c] == "\n":
+                if (c == 0 or
+                        self.text[c - 1] == "\n"):
+                    # Only character in line. Place cursor here.
+                    return c
+                # Skip handling to the next regular character.
+                c += 1
+                continue
+
+            # See if we want to place cursor before or after character:
             x1 += self.padding
             x2 += self.padding
             if x >= x1 and x < x2 and (y >= y1 and y <= y1 + h):
@@ -164,9 +194,9 @@ class TextEditBase(Widget):
                 else:
                     # Right side of letter
                     return c + 1
-            if x < x1 and c == 0:
+            if x < x1 and first_of_line:
                 return c
-            if x > x2 and c == len(self.text) - 1:
+            if x > x2 and last_of_line:
                 return c + 1
             c += 1
         return 0
@@ -419,19 +449,22 @@ class TextEditBase(Widget):
         return self.default_width + self.padding * 2
 
     def get_natural_height(self, given_width=None):
+        copy_obj = self.text_obj.copy()
+        copy_obj.set_text(" ")
+        (_, min_height) = copy_obj.layout(max_width=None)
+        min_height *= max(1, round(self.minimum_lines_height))
+        (w, h) = (0, min_height)
         if len(self.text_obj.text) > 0:
             (w, h) = self.text_obj.layout(max_width=None)
-        else:
-            copy_obj = self.text_obj.copy()
-            copy_obj.set_text(" ")
-            (w, h) = copy_obj.layout(max_width=None)
-        return h + self.padding * 2
+        return max(h, min_height) + self.padding * 2
 
 class TextEdit(TextEditBase):
-    def __init__(self, text="", color=None, hide_with_character=None):
+    def __init__(self, text="", color=None, hide_with_character=None,
+            minimum_lines_height=3):
         super().__init__(
             text=text, color=color,
             hide_with_character=hide_with_character,
-            is_multiline=True)
+            is_multiline=True,
+            minimum_lines_height=minimum_lines_height)
 
 
