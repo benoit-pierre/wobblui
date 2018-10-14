@@ -372,7 +372,7 @@ def _process_mouse_click_event(event,
         raise TypeError("invalid event type")
 
     # A few preparations:
-    cdef int sdl_touch_mouseid = 4294967295
+    cdef long long sdl_touch_mouseid = 4294967295
     if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
         sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
     w = get_window_by_sdl_id(event.button.windowID)

@@ -696,7 +696,12 @@ cdef class WidgetBase(object):
         cdef int x = 0
         cdef int y = 0
         cdef int mouse_id = -1
-        mouse_id = event_args[0]
+        try:
+            mouse_id = event_args[0]
+        except OverflowError as e:
+            logerror("got invalid mouse id which overflows: " +
+                str(mouse_id) + " - is this a touch handling issue??")
+            raise e
         if event_name == "mousedown" or event_name == "mouseup":
             x = event_args[2]
             y = event_args[3]
