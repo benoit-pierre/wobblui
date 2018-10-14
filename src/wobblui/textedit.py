@@ -83,7 +83,7 @@ class TextEditBase(Widget):
         # Cut off text after one line:
         if not self.multiline:
             self.text = self.text.partition("\n")[0]
-        self.html = html.escape(self.text)
+        self.html = html.escape(self.text).replace("\n", "<br/>")
 
         # Set text to internal layouting object:
         if self.hide_with_character is None:
