@@ -145,6 +145,8 @@ def stuck_check():
                 logwarning(str(th))
                 logwarning(str("\n".join(
                     traceback.format_stack(sys._current_frames()[th.ident]))))
+            # Make sure we don't fire this again right away:
+            last_alive_time = time.monotonic()
 
 def event_loop(app_cleanup_callback=None):
     global stuck_thread, last_alive_time
@@ -197,6 +199,7 @@ def event_loop(app_cleanup_callback=None):
                         event_loop_ms + 1,
                         500)
     except (SystemExit, KeyboardInterrupt) as e:
+        loginfo("APP SHUTDOWN INITIATED. CLEANING UP...")
         sdlfont.stop_queue_for_process_shutdown()
         if app_cleanup_callback != None:
             app_cleanup_callback()
