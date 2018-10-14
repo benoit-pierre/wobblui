@@ -118,6 +118,7 @@ class Window(WidgetBase):
         logdebug("Processing renderer loss...")
         wobblui.font.manager.Font.clear_global_cache_textures()
         old_renderer = self._renderer
+        self._renderer = None
         for child in self.children:
             child.renderer_update()
         self._renderer = old_renderer
