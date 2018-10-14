@@ -67,8 +67,6 @@ def extensions():
                 module = module[1:]
             if module.endswith("."):
                 module = module[:1]
-            #if module.endswith(".__init__"):
-            #    module = module[:-len(".__init__")]
             c_relpath = full_path[len(base):].rpartition(".")[0] + ".c"
             if c_relpath.startswith(os.path.sep):
                 c_relpath = c_relpath[1:]
