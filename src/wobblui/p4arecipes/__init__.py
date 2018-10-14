@@ -21,7 +21,7 @@ def copy_to_recipe_folder(folder_dir, from_source=None):
                     folder_name)):
                 os.mkdir(os.path.join(folder_dir, folder_name))
             shutil.copyfile(os.path.join(
-                os.path.dirname(__file__), f), os.path.join(
+                from_source, f), os.path.join(
                 folder_dir, folder_name, "__init__.py"))
 
 def potential_site_package_dirs():
@@ -46,7 +46,7 @@ def install(from_source=None):
             print("Installing to python-for-android package: " + 
                 str(p4a_path))
             copy_to_recipe_folder(os.path.join(p4a_path,
-                "recipes"), from_source=None)
+                "recipes"), from_source=from_source)
 
 if __name__ == "__main__":
     install()
