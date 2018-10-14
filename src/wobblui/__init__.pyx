@@ -152,7 +152,6 @@ def event_loop(app_cleanup_callback=None):
         stuck_thread = threading.Thread(target=stuck_check, daemon=True)
         stuck_thread.start()
     last_alive_time = time.monotonic()
-    cdef int max_sleep
     cdef int had_jobs
     cdef int event_loop_ms = 10
     try:
