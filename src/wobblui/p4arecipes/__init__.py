@@ -7,8 +7,10 @@ import shutil
 import subprocess
 import sys
 
-def copy_to_recipe_folder(folder_dir):
-    for f in os.listdir(os.path.dirname(__file__)):
+def copy_to_recipe_folder(folder_dir, from_source=None):
+    if from_source is None:
+        from_source = os.path.dirname(__file__)
+    for f in os.listdir(from_source):
         if f.endswith(".py") and not f.startswith("__init__"):
             folder_name = os.path.basename(f).rpartition(".")[0]
             if os.path.exists(os.path.join(folder_dir,
@@ -37,14 +39,14 @@ def potential_site_package_dirs():
         len(dirpath) > 0]
     return dirs    
 
-def install():
+def install(from_source=None):
     for dirpath in potential_site_package_dirs():
         p4a_path = os.path.join(dirpath, "pythonforandroid")
         if os.path.exists(p4a_path):
             print("Installing to python-for-android package: " + 
                 str(p4a_path))
             copy_to_recipe_folder(os.path.join(p4a_path,
-                "recipes"))
+                "recipes"), from_source=None)
 
 if __name__ == "__main__":
     install()
