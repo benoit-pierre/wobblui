@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 
 import ctypes
 import math
+import platform
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import weakref
@@ -141,7 +142,8 @@ class Window(WidgetBase):
                 sdl.SDL_DestroyRenderer(self._renderer)
                 self._renderer = None
         if self._renderer is None:
-            if config.get("software_renderer"):
+            if config.get("software_renderer") or \
+                    platform.system().lower() == "windows":
                 self._renderer = \
                     sdl.SDL_CreateRenderer(self._sdl_window, -1,
                         sdl.SDL_RENDERER_SOFTWARE)

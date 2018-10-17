@@ -57,7 +57,7 @@ def image_to_sdl_surface(pil_image, retries=5):
     if platform.system().lower() != "windows":
         pil_image.save(bytes_obj, format="PNG")
     else:
-        pil_image.save(bytes_obj, format="TGA")
+        pil_image.save(bytes_obj, format="TIFF")
     bytes_value = bytearray(bytes_obj.getvalue())
     if len(bytes_value) == 0:
         raise RuntimeError("saved image unexpectedly empty")
