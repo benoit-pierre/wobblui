@@ -25,6 +25,7 @@ import os
 import PIL.Image
 import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
+import time
 
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
@@ -42,7 +43,7 @@ def stock_image(name):
             return (p + ".jpg")
     return p
 
-def image_to_sdl_surface(pil_image):
+def image_to_sdl_surface(pil_image, retries=5):
     global sdlimage_initialized
     initialize_sdl()
     if not sdlimage_initialized:
@@ -66,6 +67,10 @@ def image_to_sdl_surface(pil_image):
 
     # Handle error:
     if sdl_image is None or not sdl_image:  # ptr will evaluate False if NULL
+        if retries > 0:
+            retries -= 1
+            time.sleep(0.1)
+            return image_to_sdl_surface(pil_image, retries=(retries - 1))
         err_msg = sdlimage.IMG_GetError()
         try:
             err_msg = err_msg.decode("utf-8", "replace")
