@@ -48,7 +48,10 @@ def image_to_sdl_surface(pil_image, retries=5):
     global sdlimage_initialized
     initialize_sdl()
     if not sdlimage_initialized:
-        flags = sdlimage.IMG_INIT_JPG|sdlimage.IMG_INIT_PNG
+        if not platform.system().lower() == "windows":
+            flags = sdlimage.IMG_INIT_JPG|sdlimage.IMG_INIT_PNG
+        else:
+            flags = sdlimage.IMG_INIT_TIF
         sdlimage.IMG_Init(flags)
     sdl_image = None
 

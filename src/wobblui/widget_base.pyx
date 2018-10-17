@@ -1130,10 +1130,14 @@ cdef class WidgetBase(object):
 
     @property
     def dpi_scale(self):
+        window_scaler = 1.0
+        if hasattr(self, "parent_window") and \
+                self.parent_window != None:
+            window_scaler = self.parent_window.get_window_dpi()
         s = self.style
         if s != None:
-            return s.dpi_scale
-        return 1.0
+            return s.dpi_scale * window_scaler
+        return 1.0 * window_scaler
 
     def get_natural_width(self):
         return 64

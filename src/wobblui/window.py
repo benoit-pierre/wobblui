@@ -98,7 +98,44 @@ class Window(WidgetBase):
         self.next_reopen_width = width
         self.next_reopen_height = height
         self.internal_app_reopen()
+        self.last_known_dpi_scale = None
+        self.dpi_scaler_avoid_recurse_stylechanged = False
         all_windows.append(weakref.ref(self))
+
+    def get_window_dpi(self):
+        guessed_scale = 1.0
+
+        # If window is really large, just scale up nevertheless:
+        if guessed_scale < 1.5 and self.width > 2000 and \
+                self.height > 1500:
+            guessed_scale = max(guessed_scale, 1.5)
+        if guessed_scale < 1.5 and self.width > 3500 and \
+                self.height > 3000:
+            guessed_scale = max(guessed_scale, 2.0)
+
+        # On android, always scale up some more:
+        if is_android():
+            guessed_scale = max(guessed_scale, 1.4)
+        
+        if self.last_known_dpi_scale != guessed_scale:
+            # Update window layout and style of all widgets
+            self.needs_relayout = True
+            if not self.dpi_scaler_avoid_recurse_stylechanged:
+                self.dpi_scaler_avoid_recurse_stylechanged = True
+                new_refs = []
+                collected_widgets = []
+                for w_ref in all_widgets:
+                    w = w_ref()
+                    if w is None:
+                        continue
+                    collected_widgets.append(w)
+                    new_refs.append(w_ref)
+                all_widgets[:] = new_refs
+                for w in collected_widgets:
+                    w.stylechanged()
+                self.dpi_scaler_avoid_recurse_stylechanged = False
+        self.last_known_dpi_scale = guessed_scale
+        return guessed_scale
 
     def clear(self):
         old_renderer = self._renderer
@@ -130,6 +167,8 @@ class Window(WidgetBase):
             return
         unhide = False
         if self._sdl_window is None:
+            if platform.system().lower() == "windows":
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)
             self._sdl_window = sdl.SDL_CreateWindow(
                 self._title.encode("utf-8", "replace"),
                 sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,

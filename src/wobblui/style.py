@@ -29,8 +29,6 @@ class AppStyle(object):
 
     @property
     def dpi_scale(self):
-        if self.is_android:
-            return (self._dpi_scale * 1.5)
         return self._dpi_scale
 
     def has(self, name):
