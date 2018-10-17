@@ -23,6 +23,7 @@ import ctypes
 import io
 import os
 import PIL.Image
+import platform
 import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
 import time
@@ -53,7 +54,10 @@ def image_to_sdl_surface(pil_image, retries=5):
 
     # Write image to ctypes buffer:
     bytes_obj = io.BytesIO()
-    pil_image.save(bytes_obj, format="PNG")
+    if platform.system().lower() != "windows":
+        pil_image.save(bytes_obj, format="PNG")
+    else:
+        pil_image.save(bytes_obj, format="TGA")
     bytes_value = bytearray(bytes_obj.getvalue())
     if len(bytes_value) == 0:
         raise RuntimeError("saved image unexpectedly empty")
