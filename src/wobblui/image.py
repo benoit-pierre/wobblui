@@ -65,7 +65,7 @@ def image_to_sdl_surface(pil_image):
     sdl_image = sdlimage.IMG_Load_RW(rwops, 1)
 
     # Handle error:
-    if sdl_image is None:
+    if sdl_image is None or not sdl_image:  # ptr will evaluate False if NULL
         err_msg = sdlimage.IMG_GetError()
         try:
             err_msg = err_msg.decode("utf-8", "replace")
