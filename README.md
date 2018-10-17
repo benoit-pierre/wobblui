@@ -26,10 +26,4 @@ libraries, and fetch the latest version of wobblui using pip:
 pip install --user -U wobblui
 ```
 
-License
--------
-
-`wobblui` is available under liberal licensing, [see LICENSE.md for
-details](LICENSE.md). If you add more cool stuff, we would be
-delighted to see pull requests!
 

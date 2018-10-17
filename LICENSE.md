@@ -1,6 +1,6 @@
 
-Project license
-===============
+Full Project license
+====================
 
 The main source code of this project is provided under the following
 license terms:

@@ -6,8 +6,9 @@ from Cython.Build import cythonize
 import os
 import setuptools
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+with open("README.md", "r") as f:
+    with open("LICENSE.md", "r") as f2:
+        long_description = f.read().rstrip() + "\n\n" + f2.read()
 
 with open("src/wobblui/version.py") as fh:
     contents = fh.read()
@@ -95,7 +96,6 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/JonasT/wobblui",
-    data_files = [("", ["LICENSE.md"])],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
