@@ -52,7 +52,7 @@ def change_dpi_scale_on_all_windows(new_dpi_scale):
     styles_seen = dict()
     new_w_refs = []
     for w_ref in all_windows:
-        w = w_rf()
+        w = w_ref()
         if w is None:
             continue
         new_w_refs.append(w_ref)
@@ -334,6 +334,7 @@ class Window(WidgetBase):
 
     def set_style(self, style):
         self._style = style
+        self.needs_relayout = True
         self.recursive_needs_redraw()
         self.redraw()
 
