@@ -48,6 +48,22 @@ def get_focused_window():
         return w
     return None
 
+def change_dpi_scale_on_all_windows(new_dpi_scale):
+    styles_seen = dict()
+    new_w_refs = []
+    for w_ref in all_windows:
+        w = w_rf()
+        if w is None:
+            continue
+        new_w_refs.append(w_ref)
+        if not w.style in styles_seen:
+            w.style.dpi_scale = new_dpi_scale
+            styles_seen[w.style] = w.style.copy()
+        # Assign new copy of the style, to make sure the window and all
+        # widgets realize it changed:
+        w.style = styles_seen[w.style]
+    all_windows[:] = new_w_refs
+
 def get_window_by_sdl_id(sdl_id):
     global all_windows
     result = None

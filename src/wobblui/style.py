@@ -26,20 +26,28 @@ class AppStyle(object):
         self._dpi_scale = 1.0
         self.is_android = (sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android")
+        self.values = dict()
+
+    def copy(self):
+        copied_style = AppStyle()
+        copied_style._dpi_scale = self._dpi_scale
+        copied_style.is_android = self.is_android
+        for k in self.values:
+            copied_style.values[k] = self.values[k]
+        return copied_style
 
     @property
     def dpi_scale(self):
         return self._dpi_scale
 
+    @dpi_scale.setter
+    def dpi_scale(self, v):
+        self._dpi_scale = float(v)
+
     def has(self, name):
-        if not hasattr(self, "values"):
-            return False
         return (name.upper() in self.values)
 
     def set(self, name, value):
-        if not hasattr(self, "values"):
-            self.values = dict()
-
         name = name.upper()
         if type(value) == int or type(value) == float:
             self.values[name] = value
