@@ -39,7 +39,8 @@ class ListEntry(object):
             extra_html_as_subtitle_scale=0.7,
             extra_html_at_right=None,
             extra_html_at_right_scale=0.8, is_alternating=False,
-            with_visible_bg=False):
+            with_visible_bg=False,
+            effective_dpi_scale=None):
         self.with_visible_bg = with_visible_bg
         self._max_width = -1
         self._cached_natural_width = None
@@ -47,6 +48,7 @@ class ListEntry(object):
         self._width = 0
         self._style = style
         self._html = html
+        self.effective_dpi_scale = effective_dpi_scale
         self.extra_html_at_right = extra_html_at_right
         self.extra_html_at_right_scale = extra_html_at_right_scale
         self.extra_html_as_subtitle = extra_html_as_subtitle
@@ -73,6 +75,8 @@ class ListEntry(object):
                 self.px_size_scaler)
             dpi_scale = self.style.dpi_scale
             font_family = self.style.get("widget_font_family")
+        if self.effective_dpi_scale != None:
+            dpi_scale = self.effective_dpi_scale
 
         # Main text:
         self.text_obj = RichText(font_family=font_family,
@@ -274,10 +278,14 @@ class ListEntry(object):
     @style.setter
     def style(self, v):
         if self._style != v:
-            self._cached_natural_width = None
-            self.need_size_update = True
             self._style = v
-            self.update_text_objects()
+            self.on_stylechanged()
+
+    def on_stylechanged(self):
+        self._cached_natural_width = None
+        self.need_size_update = True
+        self.update_text_objects()
+        self.clear_texture()
 
     @property
     def max_width(self):
@@ -417,6 +425,7 @@ class ListBase(ScrollbarDrawingWidget):
         self._hover_index = -1
         self.scroll_y_offset = 0
         self.usual_entry_height = None
+        self.last_known_effective_dpi_scale = None
         self.render_as_menu = render_as_menu
         self.fixed_one_line_entries = fixed_one_line_entries
         self.update_style_info()
@@ -438,12 +447,15 @@ class ListBase(ScrollbarDrawingWidget):
 
     def update_style_info(self):
         self.cached_natural_width = None
-        entry = ListEntry("", self.style)
+        entry = ListEntry("", self.style,
+            effective_dpi_scale=self.dpi_scale)
         self.usual_entry_height = entry.height
         del(entry)
         for entry in self._entries:
+            entry.effective_dpi_scale = self.dpi_scale
             entry.style = self.style
-            entry.clear_texture()
+            entry.on_stylechanged()
+        self.last_known_effective_dpi_scale = self.dpi_scale
 
     def set_disabled(self, entry_index, state):
         new_state = (state is True)
@@ -611,6 +623,7 @@ class ListBase(ScrollbarDrawingWidget):
             border_size = 0
         cy = 0
         for entry in self._entries:
+            entry.effective_dpi_scale = self.dpi_scale
             entry.style = self.style
             entry.width = self.width - round(border_size * 2)
             entry.y_offset = cy
@@ -623,6 +636,11 @@ class ListBase(ScrollbarDrawingWidget):
         perf_id = Perf.start("list_innerdraw")
         content_height = 0
         max_scroll_down = 0
+
+        # DPI scale safeguard, to make sure it's really correct:
+        if self.last_known_effective_dpi_scale != self.dpi_scale:
+            self.update_style_info()
+            self.on_relayout()
 
         #Perf.start("sectiona")
 
@@ -743,10 +761,11 @@ class ListBase(ScrollbarDrawingWidget):
         self.cached_natural_width = None
         self.insert_html(index, html.escape(text))
 
-    def insert_html(self, index, text):
+    def insert_html(self, index, html_text):
         self.cached_natural_width = None
-        self._entries.insert(index, ListEntry(html, self.style,
-            with_visible_bg=(not self.render_as_menu)))
+        self._entries.insert(index, ListEntry(html_text, self.style,
+            with_visible_bg=(not self.render_as_menu),
+            effective_dpi_scale=self.dpi_scale))
         i = 0
         while i < len(self._entries):
             self._entries[i].is_alternating = \
@@ -775,7 +794,8 @@ class ListBase(ScrollbarDrawingWidget):
             is_alternating=(not last_was_alternating),
             extra_html_at_right=side_html,
             extra_html_as_subtitle=subtitle_html,
-            with_visible_bg=(not self.render_as_menu)))
+            with_visible_bg=(not self.render_as_menu),
+            effective_dpi_scale=self.dpi_scale))
         
 class List(ListBase):
     def __init__(self, fixed_one_line_entries=False,
