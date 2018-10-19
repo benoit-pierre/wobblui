@@ -145,10 +145,14 @@ class Button(Widget):
         font_family = self.style.get("widget_font_family")
         px_size = round(self.style.get("widget_text_size") *
             self.text_scale)
-        self.contained_richtext_obj = RichText(
-            font_family=font_family,
-            px_size=px_size,
-            draw_scale=self.dpi_scale)
+        if self.contained_richtext_obj is None:
+            self.contained_richtext_obj = RichText(
+                font_family=font_family,
+                px_size=px_size,
+                draw_scale=self.dpi_scale)
+        else:
+            self.contained_richtext_obj.px_size = px_size
+            self.contained_richtext_obj.draw_scale = self.dpi_scale
         self.contained_richtext_obj.set_html(self.html)
         (self.text_layout_width,
             self.text_layout_height) = \

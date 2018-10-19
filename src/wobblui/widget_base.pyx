@@ -1520,11 +1520,13 @@ cdef class WidgetBase(object):
         if self._parent == parent:
             return
         prev_style = self.get_style()
+        prev_dpi = self.dpi_scale
         old_parent = self._parent
         self._parent = parent
         self.needs_redraw = True
         self.parentchanged()
-        if prev_style != self.get_style():
+        if prev_style != self.get_style() or \
+                abs(prev_dpi - self.dpi_scale) > 0.01:
             def recursive_style_event(item):
                 item.stylechanged()
                 for child in item.children:

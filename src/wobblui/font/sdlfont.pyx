@@ -159,7 +159,7 @@ def get_thread_safe_sdl_font(path, px_size):
         ttf_was_initialized = True
         initialize_sdl()
         sdlttf.TTF_Init()
-    load_job = SDLFontLoadJob(path, px_size)
+    load_job = SDLFontLoadJob(path, round(px_size))
     if is_main_thread():
         load_job.execute()
         return load_job.result

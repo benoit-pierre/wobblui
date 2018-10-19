@@ -45,14 +45,15 @@ rendered_words_cache = KeyValueCache(size=500,
 
 _reuse_draw_rect = sdl.SDL_Rect()
 cdef class Font(object):
-    cdef int italic, bold, pixel_size
+    cdef public int italic, bold
+    cdef public double px_size
     cdef char* font_family_bytes
     cdef char* _unique_key
     cdef double _avg_letter_width
     cdef object _sdl_font, mutex
 
     def __init__(self, str font_family,
-            int pixel_size, int italic=False, int bold=False):
+            double pixel_size, int italic=False, int bold=False):
         assert(font_family != None)
         font_family_bytes = font_family.encode("utf-8", "replace")
         array = <char *>PyMem_Malloc((len(font_family_bytes) + 1) * sizeof(char))
@@ -64,7 +65,7 @@ cdef class Font(object):
             i += 1
         array[len(font_family_bytes)] = 0
         self.font_family_bytes = array
-        self.pixel_size = pixel_size
+        self.px_size = pixel_size
         self.italic = italic
         self.bold = bold
         self._avg_letter_width = 0
@@ -87,7 +88,7 @@ cdef class Font(object):
     def __repr__(self):
         return "<Font family='" + str(
             self.font_family) + "' px_size=" +\
-            str(round(self.pixel_size)) +\
+            str(round(self.px_size)) +\
             " bold=" + str(self.bold) +\
             " italic=" + str(self.italic) + ">"
 
@@ -139,7 +140,7 @@ cdef class Font(object):
     def get_cached_rendered_sdl_texture(self, renderer, str text, color=None):
         global rendered_words_cache
         cdef str key = str((self.font_family, self.italic, self.bold,
-            self.pixel_size, str(ctypes.addressof(
+            self.px_size, str(ctypes.addressof(
                 renderer.contents)))) + "_" + text
         value = rendered_words_cache.get(key)
         if value != None:
@@ -178,7 +179,7 @@ cdef class Font(object):
             path = self.get_font_file_path()
             self._sdl_font = sdlfont.\
                 get_thread_safe_sdl_font(path,
-                round(self.pixel_size))
+                round(self.px_size))
             result = self._sdl_font
         finally:
             self.mutex.release()
@@ -262,21 +263,17 @@ cdef class FontManager(object):
             px_size=px_size, display_dpi=display_dpi).render_size(word)
 
     def get_font(self, str name,
-            int bold=False, int italic=False, int px_size=12,
+            int bold=False, int italic=False, double px_size=12,
             double draw_scale=1.0, int display_dpi=96):
         cdef int unified_draw_scale = round(draw_scale *
             DRAW_SCALE_GRANULARITY_FACTOR)
         self.mutex.acquire()
+        result = None
         try:
-            self._load_font_info(name, bold, italic,
+            result = self._load_font_info(name, bold, italic,
                 px_size=px_size,
                 draw_scale=draw_scale,
                 display_dpi=display_dpi)
-            # Make sure font exists:
-            font_path = self.font_by_sizedpistyle_cache[
-                (unified_draw_scale, display_dpi,
-                (name, bold, italic,
-                round(px_size * 10)))].get_font_file_path()
         except ValueError as e:
             if name.lower() == "sans" or \
                     name.lower() == "sans serif" or \
@@ -293,21 +290,17 @@ cdef class FontManager(object):
                     draw_scale=draw_scale, display_dpi=display_dpi)
             self.mutex.release()
             raise e
-        result = self.font_by_sizedpistyle_cache[
-            (unified_draw_scale, display_dpi,
-            (name, bold, italic,
-            round(px_size * 10)))]
         self.mutex.release()
         return result
 
     def _load_font_info(self,
-            str name, int bold, int italic, int px_size=12,
+            str name, int bold, int italic, double px_size=12,
             double draw_scale=1.0, int display_dpi=96):
         display_dpi = round(display_dpi)
         style = (name, bold, italic, round(px_size * 10))
         unified_draw_scale = round(draw_scale *
             DRAW_SCALE_GRANULARITY_FACTOR)
-        actual_px_size = ((display_dpi / 72) *
+        actual_px_size = ((display_dpi / 96.0) *
             (unified_draw_scale /
             float(DRAW_SCALE_GRANULARITY_FACTOR))) * px_size
 
@@ -323,7 +316,10 @@ cdef class FontManager(object):
             self.font_by_sizedpistyle_cache[(
                 unified_draw_scale, display_dpi, style
                 )] = f
-        self._limit_cache()
+            self._limit_cache()
+        return self.font_by_sizedpistyle_cache[(
+            unified_draw_scale, display_dpi,
+            style)]
 
 cdef object font_manager_singleton = None
 def font_manager():
