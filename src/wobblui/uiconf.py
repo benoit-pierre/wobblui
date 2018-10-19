@@ -54,6 +54,8 @@ class Conf(object):
             return 1.1
         if value == "mouse_fakes_touch_events":
             return False
+        if value == "debug_texture_references":
+            return False
 
 config = Conf()
 

@@ -161,6 +161,9 @@ cdef class WidgetBase(object):
                     return
                 if self_value.sdl_texture != None:
                     sdl.SDL_DestroyTexture(self_value.sdl_texture)
+                    if config.get("debug_texture_references"):
+                        logdebug("WidgetBase.<closure>.start_redraw: " +
+                            "SDL_DestroyTexture(self.sdl_texture)")
                     self_value.sdl_texture = None 
                 self_value.sdl_texture = sdl.SDL_CreateTexture(
                     self_value.renderer,
@@ -1108,12 +1111,18 @@ cdef class WidgetBase(object):
     def __del__(self):
         if self.sdl_texture != None:
             sdl.SDL_DestroyTexture(self.sdl_texture)
+            if config.get("debug_texture_references"):
+                logdebug("WidgetBase.__del__: " +
+                    "SDL_DestroyTexture(self.sdl_texture)")
             self.sdl_texture = None
         return
 
     def renderer_update(self):
         if self.sdl_texture != None:
             sdl.SDL_DestroyTexture(self.sdl_texture)
+            if config.get("debug_texture_references"):
+                logdebug("WidgetBase.renderer_update: " +
+                    "SDL_DestroyTexture(self.sdl_texture)")
             self.sdl_texture = None
         for child in self.children:
             child.renderer_update()
@@ -1533,7 +1542,14 @@ cdef class WidgetBase(object):
                     recursive_style_event(child)
             recursive_style_event(self)
         if self.get_renderer() != old_renderer:
-            self.renderer_update()
+            if config.get("debug_texture_references"):
+                logdebug("WidgetBase.internal_override_parent: " +
+                    "recursive renderer_update() call")
+            def recursive_update_event(item):
+                item.renderer_update()
+                for child in item.children:
+                    recursive_update_event(child)
+            recursive_update_event(self)
 
     @property
     def parent(self):

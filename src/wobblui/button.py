@@ -75,7 +75,8 @@ class Button(Widget):
             sdl.SDL_DestroyTexture(self.contained_image_texture)
             self.contained_image_texture = None
 
-    def update_renderer(self):
+    def renderer_update(self):
+        super().renderer_update()
         if self.contained_image_texture != None:
             sdl.SDL_DestroyTexture(self.contained_image_texture)
             self.contained_image_texture = None
