@@ -858,7 +858,8 @@ cdef class WidgetBase(object):
                     40.0 * self.dpi_scale and \
                     not self.touch_scrolling and \
                     self.touch_start_time + config.get(
-                    "touch_shortclick_time") > now:
+                    "touch_shortclick_time") > now and \
+                    not self.effectively_inactive:
                 # Emulate a mouse click, but make sure it's not
                 # propagated to children (since they would, if
                 # necessary, emulate their own mouse clicks as well
