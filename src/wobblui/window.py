@@ -428,6 +428,11 @@ class Window(WidgetBase):
         return list(reversed(self._children))
 
     def _internal_on_post_redraw(self, internal_data=None):
+        if self.renderer is None:
+            return
+        elif self.needs_redraw:
+            raise RuntimeError("still needing redraw in post " +
+                "redraw, this may lead to an infinite loop")
         # Work around double buffering issues by drawing twice:
         i = 0
         while i < 2:

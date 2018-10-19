@@ -195,6 +195,7 @@ cdef class WidgetBase(object):
             sdl.SDL_SetRenderTarget(self_value.renderer,
                 self_value.restore_old_target)
             self_value.restore_old_target = None
+            self_value.needs_redraw = False
             self_value.post_redraw()
         self.redraw = Event("redraw", owner=self,
             special_post_event_func=end_redraw,
