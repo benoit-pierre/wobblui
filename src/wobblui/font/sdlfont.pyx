@@ -87,7 +87,7 @@ def get_sdl_font(str font_path, int px_size):
         error_msg = sdlttf.TTF_GetError()
         raise ValueError("couldn't load TTF " +
             "font: " + str(error_msg))
-    return SDLFontWrapper(font)
+    return SDLFontWrapper(font, name=font_path, px_size=px_size)
 
 cdef class SDLFontLoadJob(ThreadJob):
     cdef str font_path
@@ -140,8 +140,14 @@ def get_thread_safe_render_size(sdl_ttf_font, char* text):
         return size_job.result
 
 class SDLFontWrapper(object):
-    def __init__(self, sdl_font):
+    def __init__(self, sdl_font, name=None, px_size=None):
         self.font = sdl_font
+        self.name = None
+        self.px_size = None
+
+    def __repr__(self):
+        return "<SDLFontWrapper name=" + str(self.name) +\
+            " px_size=" + str(self.px_size) + ">"
 
     def __del__(self):
         job_queue.put(SDLFontCloseJob(self))
