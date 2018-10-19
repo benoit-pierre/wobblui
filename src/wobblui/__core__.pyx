@@ -40,6 +40,7 @@ import wobblui.font.sdlfont as sdlfont
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
+from wobblui.widgetman import all_widgets
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
@@ -59,7 +60,11 @@ def redraw_windows(int layout_only=False):
                 i += 1
             if i == 10:
                 logwarning("WARNING: a widget appears to be causing a " +
-                    "relayout() loop")
+                    "relayout() loop !!! affected window: " +
+                    str(w) + ", all widgets that need relayouting: " +
+                    str([widget for widget in [
+                        w() for w in all_widgets] if \
+                        widget != None and widget.needs_relayout]))
             Perf.stop(relayout_perf, expected_max_duration=0.010)
             w.redraw_if_necessary()
         except Exception as e:
