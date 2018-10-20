@@ -165,11 +165,12 @@ class Window(WidgetBase):
         self._renderer = old_renderer
         self.update()
 
-    def on_renderer_to_be_destroyed(self, renderer):
+    def on_renderer_to_be_destroyed(self):
         """ Called when a renderer will be destroyed. This will
             clear out all textures to avoid a crash. """
 
         logdebug("Processing renderer loss...")
+        wobblui.gfx.mark_textures_invalid(self._renderer)
         wobblui.font.manager.Font.clear_global_cache_textures()
         old_renderer = self._renderer
         self._renderer = None
@@ -179,8 +180,8 @@ class Window(WidgetBase):
                 recursive_renderer_update(child)
         for child in self.children:
             recursive_renderer_update(child)
+        wobblui.gfx.clear_renderer(old_renderer)
         self._renderer = old_renderer
-        wobblui.gfx.clear_renderer(renderer)
         logdebug("Renderer loss processed.")
 
     def internal_app_reopen(self):
@@ -238,7 +239,7 @@ class Window(WidgetBase):
         if close_window or sdl.SDL_GetPlatform().decode("utf-8",
                 "replace").lower() == "android":
             if self._renderer != None:
-                self.on_renderer_to_be_destroyed(self._renderer)
+                self.on_renderer_to_be_destroyed()
                 sdl.SDL_DestroyRenderer(self._renderer)
                 self._renderer = None
                 for child in self.children:
@@ -453,7 +454,7 @@ class Window(WidgetBase):
             # (Flickering texture contents of window)
             draw_rectangle(self.renderer, 0, 0,
                 self.width, self.height, color=c)
-            if self.sdl_texture != None:
+            if self.internal_render_target != None:
                 self.draw(0, 0)
             sdl.SDL_RenderPresent(self.renderer)
             i += 1

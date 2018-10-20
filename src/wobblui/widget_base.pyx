@@ -34,7 +34,8 @@ import weakref
 from wobblui.color import Color
 from wobblui.event import Event, ForceDisabledDummyEvent,\
     InternalOnlyDummyEvent
-from wobblui.gfx import draw_dashed_line, draw_rectangle
+from wobblui.gfx import draw_dashed_line, draw_rectangle,\
+    RenderTarget
 from wobblui.mouse import cursor_seen_during_mousemove
 from wobblui.keyboard import enable_text_events
 from wobblui.perf import Perf
@@ -86,9 +87,9 @@ cdef class WidgetBase(object):
     cdef public int long_click_callback_id, have_long_click_callback
 
     # Drawing technical details:
-    cdef public object sdl_texture
-    cdef public int sdl_texture_width, sdl_texture_height
-    cdef public object restore_old_target
+    cdef public object internal_render_target
+    cdef public int internal_render_target_width, \
+                    internal_render_target_height
 
     # Event objects:
     cdef public object textinput, parentchanged, multitouchstart,\
@@ -134,70 +135,51 @@ cdef class WidgetBase(object):
         self._parent = None
         self._disabled = False
         self_ref = weakref.ref(self)
-        self.sdl_texture = None
-        self.sdl_texture_width = -1
-        self.sdl_texture_height = -1
+        self.internal_render_target = None
+        self.internal_render_target_width = -1
+        self.internal_render_target_height = -1
 
-        self.restore_old_target = None
         def start_redraw(internal_data=None):
             self_value = self_ref()
             if self_value is None or self_value.renderer is None:
                 return
+            assert(self_value.renderer != None)
             if self_value.needs_relayout:
                 self_value.relayout()
-            if self_value.restore_old_target != None:
-                raise RuntimeError("nested redraw on " +
-                    str(self_value) + ", this is forbidden")
+            renderer = self_value.renderer
+            assert(renderer != None)
             dpi_scale = self_value.style.dpi_scale
             tex_x = max(1, math.ceil(self_value.width + 1.0))
             tex_y = max(1, math.ceil(self_value.height + 1.0))
-            if self_value.sdl_texture is None or \
-                    self_value.sdl_texture_width != tex_x or \
-                    self_value.sdl_texture_height != tex_y:
-                if self_value.renderer is None or \
+            if self_value.internal_render_target is None or \
+                    self_value.internal_render_target_width != tex_x or \
+                    self_value.internal_render_target_height != tex_y:
+                if renderer is None or \
                         tex_x <= 0 or tex_y <= 0:
-                    if self_value.renderer is None:
+                    if renderer is None:
                         self.needs_redraw = True
                     return
-                if self_value.sdl_texture != None:
-                    sdl.SDL_DestroyTexture(self_value.sdl_texture)
+                if self_value.internal_render_target != None:
                     if config.get("debug_texture_references"):
                         logdebug("WidgetBase.<closure>.start_redraw: " +
-                            "SDL_DestroyTexture(self.sdl_texture)")
-                    self_value.sdl_texture = None 
-                self_value.sdl_texture = sdl.SDL_CreateTexture(
-                    self_value.renderer,
-                    sdl.SDL_PIXELFORMAT_RGBA8888,
-                    sdl.SDL_TEXTUREACCESS_TARGET,
-                    tex_x, tex_y)
-                if self_value.sdl_texture is None:
-                    logwarning("warning: failed to create texture in " +
-                        "wobblui.widget_base.WidgetBase")
-                    self_value.needs_redraw = False
-                    return
-                sdl.SDL_SetTextureBlendMode(self_value.sdl_texture,
-                    sdl.SDL_BLENDMODE_BLEND)
-                self_value.sdl_texture_width = tex_x
-                self_value.sdl_texture_height = tex_y
-            self_value.restore_old_target = \
-                sdl.SDL_GetRenderTarget(self_value.renderer)
-            sdl.SDL_SetRenderTarget(self_value.renderer,
-                self_value.sdl_texture)
-            sdl.SDL_SetRenderDrawColor(self_value.renderer, 0, 0, 0, 0)
-            sdl.SDL_RenderClear(self_value.renderer)
-            sdl.SDL_SetRenderDrawColor(self_value.renderer,
-                255, 255, 255, 255)
+                            "DUMPED self.internal_render_target")
+                    self_value.internal_render_target = None 
+                self_value.internal_render_target = RenderTarget(
+                    renderer, tex_x, tex_y)
+                if config.get("debug_texture_references"):
+                        logdebug("WidgetBase.<closure>.start_redraw: " +
+                            "NEW self.internal_render_target")
+                self_value.internal_render_target_width = tex_x
+                self_value.internal_render_target_height = tex_y
+            self_value.internal_render_target.set_as_rendertarget()
         def end_redraw(internal_data=None):
             self_value = self_ref()
-            if self_value is None or self_value.renderer is None:
+            if self_value is None or self_value.renderer is None or \
+                    self.internal_render_target is None:
                 return
-            sdl.SDL_SetRenderDrawColor(self_value.renderer,
-                255, 255, 255, 255)
             if hasattr(self_value, "do_redraw"):
                 self_value.do_redraw()
-            sdl.SDL_SetRenderTarget(self_value.renderer,
-                self_value.restore_old_target)
-            self_value.restore_old_target = None
+            self_value.internal_render_target.unset_as_rendertarget()
             self_value.needs_redraw = False
             self_value.post_redraw()
         self.redraw = Event("redraw", owner=self,
@@ -1109,21 +1091,19 @@ cdef class WidgetBase(object):
         Perf.stop(chain_id)
 
     def __del__(self):
-        if self.sdl_texture != None:
-            sdl.SDL_DestroyTexture(self.sdl_texture)
+        if self.internal_render_target != None:
             if config.get("debug_texture_references"):
                 logdebug("WidgetBase.__del__: " +
-                    "SDL_DestroyTexture(self.sdl_texture)")
-            self.sdl_texture = None
+                    "DUMPED self.internal_render_target")
+            self.internal_render_target = None
         return
 
     def renderer_update(self):
-        if self.sdl_texture != None:
-            sdl.SDL_DestroyTexture(self.sdl_texture)
+        if self.internal_render_target != None:
             if config.get("debug_texture_references"):
                 logdebug("WidgetBase.renderer_update: " +
-                    "SDL_DestroyTexture(self.sdl_texture)")
-            self.sdl_texture = None
+                    "DUMPED self.internal_render_target")
+            self.internal_render_target = None
         for child in self.children:
             child.renderer_update()
 
@@ -1173,30 +1153,15 @@ cdef class WidgetBase(object):
         if self.invisible:
             return
         self.redraw_if_necessary()
-        if self.sdl_texture is None:
+        if self.internal_render_target is None:
             if self._width < 0 or self._height < 0 or \
                     self.renderer is None:
                 return
             self.redraw()
-            if self.sdl_texture is None:
+            if self.internal_render_target is None:
                 return
-        w = ctypes.c_int32()
-        h = ctypes.c_int32()
-        sdl.SDL_QueryTexture(self.sdl_texture, None, None,
-            ctypes.byref(w), ctypes.byref(h))
-        tg = sdl.SDL_Rect()
-        tg.x = round(x)
-        tg.y = round(y)
-        tg.w = max(1, round(w.value))
-        tg.h = max(1, round(h.value))
-        src = sdl.SDL_Rect()
-        src.x = 0
-        src.y = 0
-        src.w = tg.w
-        src.h = tg.h
-        sdl.SDL_SetRenderDrawColor(self.renderer,
-            255, 255, 255, 255)
-        sdl.SDL_RenderCopy(self.renderer, self.sdl_texture, src, tg)
+        assert(x != None and y != None)
+        self.internal_render_target.draw(x, y)
 
     def relayout_if_necessary(self):
         changed = False
