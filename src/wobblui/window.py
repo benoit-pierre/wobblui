@@ -183,6 +183,12 @@ class Window(WidgetBase):
             recursive_renderer_update(child)
         wobblui.gfx.clear_renderer(old_renderer)
         self._renderer = old_renderer
+        if self.internal_render_target != None:
+            if config.get("debug_texture_references"):
+                logdebug("Window.on_renderer_to_be_destroyed: " +
+                    "DUMPED self.internal_render_target")
+            self.internal_render_target._force_unload()
+            self.internal_render_target = None
         logdebug("Renderer loss processed.")
 
     def internal_app_reopen(self):

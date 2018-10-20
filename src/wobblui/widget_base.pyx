@@ -1094,7 +1094,8 @@ cdef class WidgetBase(object):
         if self.internal_render_target != None:
             if config.get("debug_texture_references"):
                 logdebug("WidgetBase.__del__: " +
-                    "DUMPED self.internal_render_target")
+                    "DUMPED self.internal_render_target on " +
+                    str(self))
             self.internal_render_target = None
         return
 
