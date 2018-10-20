@@ -26,10 +26,11 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.event import Event
-from wobblui.gfx import draw_dashed_line, draw_rectangle, RenderTarget
+from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.perf import Perf
 from wobblui.richtext import RichText
 from wobblui.scrollbarwidget import ScrollbarDrawingWidget
+from wobblui.texture import RenderTarget
 from wobblui.uiconf import config
 from wobblui.widget import Widget
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning

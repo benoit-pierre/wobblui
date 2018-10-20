@@ -214,27 +214,20 @@ cdef class RichTextFragment(RichTextObj):
             color = self.forced_text_color
         Perf.stop(perf_id)
         perf_id = Perf.start("fragment draw part 2")
-        (w, h, tex) = font.get_cached_rendered_sdl_texture(renderer,
-            self.text, color=Color.white)
+        tex = font.get_cached_rendered_texture(renderer, self.text)
         Perf.stop(perf_id)
         perf_id = Perf.start("fragment draw part 3")
-        tg = fragment_draw_rect
-        tg.x = round(x)
-        tg.y = round(y)
-        tg.w = w
-        tg.h = h
         sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
         if self.forced_text_color is None:
-            sdl.SDL_SetTextureColorMod(tex,
+            sdl.SDL_SetTextureColorMod(tex._texture,
                 round(color.red), round(color.green),
                 round(color.blue))
         else:
-            sdl.SDL_SetTextureColorMod(tex,
+            sdl.SDL_SetTextureColorMod(tex._texture,
                 round(self.forced_text_color.red),
                 round(self.forced_text_color.green),
                 round(self.forced_text_color.blue))
-        sdl.SDL_RenderCopy(renderer,
-            tex, None, tg)
+        tex.draw(round(x), round(y))
         Perf.stop(perf_id)
 
     def get_width(self):

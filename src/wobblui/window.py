@@ -34,6 +34,7 @@ from wobblui.gfx import draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
+import wobblui.texture
 from wobblui.uiconf import config
 from wobblui.widget_base import all_widgets, WidgetBase
 from wobblui.widgetman import all_windows
@@ -170,7 +171,7 @@ class Window(WidgetBase):
             clear out all textures to avoid a crash. """
 
         logdebug("Processing renderer loss...")
-        wobblui.gfx.mark_textures_invalid(self._renderer)
+        wobblui.texture.mark_textures_invalid(self._renderer)
         wobblui.font.manager.Font.clear_global_cache_textures()
         old_renderer = self._renderer
         self._renderer = None

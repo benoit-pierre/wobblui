@@ -28,9 +28,9 @@ import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
 import time
 
-from wobblui.gfx import Texture
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
+from wobblui.texture import Texture
 from wobblui.widget import Widget
 
 sdlimage_initialized = False

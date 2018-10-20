@@ -27,9 +27,10 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.event import ForceDisabledDummyEvent, Event
-from wobblui.gfx import draw_rectangle, Texture
+from wobblui.gfx import draw_rectangle
 from wobblui.image import image_to_sdl_surface, stock_image
 from wobblui.richtext import RichText
+from wobblui.texture import Texture
 from wobblui.uiconf import config
 from wobblui.widget import Widget
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning

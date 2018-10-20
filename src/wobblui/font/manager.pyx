@@ -33,15 +33,16 @@ from wobblui.cache import KeyValueCache
 from wobblui.color import Color
 import wobblui.font.info
 import wobblui.font.sdlfont as sdlfont
-from wobblui.woblog import logdebug
 from wobblui.sdlinit import initialize_sdl
+from wobblui.texture import Texture
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
 
 render_size_cache = KeyValueCache(size=50000)
 
 rendered_words_cache = KeyValueCache(size=500,
-    destroy_func=lambda x: sdl.SDL_DestroyTexture(x[2]))
+    destroy_func=lambda x: x._force_unload())
 
 _reuse_draw_rect = sdl.SDL_Rect()
 cdef class Font(object):
@@ -124,20 +125,12 @@ cdef class Font(object):
 
     def draw_at(self, renderer, str text, int x, int y, color=Color.black):
         global _reuse_draw_rect
-        cdef int w, h
-        (w, h, tex) = self.get_cached_rendered_sdl_texture(
-            renderer, text, color=Color.white)
-        assert(tex != None)
-        tg = _reuse_draw_rect
-        tg.x = x
-        tg.y = y
-        tg.w = w
-        tg.h = h
-        sdl.SDL_SetTextureColorMod(tex,
+        tex = self.get_cached_rendered_texture(renderer, text)
+        sdl.SDL_SetTextureColorMod(tex._texture,
             color.red, color.green, color.blue)
-        sdl.SDL_RenderCopy(renderer, tex, None, tg)
+        tex.draw(x, y)
 
-    def get_cached_rendered_sdl_texture(self, renderer, str text, color=None):
+    def get_cached_rendered_texture(self, renderer, str text):
         global rendered_words_cache
         cdef str key = str((self.font_family, self.italic, self.bold,
             self.px_size, str(ctypes.addressof(
@@ -146,29 +139,16 @@ cdef class Font(object):
         if value != None:
             return value
         font = self.get_sdl_font()
-        if color != None:
-            c = sdl.SDL_Color(color.red, color.green, color.blue)
-        else:
-            c = sdl.SDL_Color(0, 0, 0)
+        c = sdl.SDL_Color(255, 255, 255)
         try:
             text_bytes = text.encode("utf-8", "replace")
         except AttributeError:
             pass
         surface = sdlttf.TTF_RenderUTF8_Blended(
             font.font, text_bytes, c)
-        tex = sdl.SDL_CreateTextureFromSurface(renderer, surface)
-        sdl.SDL_SetTextureBlendMode(tex, sdl.SDL_BLENDMODE_BLEND)
-        w = ctypes.c_int32()
-        h = ctypes.c_int32()
-        w.value = 0
-        h.value = 0
-        sdl.SDL_QueryTexture(tex, None, None,
-            ctypes.byref(w), ctypes.byref(h))
-        sdl.SDL_FreeSurface(surface)
-        w = int(w.value)
-        h = int(h.value)
-        rendered_words_cache.add(key, (w, h, tex))
-        return (w, h, tex)
+        tex = Texture.new_from_sdl_surface(renderer, surface)
+        rendered_words_cache.add(key, tex)
+        return tex
 
     def get_sdl_font(self):
         self.mutex.acquire()
