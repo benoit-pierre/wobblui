@@ -112,6 +112,13 @@ class Texture(object):
     def unset_as_rendertarget(Self):
         raise TypeError("this is not a render target")
 
+    @staticmethod
+    def new_from_sdl_surface(renderer, srf):
+        tex = Texture(renderer, srf.contents.w, srf.contents.h,
+            _dontcreate=True)
+        tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
+        return tex
+
 class RenderTarget(Texture):
     def __init__(self, renderer, width, height):
         super().__init__(renderer, width, height, _dontcreate=True)

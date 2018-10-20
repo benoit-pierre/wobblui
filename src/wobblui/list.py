@@ -26,11 +26,13 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.event import Event
-from wobblui.gfx import draw_dashed_line, draw_rectangle
+from wobblui.gfx import draw_dashed_line, draw_rectangle, RenderTarget
 from wobblui.perf import Perf
 from wobblui.richtext import RichText
 from wobblui.scrollbarwidget import ScrollbarDrawingWidget
+from wobblui.uiconf import config
 from wobblui.widget import Widget
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class ListEntry(object):
     def __init__(self, html, style,
@@ -65,8 +67,7 @@ class ListEntry(object):
 
     def update_text_objects(self):
         if self._cached_render_tex != None:
-            sdl.SDL_DestroyTexture(self._cached_render_tex)
-            self._cached_render_tex = None
+            self.clear_texture()
         dpi_scale = 1.0
         px_size = 12 * self.px_size_scaler
         font_family = "Tex Gyre Heros"
@@ -137,7 +138,9 @@ class ListEntry(object):
 
     def clear_texture(self):
         if self._cached_render_tex != None:
-            sdl.SDL_DestroyTexture(self._cached_render_tex)
+            if config.get("debug_texture_references"):
+                logdebug("ListBase: " +
+                    "DUMPED self._cached_render_tex") 
             self._cached_render_tex = None
 
     def draw(self, renderer, x, y, draw_selected=False,
@@ -155,30 +158,17 @@ class ListEntry(object):
         tex = self._cached_render_tex
         if tex is None:
             old_t = sdl.SDL_GetRenderTarget(renderer)
-            self._cached_render_tex = sdl.SDL_CreateTexture(
-                renderer, sdl.SDL_PIXELFORMAT_ARGB8888,
-                sdl.SDL_TEXTUREACCESS_TARGET, round(self.width),
-                round(self.height))
-            sdl.SDL_SetTextureBlendMode(self._cached_render_tex,
-                sdl.SDL_BLENDMODE_BLEND)
-            sdl.SDL_SetRenderTarget(renderer, self._cached_render_tex)
-            sdl.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
-            sdl.SDL_RenderClear(renderer)
-            sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+            self._cached_render_tex = RenderTarget(
+                renderer, round(self.width), round(self.height))
+            self._cached_render_tex.set_as_rendertarget()
             self.do_actual_draw(renderer, 0, 0,
                 draw_selected=draw_selected,
                 draw_hover=draw_hover,
                 draw_keyboard_focus=draw_keyboard_focus)
             sdl.SDL_RenderPresent(renderer)
-            sdl.SDL_SetRenderTarget(renderer, old_t)
-            sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+            self._cached_render_tex.unset_as_rendertarget()
             tex = self._cached_render_tex
-        r = sdl.SDL_Rect()
-        r.x = round(x)
-        r.y = round(y)
-        r.w = round(self.width)
-        r.h = round(self.height)
-        sdl.SDL_RenderCopy(renderer, tex, None, r)
+        tex.draw(x, y, w=round(self.width), h=round(self.height))
 
     def do_actual_draw(self, renderer, x, y, draw_selected=False,
             draw_hover=False,
@@ -310,8 +300,7 @@ class ListEntry(object):
             return
         self.need_size_update = False
         if self._cached_render_tex != None:
-            sdl.SDL_DestroyTexture(self._cached_render_tex)
-            self._cached_render_tex = None
+            self.clear_texture()
         padding = max(0, round(5.0 * self.dpi_scale))
         padding_vertical = max(0,
             round(self.vertical_padding * self.dpi_scale))

@@ -28,6 +28,7 @@ import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
 import time
 
+from wobblui.gfx import Texture
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.widget import Widget
@@ -92,7 +93,7 @@ def image_to_sdl_texture(renderer, pil_image):
     initialize_sdl()
     sdl_image = image_to_sdl_surface(pil_image)
     try:
-        texture = sdl.SDL_CreateTextureFromSurface(renderer, sdl_image)
+        return Texture.new_from_sdl_surface(renderer, sdl_image)
     finally:
         sdl.SDL_FreeSurface(sdl_image)
     return texture
@@ -149,10 +150,21 @@ class ImageWidget(Widget):
         self.fit_to_height = fit_to_height
         self.image_texture = None
 
+    def __del__(self):
+        if hasattr(super(), "__del__"):
+            super().__del__()
+        if self.image_texture != None:
+            if config.get("debug_texture_references"):
+                logdebug("ImageWidget: " +
+                    "DUMPED self.image_texture")
+            self.image_texture = None
+
     def update_renderer(self):
         super().update_renderer()
         if self.image_texture != None:
-            sdl.SDL_DestroyTexture(self.image_texture)
+            if config.get("debug_texture_references"):
+                logdebug("ImageWidget: " +
+                    "DUMPED self.image_texture")
             self.image_texture = None
 
     def on_redraw(self):
@@ -161,18 +173,13 @@ class ImageWidget(Widget):
         if self.image_texture is None:
             self.image_texture = image_to_sdl_texture(
                 self.renderer, self.pil_image_small)
-        tg = sdl.SDL_Rect()
-        tg.x = 0
-        tg.y = 0
         (imgw, imgh) = self.pil_image.size
         scale_w = (self.width / imgw)
         scale_h = (self.height / imgh)
         scale = min(scale_w, scale_h)
-        tg.w = round(imgw * scale)
-        tg.h = round(imgh * scale)
         sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
-        sdl.SDL_RenderCopy(self.renderer, self.image_texture,
-            None, tg)
+        self.image_texture.draw(0, 0, w=round(imgw * scale),
+            h=round(imgh * scale))
 
     def get_natural_width(self):
         return self._natural_size()[0]

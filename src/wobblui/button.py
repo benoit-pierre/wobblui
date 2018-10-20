@@ -27,10 +27,12 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.event import ForceDisabledDummyEvent, Event
-from wobblui.gfx import draw_rectangle
+from wobblui.gfx import draw_rectangle, Texture
 from wobblui.image import image_to_sdl_surface, stock_image
 from wobblui.richtext import RichText
+from wobblui.uiconf import config
 from wobblui.widget import Widget
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class Button(Widget):
     def __init__(self, text="", with_border=True, clickable=True,
@@ -72,13 +74,17 @@ class Button(Widget):
             sdl.SDL_FreeSurface(self.contained_image_srf)
         if hasattr(self, "contained_image_texture") and \
                 self.contained_image_texture != None:
-            sdl.SDL_DestroyTexture(self.contained_image_texture)
+            if config.get("debug_texture_references"):
+                logdebug("Button: " +
+                    "DUMPED self.contained_image_texture")
             self.contained_image_texture = None
 
     def renderer_update(self):
         super().renderer_update()
         if self.contained_image_texture != None:
-            sdl.SDL_DestroyTexture(self.contained_image_texture)
+            if config.get("debug_texture_references"):
+                logdebug("Button: " +
+                    "DUMPED self.contained_image_texture")
             self.contained_image_texture = None
 
     def internal_set_extra_image_render(self, func):
@@ -119,7 +125,9 @@ class Button(Widget):
             sdl.SDL_FreeSurface(self.contained_image_srf)
             self.contained_image_srf = None
         if self.contained_image_texture != None:
-            sdl.SDL_DestroyTexture(self.contained_image_texture)
+            if config.get("debug_texture_references"):
+                logdebug("Button: " +
+                    "DUMPED self.contained_image_texture")
             self.contained_image_texture = None
         self.contained_image_srf = image_to_sdl_surface(pil_image_or_path)
 
@@ -176,7 +184,8 @@ class Button(Widget):
 
     def update_texture_color(self):
         if self.contained_image_texture != None:
-            sdl.SDL_SetTextureColorMod(self.contained_image_texture,
+            sdl.SDL_SetTextureColorMod(
+                self.contained_image_texture._texture,
                 self.image_color.red, self.image_color.green,
                 self.image_color.blue)
 
@@ -206,21 +215,21 @@ class Button(Widget):
         if self.contained_image != None:
             if self.contained_image_texture is None:
                 self.contained_image_texture =\
-                    sdl.SDL_CreateTextureFromSurface(self.renderer,
+                    Texture.new_from_sdl_surface(self.renderer,
                         self.contained_image_srf)
                 self.update_texture_color()
-            tg = sdl.SDL_Rect()
-            tg.x = offset_x
-            tg.y = round(self.border_size)
-            tg.w = math.ceil(self.contained_image.size[0] *
+            x = offset_x
+            y = round(self.border_size)
+            w = math.ceil(self.contained_image.size[0] *
                 self.contained_image_scale * self.dpi_scale * 1.0)
-            tg.h = math.ceil(self.contained_image.size[1] *
+            h = math.ceil(self.contained_image.size[1] *
                 self.contained_image_scale * self.dpi_scale * 1.0)
             if self.extra_image_render_func != None:
-                self.extra_image_render_func(tg.x, tg.y, tg.w, tg.h)
-            sdl.SDL_RenderCopy(self.renderer,
-                self.contained_image_texture, None, tg)
-            offset_x += tg.w + round(self.border_size * 0.7)
+                self.extra_image_render_func(x, y, w, h)
+            self.contained_image_texture.draw(
+                x, y,
+                w=w, h=h)
+            offset_x += w + round(self.border_size * 0.7)
         if self.contained_richtext_obj != None:
             c = Color.white
             if self.style != None:
@@ -329,7 +338,9 @@ class HoverCircleImageButton(Button):
 
     def dump_textures(self):
         if hasattr(self, "circle_tex") and self.circle_tex != None:
-            sdl.SDL_DestroyTexture(self.circle_tex)
+            if config.get("debug_texture_references"):
+                logdebug("HoverCircleImageButtonButton: " +
+                    "DUMPED self.circle_tex")
             self.circle_tex = None
 
     def render_circle(self, x, y, w, h):
@@ -338,14 +349,9 @@ class HoverCircleImageButton(Button):
         if self.circle_srf is None:
             self.circle_srf = image_to_sdl_surface(self.circle_img)
         if self.circle_tex is None:
-            self.circle_tex = sdl.SDL_CreateTextureFromSurface(
+            self.circle_tex = Texture.new_from_sdl_surface(
                 self.renderer, self.circle_srf)
-            sdl.SDL_SetTextureColorMod(self.circle_tex,
+            sdl.SDL_SetTextureColorMod(self.circle_tex._texture,
                 self.circle_r, self.circle_g, self.circle_b)
-        tg = sdl.SDL_Rect()
-        tg.x = x
-        tg.y = y
-        tg.w = w
-        tg.h = h
-        sdl.SDL_RenderCopy(self.renderer, self.circle_tex, None, tg)
+        self.circle_tex.draw(x, y, w=w, h=h)
 
