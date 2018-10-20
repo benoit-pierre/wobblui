@@ -56,7 +56,11 @@ def _dolog(label, msg):
             pass
 
 def logdebug(*args):
-    _dolog("debug", "\n".join(args))
+    try:
+        if _dolog != None:
+            _dolog("debug", "\n".join(args))
+    except NameError:
+        pass
 
 def logwarning(*args):
     _dolog("warning", "\n".join(args))

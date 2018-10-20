@@ -124,6 +124,8 @@ cdef class Font(object):
         return result
 
     def draw_at(self, renderer, str text, int x, int y, color=Color.black):
+        if len(text) == 0:
+            return
         global _reuse_draw_rect
         tex = self.get_cached_rendered_texture(renderer, text)
         sdl.SDL_SetTextureColorMod(tex._texture,
@@ -146,6 +148,9 @@ cdef class Font(object):
             pass
         surface = sdlttf.TTF_RenderUTF8_Blended(
             font.font, text_bytes, c)
+        if not surface:
+            raise RuntimeError("failed to render text: " +
+                str(text_bytes))
         tex = Texture.new_from_sdl_surface(renderer, surface)
         rendered_words_cache.add(key, tex)
         return tex

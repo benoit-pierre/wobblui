@@ -90,11 +90,13 @@ class Texture(object):
 
     def _force_unload(self):
         if hasattr(self, "_texture") and self._texture != None:
-            if config.get("debug_texture_references"):
-                logdebug("Texture._force_unload: " +
-                    "definite dump of texture " + str(self))
-            sdl.SDL_DestroyTexture(self._texture)
-            self._texture = None
+            try:
+                if config.get("debug_texture_references"):
+                    logdebug("Texture._force_unload: " +
+                        "definite dump of texture " + str(self))
+            finally:
+                sdl.SDL_DestroyTexture(self._texture)
+                self._texture = None
 
     def __del__(self):
         self._force_unload()
@@ -113,6 +115,10 @@ class Texture(object):
 
     @staticmethod
     def new_from_sdl_surface(renderer, srf):
+        if not renderer:
+            raise ValueError("need a valid renderer! not NULL / None")
+        if not srf:
+            raise ValueError("need valid surface! not NULL / None")
         tex = Texture(renderer, srf.contents.w, srf.contents.h,
             _dontcreate=True)
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
