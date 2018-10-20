@@ -320,13 +320,15 @@ class HoverCircleImageButton(Button):
         if hasattr(self, "circle_srf") and self.circle_srf != None:
             sdl.SDL_FreeSurface(self.circle_srf)
             self.circle_srf = None
-        if hasattr(self, "circle_tex") and self.circle_tex != None:
-            sdl.SDL_DestroyTexture(self.circle_tex)
-            self.circle_tex = None
+        self.dump_textures()
         super().__del__()
 
-    def update_texture(self):
-        if self.circle_tex != None:
+    def renderer_update(self):
+        super().renderer_update()
+        self.dump_textures()
+
+    def dump_textures(self):
+        if hasattr(self, "circle_tex") and self.circle_tex != None:
             sdl.SDL_DestroyTexture(self.circle_tex)
             self.circle_tex = None
 

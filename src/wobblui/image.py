@@ -150,6 +150,7 @@ class ImageWidget(Widget):
         self.image_texture = None
 
     def update_renderer(self):
+        super().update_renderer()
         if self.image_texture != None:
             sdl.SDL_DestroyTexture(self.image_texture)
             self.image_texture = None

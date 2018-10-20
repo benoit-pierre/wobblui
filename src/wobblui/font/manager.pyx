@@ -82,7 +82,7 @@ cdef class Font(object):
 
     @staticmethod
     def clear_global_cache_textures():
-        logdebug("Clearing global texture cache")
+        logdebug("Clearing global texture cache [wobblui.font.manager]")
         rendered_words_cache.clear()
 
     def __repr__(self):

@@ -173,10 +173,15 @@ class Window(WidgetBase):
         wobblui.font.manager.Font.clear_global_cache_textures()
         old_renderer = self._renderer
         self._renderer = None
+        def recursive_renderer_update(item):
+            item.renderer_update()
+            for child in item.children:
+                recursive_renderer_update(child)
         for child in self.children:
-            child.renderer_update()
+            recursive_renderer_update(child)
         self._renderer = old_renderer
         wobblui.gfx.clear_renderer(renderer)
+        logdebug("Renderer loss processed.")
 
     def internal_app_reopen(self):
         if self.is_closed:
