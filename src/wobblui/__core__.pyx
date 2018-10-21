@@ -666,13 +666,19 @@ def _handle_event(event):
         logdebug("APP BACKGROUND EVENT.")
         if sdl.SDL_GetPlatform().decode("utf-8", "replace").\
                 lower() == "android":
-            logdebug("ANDROID IN BACKGROUND. DUMP ALL WINDOW RENDERERS.")
-            for w_ref in all_windows:
-                w = w_ref()
-                if w != None:
-                    if w.focused:
-                        w.unfocus()
-                    w.handle_sdlw_close()
+            dump_renderers = config.get(
+                "recreate_renderer_when_in_background")
+            if dump_renderers:
+                logdebug("ANDROID IN BACKGROUND. DUMP ALL WINDOW RENDERERS.")
+                for w_ref in all_windows:
+                    w = w_ref()
+                    if w != None:
+                        if w.focused:
+                            w.unfocus()
+                        w.handle_sdlw_close()
+            else:
+                logdebug("ANDROIND IN BACKGROUND. KEEPING RENDERERS AS " +
+                    "PER CONFIG OPTION. (not recommended)")
     elif (event.type == sdl.SDL_APP_WILLENTERFOREGROUND):
         logdebug("APP RESUME EVENT")
         for w_ref in all_windows:
