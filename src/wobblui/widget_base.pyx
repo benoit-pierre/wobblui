@@ -267,8 +267,11 @@ cdef class WidgetBase(object):
                 [mouse_id, button_id, x, y], internal_data=internal_data)
         self.mouseup = Event("mouseup", owner=self,
             special_pre_event_func=mouseup_pre)
+        def layouting_done(internal_data=None):
+            self.needs_relayout = False
         self.relayout = Event("relayout", owner=self,
-            allow_preventing_widget_callback_by_user_callbacks=False)
+            allow_preventing_widget_callback_by_user_callbacks=False,
+            special_post_event_func=layouting_done)
         self.moved = Event("moved", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         self.resized = Event("resized", owner=self,
