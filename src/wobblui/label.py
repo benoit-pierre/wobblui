@@ -138,7 +138,6 @@ class Label(ScrollbarDrawingWidget):
             self.text_obj.px_size = self.px_size
             self.text_obj.draw_scale = self.dpi_scale
             self.current_draw_scale = self.dpi_scale
-            self.needs_relayout = True
 
     def on_relayout(self):
         self.font_size_refresh()
