@@ -122,13 +122,21 @@ class Window(WidgetBase):
     def get_window_dpi(self):
         guessed_scale = 1.0
 
-        # If window is really large, just scale up nevertheless:
-        if guessed_scale < 1.5 and self.width > 2000 and \
-                self.height > 1500:
-            guessed_scale = max(guessed_scale, 1.5)
-        if guessed_scale < 1.5 and self.width > 3500 and \
-                self.height > 3000:
-            guessed_scale = max(guessed_scale, 2.0)
+        if not is_android():
+            # If window is really large, just scale up nevertheless:
+            if guessed_scale < 1.5 and self.width > 2000 and \
+                    self.height > 1100:
+                guessed_scale = max(guessed_scale, 1.5)
+            if guessed_scale < 1.5 and self.width > 3000 and \
+                    self.height > 1800:
+                guessed_scale = max(guessed_scale, 2.0)
+        else:
+            if guessed_scale < 1.5 and (self.width +
+                    self.height) > (1300 + 1000):
+                guessed_scale = max(guessed_scale, 1.5)
+            if guessed_scale < 1.8 and (self.width + self.height) >\
+                    (1800 + 1000):
+                guessed_scale = max(guessed_scale, 1.8)
 
         # On android, always scale up some more:
         if is_android():
