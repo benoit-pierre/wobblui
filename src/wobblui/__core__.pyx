@@ -66,7 +66,8 @@ def redraw_windows(int layout_only=False):
                         w() for w in all_widgets] if \
                         widget != None and widget.needs_relayout]))
             Perf.stop(relayout_perf, expected_max_duration=0.010)
-            w.redraw_if_necessary()
+            if not layout_only:
+                w.redraw_if_necessary()
         except Exception as e:
             logerror("*** ERROR HANDLING WINDOW ***")
             logerror(str(traceback.format_exc()))
