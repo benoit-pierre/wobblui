@@ -37,7 +37,7 @@ class Conf(object):
         if value == "software_renderer":
             return True
         if value == "recreate_renderer_when_in_background":
-            return True
+            return False
         if value == "perf_debug":
             return False
         if value == "debug_events":
