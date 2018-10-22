@@ -474,9 +474,9 @@ class Window(WidgetBase):
         elif self.needs_redraw:
             raise RuntimeError("still needing redraw in post " +
                 "redraw, this may lead to an infinite loop")
-        # Work around double buffering issues by drawing twice:
+        # Work around double/triple buffering issues by drawing repeatedly:
         i = 0
-        while i < 2:
+        while i < 3:
             sdl.SDL_SetRenderTarget(self.renderer, None)
             c = Color.white
             if self.style != None:
