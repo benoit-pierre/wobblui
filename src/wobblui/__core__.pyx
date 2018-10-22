@@ -55,11 +55,11 @@ def redraw_windows(int layout_only=False):
             w.update_to_real_sdlw_size()
             w.do_scheduled_dpi_scale_update()
             i = 0
-            while i < 10:
+            while i < 20:
                 if not w.relayout_if_necessary():
                     break
                 i += 1
-            if i == 10:
+            if i == 20:
                 logwarning("WARNING: a widget appears to be causing a " +
                     "relayout() loop !!! affected window: " +
                     str(w) + ", all widgets that need relayouting: " +
