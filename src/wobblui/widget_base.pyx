@@ -382,7 +382,9 @@ cdef class WidgetBase(object):
             # Parent needs relayout.
             if self.parent != None:
                 self.parent.needs_relayout = True
-
+        self._cached_previous_natural_width = current_natural_width
+        self._cached_previous_natural_height = current_natural_height
+        self.needs_relayout = False  # just to enforce this in any case.
 
     def _internal_on_relayout(self, internal_data=None):
         # Prepare relayouting. If it's obvious that the parent

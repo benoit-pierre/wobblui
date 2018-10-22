@@ -463,6 +463,8 @@ class ListBase(ScrollbarDrawingWidget):
         self.needs_redraw = True
 
     def clear(self):
+        if len(self._entries) == 0:
+            return
         self.cached_natural_width = None
         self._entries = []
         self._selected_index = -1
