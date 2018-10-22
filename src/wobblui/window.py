@@ -87,7 +87,21 @@ def get_window_by_sdl_id(sdl_id):
         seen.add(str(id(w)))
         new_refs.append(w_ref)
     all_windows = new_refs
+    trigger_global_style_changed()
     return result
+
+def trigger_global_style_changed():
+    new_refs = []
+    collected_widgets = []
+    for w_ref in all_widgets:
+        w = w_ref()
+        if w is None:
+            continue
+        collected_widgets.append(w)
+        new_refs.append(w_ref)
+    all_widgets[:] = new_refs
+    for w in collected_widgets:
+        w.stylechanged()
 
 class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,
@@ -116,7 +130,7 @@ class Window(WidgetBase):
         self.next_reopen_height = height
         self.internal_app_reopen()
         self.last_known_dpi_scale = None
-        self.dpi_scaler_avoid_recurse_stylechanged = False
+        self.schedule_global_dpi_scale_update = False
         all_windows.append(weakref.ref(self))
 
     def get_window_dpi(self):
@@ -141,26 +155,22 @@ class Window(WidgetBase):
         # On android, always scale up some more:
         if is_android():
             guessed_scale = max(guessed_scale, 1.4)
-        
+
+        # If this changed anything, inform everything after we bailed
+        # out of this function back into the global main loop:
         if self.last_known_dpi_scale != guessed_scale:
-            # Update window layout and style of all widgets
-            self.needs_relayout = True
-            if not self.dpi_scaler_avoid_recurse_stylechanged:
-                self.dpi_scaler_avoid_recurse_stylechanged = True
-                new_refs = []
-                collected_widgets = []
-                for w_ref in all_widgets:
-                    w = w_ref()
-                    if w is None:
-                        continue
-                    collected_widgets.append(w)
-                    new_refs.append(w_ref)
-                all_widgets[:] = new_refs
-                for w in collected_widgets:
-                    w.stylechanged()
-                self.dpi_scaler_avoid_recurse_stylechanged = False
-        self.last_known_dpi_scale = guessed_scale
-        return guessed_scale
+            self.last_known_dpi_scale = guessed_scale
+            self.schedule_global_dpi_scale_update = True
+
+        return guessed_scale   
+ 
+    def do_scheduled_dpi_scale_update(self):
+        if not self.schedule_global_dpi_scale_update:
+            return
+        self.schedule_global_dpi_scale_update = False 
+        # Update window layout and style of all widgets
+        self.needs_relayout = True
+        trigger_global_style_changed()
 
     def clear(self):
         old_renderer = self._renderer

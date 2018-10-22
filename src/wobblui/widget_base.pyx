@@ -1314,6 +1314,7 @@ cdef class WidgetBase(object):
 
     def _internal_on_stylechanged(self, internal_data=None):
         self.needs_redraw = True
+        self.needs_relayout = True
 
     @property
     def effectively_invisible(self):

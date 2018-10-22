@@ -14,7 +14,7 @@ class Label(ScrollbarDrawingWidget):
         super().__init__()
         self.no_mouse_events = True
         self.type = "label"
-        self.current_draw_scale = 1.0
+        self.current_draw_scale = self.dpi_scale
         self.text_scale = text_scale
         font_family = self.style.get("widget_font_family")
         self.px_size = self.get_intended_text_size()

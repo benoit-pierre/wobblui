@@ -53,6 +53,7 @@ def redraw_windows(int layout_only=False):
         try:
             relayout_perf = Perf.start("redraw_windows_relayout")
             w.update_to_real_sdlw_size()
+            w.do_scheduled_dpi_scale_update()
             i = 0
             while i < 10:
                 if not w.relayout_if_necessary():
