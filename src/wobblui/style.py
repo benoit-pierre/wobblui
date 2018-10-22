@@ -23,11 +23,12 @@ import sdl2 as sdl
 
 class AppStyle(object):
     def __init__(self):
+        self._dpi_scale_base = 1.0
         self._dpi_scale = 1.0
         self.is_android = (sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android")
         if self.is_android:
-            self._dpi_scale = 1.2
+            self._dpi_scale_base = 1.2
         self.values = dict()
 
     def copy(self):
@@ -40,7 +41,7 @@ class AppStyle(object):
 
     @property
     def dpi_scale(self):
-        return self._dpi_scale
+        return self._dpi_scale * self._dpi_scale_base
 
     @dpi_scale.setter
     def dpi_scale(self, v):
@@ -152,5 +153,5 @@ class AppStyleDark(AppStyle):
         self.set("touch_selection_drag_handles", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
-        self.set("topbar_text_size", 22)
+        self.set("topbar_text_size", 27)
 

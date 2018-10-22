@@ -275,7 +275,7 @@ class Button(Widget):
         return my_w
 
 class ImageButton(Button):
-    def __init__(self, image, scale_to_width=30,
+    def __init__(self, image, scale_to_width=33,
             clickable=True):
         super().__init__(with_border=False,
             clickable=clickable)

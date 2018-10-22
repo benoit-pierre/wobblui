@@ -41,6 +41,14 @@ class Topbar(Widget):
         self.topbar_box = HBox()
         self.topbar_box.internal_override_parent(self)
 
+    def widget_is_in_upper_half(self, widget):
+        p = widget.parent
+        while p != None:
+            if p == self.topbar_box:
+                return True
+            p = p.parent
+        return False
+
     def get_children(self):
         return self._children + [self.topbar_box]
 

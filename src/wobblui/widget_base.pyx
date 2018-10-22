@@ -269,6 +269,7 @@ cdef class WidgetBase(object):
             special_pre_event_func=mouseup_pre)
         def layouting_done(internal_data=None):
             self.needs_relayout = False
+            self._internal_post_relayout(internal_data=internal_data)
         self.relayout = Event("relayout", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False,
             special_post_event_func=layouting_done)
@@ -369,7 +370,23 @@ cdef class WidgetBase(object):
             self._y = v
             self.moved()
 
+    def _internal_post_relayout(self, internal_data=None):
+        # Our own relayouting is done. See if our size changed:
+        current_natural_width = self.get_natural_width()
+        current_natural_height = self.get_natural_height(
+            given_width=current_natural_width)
+        if self._cached_previous_natural_width != \
+                current_natural_width and \
+                self._cached_previous_natural_height !=\
+                current_natural_height:
+            # Parent needs relayout.
+            if self.parent != None:
+                self.parent.needs_relayout = True
+
+
     def _internal_on_relayout(self, internal_data=None):
+        # Prepare relayouting. If it's obvious that the parent
+        # needs a change, already schedule this:
         self.needs_relayout = False
         need_parent_relayout = True
         current_natural_width = self.get_natural_width()

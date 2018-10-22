@@ -27,6 +27,7 @@ import sdl2 as sdl
 from wobblui.color import Color
 from wobblui.event import Event
 from wobblui.gfx import draw_dashed_line, draw_rectangle
+from wobblui.osinfo import is_android
 from wobblui.perf import Perf
 from wobblui.richtext import RichText
 from wobblui.scrollbarwidget import ScrollbarDrawingWidget
@@ -294,6 +295,8 @@ class ListEntry(object):
 
     @property
     def vertical_padding(self):
+        if is_android() or config.get("mouse_fakes_touch_events"):
+            return 25.0
         return 10.0
 
     def update_size(self):

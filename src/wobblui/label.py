@@ -64,7 +64,7 @@ class Label(ScrollbarDrawingWidget):
         p = self.parent
         while p != None:
             if p.type == "topbar":
-                return True
+                return (p.widget_is_in_upper_half(self))
             p = p.parent
         return False
 
