@@ -50,6 +50,9 @@ def get_focused_window():
     return None
 
 def change_dpi_scale_on_all_windows(new_dpi_scale):
+    logdebug("manual DPI change triggered on all windows by " +
+        "app. new scale is: " + str(new_dpi_scale) + ". " +
+        "firing stylechanged() on all widgets...")
     styles_seen = dict()
     new_w_refs = []
     for w_ref in all_windows:
@@ -159,6 +162,11 @@ class Window(WidgetBase):
         # If this changed anything, inform everything after we bailed
         # out of this function back into the global main loop:
         if self.last_known_dpi_scale != guessed_scale:
+            logdebug("window.py: scheduling global style update " +
+                "because of DPI change " +
+                str(self.last_known_dpi_scale) +
+                " -> " + str(guessed_scale) +
+                " in window: " + str(self))
             self.last_known_dpi_scale = guessed_scale
             self.schedule_global_dpi_scale_update = True
 
@@ -167,7 +175,9 @@ class Window(WidgetBase):
     def do_scheduled_dpi_scale_update(self):
         if not self.schedule_global_dpi_scale_update:
             return
-        self.schedule_global_dpi_scale_update = False 
+        self.schedule_global_dpi_scale_update = False
+        logdebug("window.py: processing global style update, " +
+            "firing stylechanged() on all widgets")
         # Update window layout and style of all widgets
         self.needs_relayout = True
         trigger_global_style_changed()
