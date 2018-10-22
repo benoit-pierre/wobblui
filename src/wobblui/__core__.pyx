@@ -64,7 +64,7 @@ def redraw_windows(int layout_only=False):
                     "relayout() loop !!! affected window: " +
                     str(w) + ", all widgets that need relayouting: " +
                     str([widget for widget in [
-                        wi_ref() for wiref in all_widgets] if \
+                        wi_ref() for wi_ref in all_widgets] if \
                         widget != None and widget.needs_relayout and \
                         ((hasattr(widget, "parent_window") and
                         widget.parent_window) == w or widget == w)]))
