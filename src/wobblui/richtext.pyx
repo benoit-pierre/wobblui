@@ -34,7 +34,7 @@ from wobblui.color import Color
 import wobblui.cssparse as cssparse
 import nettools.htmlparse as htmlparse
 from wobblui.font.manager import font_manager
-from wobblui.perf import Perf
+from wobblui.perf cimport CPerf as Perf
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class TagInfo(object):
@@ -219,14 +219,9 @@ cdef class RichTextFragment(RichTextObj):
         perf_id = Perf.start("fragment draw part 3")
         sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
         if self.forced_text_color is None:
-            sdl.SDL_SetTextureColorMod(tex._texture,
-                round(color.red), round(color.green),
-                round(color.blue))
+            tex.set_color(color)
         else:
-            sdl.SDL_SetTextureColorMod(tex._texture,
-                round(self.forced_text_color.red),
-                round(self.forced_text_color.green),
-                round(self.forced_text_color.blue))
+            tex.set_color(self.forced_text_color)
         tex.draw(round(x), round(y))
         Perf.stop(perf_id)
 

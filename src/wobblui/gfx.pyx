@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -26,7 +27,7 @@ import weakref
 
 from wobblui.color import Color
 from wobblui.font.manager import font_manager
-from wobblui.perf import Perf
+from wobblui.perf cimport CPerf as Perf
 from wobblui.uiconf import config
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 

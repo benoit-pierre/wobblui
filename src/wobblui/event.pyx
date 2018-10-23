@@ -23,14 +23,16 @@ freely, subject to the following restrictions:
 import random
 import sys
 
-from wobblui.perf import Perf
+from wobblui.perf cimport CPerf as Perf
 from wobblui.uiconf import config
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DEBUG_EVENT=False
 
 cdef class Event(object):
-    """ This is a generic event for use by any widgets.
+    """ NOTE: MEMBER DEFINITIONS FOR THIS CLASS ARE IN event.pxd!
+
+        This is a generic event for use by any widgets.
 
         An event consists of a name, special callback functions
         that may trigger before or after the event, and an
@@ -101,13 +103,8 @@ cdef class Event(object):
         @param allow_preventing_widget_callback_by_user_callbacks Control
                                        event order. See text above!
     """
-    cdef public object funcs, on_object
-    cdef int _disabled
-    cdef object special_post_event_func, special_pre_event_func
-    cdef public str name
-    cdef public int widget_must_get_event
 
-    def __init__(self, name, owner=None,
+    def __init__(self, str name, owner=None,
             special_pre_event_func=None,
             special_post_event_func=None,
             allow_preventing_widget_callback_by_user_callbacks=True):
@@ -279,7 +276,7 @@ cdef class ForceDisabledDummyEvent(Event):
         expected, but the user or anyone else will be prevented from
         ever enabling it & actually registering any working callbacks.
     """
-    def __init__(self, name, owner=None):
+    def __init__(self, str name, owner=None):
         super().__init__(name, owner=owner)
         self.disable()    
 

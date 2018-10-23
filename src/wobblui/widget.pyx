@@ -20,12 +20,12 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.event import Event
+from wobblui.event cimport Event
 from wobblui.style import AppStyleBright
-from wobblui.widget_base import all_widgets, tab_sort, WidgetBase
+from wobblui.widget_base cimport WidgetBase
 from wobblui.window import Window
 
-class Widget(WidgetBase):
+cdef class Widget(WidgetBase):
     def __init__(self,
             int is_container=False, int can_get_focus=False,
             int takes_text_input=False,
@@ -54,11 +54,12 @@ class Widget(WidgetBase):
 
     @property
     def parent_window(self):
-        p = self.parent
+        cdef object p = self.parent
         while p:
             if isinstance(p, Window):
                 return p
             p = p.parent
+        return None
 
     def focus_next(self):
         if not self.focused:
@@ -70,9 +71,9 @@ class Widget(WidgetBase):
             raise RuntimeError("widget isn't focused")
         self._advance_focus(False)
 
-    def _advance_focus(self, forward):
+    def _advance_focus(self, int forward):
         sorted_candidates = self.__class__.focus_candidates(self)
-        i = 0
+        cdef int i = 0
         while i < len(sorted_candidates):
             if sorted_candidates[i] == self:
                 if forward:

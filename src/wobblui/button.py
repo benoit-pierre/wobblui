@@ -185,10 +185,7 @@ class Button(Widget):
 
     def update_texture_color(self):
         if self.contained_image_texture != None:
-            sdl.SDL_SetTextureColorMod(
-                self.contained_image_texture._texture,
-                self.image_color.red, self.image_color.green,
-                self.image_color.blue)
+            self.contained_image_texture.set_color(self.image_color)
 
     def do_redraw(self):
         if self.renderer is None:
@@ -322,9 +319,7 @@ class HoverCircleImageButton(Button):
             scale_to_width=scale_to_width)
         self.set_image_color(color)
         self.internal_set_extra_image_render(self.render_circle)
-        self.circle_r = 0
-        self.circle_g = 150
-        self.circle_b = 250
+        self.circle_color = Color((0, 150, 250))
 
     def __del__(self):
         if hasattr(self, "circle_srf") and self.circle_srf != None:
@@ -352,7 +347,6 @@ class HoverCircleImageButton(Button):
         if self.circle_tex is None:
             self.circle_tex = Texture.new_from_sdl_surface(
                 self.renderer, self.circle_srf)
-            sdl.SDL_SetTextureColorMod(self.circle_tex._texture,
-                self.circle_r, self.circle_g, self.circle_b)
+            self.circle_tex.set_color(self.circle_color)
         self.circle_tex.draw(x, y, w=w, h=h)
 

@@ -1,4 +1,4 @@
-#cython: language_level=3, boundscheck=False
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -37,73 +37,23 @@ from wobblui.event import Event, ForceDisabledDummyEvent,\
 from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.mouse import cursor_seen_during_mousemove
 from wobblui.keyboard import enable_text_events
-from wobblui.perf import Perf
-from wobblui.texture import RenderTarget
+from wobblui.perf cimport CPerf as Perf
+from wobblui.texture cimport RenderTarget
 from wobblui.timer import schedule
 from wobblui.uiconf import config
 from wobblui.widgetman import add_widget, all_widgets, \
     get_widget_id, get_add_id, tab_sort
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
-cdef class WidgetBase(object):
-    cdef public str type
-    cdef public int _focusable
-    cdef public int needs_redraw
-    cdef public int id
-    cdef public int added_order
-    cdef public int no_mouse_events  # disables callbacks AND propagation
-    cdef public int continue_infinite_scroll_when_uncofused
-    cdef public int fake_mouse_even_with_native_touch_support
-    cdef public int has_native_touch_support, takes_text_input
-    cdef public int _prevent_mouse_event_propagate
-    cdef public int needs_relayout
-    cdef public int generate_double_click_for_touches 
-    cdef public int _x, _y, _width, _height, _max_width, _max_height
-    cdef public int is_container
-    cdef public object _children
-    cdef object _parent
-    cdef int _disabled, _is_focused, _invisible
-    cdef object _cursor
+cdef class WidgetBase:
+    # MEMBERS SEE WidgetBase.pxd FILE !!!
 
-    # Event processing internal state:
-    cdef public int _in_touch_fake_event_processing
-    cdef public int last_mouse_move_was_inside
-    cdef public object last_mouse_down_presses
-    cdef public object last_mouse_click_with_time
-    cdef public int last_touch_was_inside
-    cdef public int last_touch_was_pressed
-    cdef public int _cached_previous_natural_width
-    cdef public int _cached_previous_natural_height
-    cdef public double last_touch_event_ts
-    cdef public double touch_vel_x, touch_vel_y
-    cdef public int last_seen_infinitescroll_touch_x,\
-        last_seen_infinitescroll_touch_y, touch_in_progress,\
-        have_scheduled_scroll_checker
-    cdef public double last_infinite_ts  # for drag-fast-and-let-go scrolling
-    cdef public object touch_start_x, touch_start_y  # nullable
-    cdef public double touch_max_ever_distance
-    cdef public double touch_start_time
-    cdef public int last_touch_x, last_touch_y, touch_scrolling
-    cdef public int long_click_callback_id, have_long_click_callback
-
-    # Drawing technical details:
-    cdef public object internal_render_target
-    cdef public int internal_render_target_width, \
-                    internal_render_target_height
-
-    # Event objects:
-    cdef public object textinput, parentchanged, multitouchstart,\
-        multitouchmove, multitouchend, touchstart, touchmove, touchend,\
-        mousemove, mousedown, mouseup, mousewheel, stylechanged,\
-        keyup, keydown, click, doubleclick, relayout, moved, resized,\
-        focus, unfocus
-
-    def __init__(self, is_container=False,
-            can_get_focus=False,
-            takes_text_input=False,
-            has_native_touch_support=False,
-            fake_mouse_even_with_native_touch_support=False,
-            generate_double_click_for_touches=False):
+    def __init__(self, int is_container=False,
+            int can_get_focus=False,
+            int takes_text_input=False,
+            int has_native_touch_support=False,
+            int fake_mouse_even_with_native_touch_support=False,
+            int generate_double_click_for_touches=False):
         self.type = "unknown"
         self._focusable = can_get_focus
         self.needs_redraw = True
@@ -207,7 +157,6 @@ cdef class WidgetBase(object):
         self.parentchanged = Event("parentchanged", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
         if has_native_touch_support:
-            logdebug("NATIVE TOUCH FOR: " + str(self))
             self.has_native_touch_support = True
             self.multitouchstart = Event("multitouchstart", owner=self)
             self.multitouchmove = Event("multitouchmove", owner=self)
@@ -300,7 +249,7 @@ cdef class WidgetBase(object):
     def get_default_cursor(self):
         return "normal"
 
-    def set_invisible(self, v):
+    def set_invisible(self, int v):
         self.invisible = v
 
     @property
@@ -311,7 +260,7 @@ cdef class WidgetBase(object):
         return self._in_touch_fake_event_processing
 
     @invisible.setter
-    def invisible(self, v):
+    def invisible(self, int v):
         v = (v is True)
         if self._invisible != v:
             self._invisible = v
@@ -339,7 +288,7 @@ cdef class WidgetBase(object):
         return self._disabled
 
     @disabled.setter
-    def disabled(self, v):
+    def disabled(self, int v):
         v = (v is True)
         if self._disabled != v:
             self._disabled = v
@@ -355,7 +304,7 @@ cdef class WidgetBase(object):
         return self._x
 
     @x.setter
-    def x(self, v):
+    def x(self, int v):
         if self._x != v:
             self._x = v
             self.moved()
@@ -365,15 +314,15 @@ cdef class WidgetBase(object):
         return self._y
 
     @y.setter
-    def y(self, v):
+    def y(self, int v):
         if self._y != v:
             self._y = v
             self.moved()
 
     def _internal_post_relayout(self, internal_data=None):
         # Our own relayouting is done. See if our size changed:
-        current_natural_width = self.get_natural_width()
-        current_natural_height = self.get_natural_height(
+        cdef int current_natural_width = self.get_natural_width()
+        cdef int current_natural_height = self.get_natural_height(
             given_width=current_natural_width)
         if self._cached_previous_natural_width != \
                 current_natural_width and \
@@ -391,8 +340,8 @@ cdef class WidgetBase(object):
         # needs a change, already schedule this:
         self.needs_relayout = False
         need_parent_relayout = True
-        current_natural_width = self.get_natural_width()
-        current_natural_height = self.get_natural_height(
+        cdef int current_natural_width = self.get_natural_width()
+        cdef int current_natural_height = self.get_natural_height(
             given_width=current_natural_width)
         if self._cached_previous_natural_width == \
                 current_natural_width and \
@@ -405,19 +354,19 @@ cdef class WidgetBase(object):
             self.parent.needs_relayout = True
             self.parent.needs_redraw = True
 
-    def _internal_on_multitouchstart(self, finger_id, x, y,
+    def _internal_on_multitouchstart(self, int finger_id, int x, int y,
             internal_data=None):
         for child in self.children:
             child.multitouchstart(finger_id, x, y,
                 internal_data=internal_data)
 
-    def _internal_on_multitouchmove(self, finger_id, x, y,
+    def _internal_on_multitouchmove(self, int finger_id, int x, int y,
             internal_data=None):
         for child in self.children:
             child.multitouchstart(finger_id, x, y,
                 internal_data=internal_data)
 
-    def _internal_on_multitouchend(self, finger_id, x, y,
+    def _internal_on_multitouchend(self, int finger_id, int x, int y,
             internal_data=None):
         for child in self.children:
             child.multitouchstart(finger_id, x, y,
@@ -583,12 +532,12 @@ cdef class WidgetBase(object):
                 return 0.1
         return None
 
-    def _post_mouse_event_handling(self, event_name,
+    def _post_mouse_event_handling(self, str event_name,
             event_args, internal_data=None):
         return self._pre_or_post_mouse_event_handling(event_name,
             event_args, internal_data=None, is_post=True)
 
-    def _pre_mouse_event_handling(self, event_name,
+    def _pre_mouse_event_handling(self, str event_name,
             event_args, internal_data=None):
         return self._pre_or_post_mouse_event_handling(event_name,
             event_args, internal_data=None, is_post=False)
@@ -688,8 +637,8 @@ cdef class WidgetBase(object):
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
 
-        r = str(random.random()).replace(".", "")
-        chain_id = "_pre_or_post_mouse_event_handling" + r +\
+        cdef str r = str(random.random()).replace(".", "")
+        cdef str chain_id = "_pre_or_post_mouse_event_handling" + r +\
             str(self)
         Perf.chain(chain_id)
 
@@ -751,8 +700,8 @@ cdef class WidgetBase(object):
 
         # Process starting point, hit point and overall
         # movement for touch gestures:
-        touch_hitpoint_check_x = x  # type: can be None!
-        touch_hitpoint_check_y = y
+        cdef object touch_hitpoint_check_x = x  # type: can be None!
+        cdef object touch_hitpoint_check_y = y
         cdef int treat_as_touch_start = False
 
         # Update cursor:
@@ -954,7 +903,7 @@ cdef class WidgetBase(object):
         if self._prevent_mouse_event_propagate == True:
             Perf.stop(chain_id)
             return
-        child_list = copy.copy(self.children)
+        cdef object child_list = copy.copy(self.children)
         cdef int check_widget_overlap = False
         if hasattr(self, "get_children_in_strict_mouse_event_order"):
             child_list = copy.copy(
@@ -1150,7 +1099,7 @@ cdef class WidgetBase(object):
 
     @property
     def dpi_scale(self):
-        window_scaler = 1.0
+        cdef double window_scaler = 1.0
         if hasattr(self, "parent_window") and \
                 self.parent_window != None:
             window_scaler = self.parent_window.get_window_dpi()
@@ -1172,7 +1121,7 @@ cdef class WidgetBase(object):
                 255, 255, 255, 255)
             child.draw(child.x, child.y)
 
-    def draw(self, x, y):
+    def draw(self, int x, int y):
         if self.invisible:
             return
         self.redraw_if_necessary()
@@ -1187,7 +1136,7 @@ cdef class WidgetBase(object):
         self.internal_render_target.draw(x, y)
 
     def relayout_if_necessary(self):
-        changed = False
+        cdef int changed = False
         for child in self.children:
             if child.relayout_if_necessary():
                 changed = True

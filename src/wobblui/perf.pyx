@@ -28,10 +28,15 @@ from wobblui.uiconf import config
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 cdef class _PerfClass(object):
-    cdef object perf_start_times
-    cdef object perf_measurements
-    cdef long perf_id
-    cdef object lock
+    """ The class implementing the global singleton performance tracker.
+        This is used by wobblui internally to track performance for
+        advanced profiling.
+
+        (Meant for internal use, but you can report your own perf events
+        with this if you want. However, they'll be part of the extensive
+        performance output wobblui uses internally, there is no way to
+        separate it nicely at this point)
+    """
 
     def __init__(self):
         self.perf_start_times = dict()
@@ -134,5 +139,8 @@ cdef class _PerfClass(object):
         self.lock.release()
         return measurements
 
-Perf = _PerfClass()
+CPerf = _PerfClass()
+
+# Python non-cdef global:
+Perf = CPerf
 

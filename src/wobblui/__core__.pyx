@@ -35,7 +35,7 @@ from wobblui.keyboard import internal_update_text_events,\
 from wobblui.mouse import cursors_seen_during_mousemove,\
     reset_cursors_seen_during_mousemove, set_cursor
 from wobblui.osinfo import is_android
-from wobblui.perf import Perf
+from wobblui.perf cimport CPerf as Perf
 import wobblui.font.sdlfont as sdlfont
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time

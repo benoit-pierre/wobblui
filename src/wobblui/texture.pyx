@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -25,7 +26,7 @@ import sdl2 as sdl
 import weakref
 
 from wobblui.color import Color
-from wobblui.perf import Perf
+from wobblui.perf cimport CPerf as Perf
 from wobblui.uiconf import config
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
@@ -42,7 +43,7 @@ def mark_textures_invalid(sdl_renderer):
         tex.internal_clean_if_renderer(sdl_renderer)
     all_textures[:] = new_refs
 
-class Texture(object):
+cdef class Texture(object):
     def __init__(self, renderer, width, height, _dontcreate=False):
         if renderer is None:
             raise ValueError("not a valid renderer, is None")
@@ -62,6 +63,17 @@ class Texture(object):
         self.width = width
         self.height = height
         all_textures.append(weakref.ref(self))
+
+    def set_color(self, o):
+        if isinstance(o, Color):
+            sdl.SDL_SetTextureColorMod(
+                self._texture, o.red, o.green, o.blue)
+        elif len(o) == 3:
+            sdl.SDL_SetTextureColorMod(
+                self._texture, round(o[0]), round(o[1]), round(o[2]))
+        else:
+            raise ValueError("color value must be wobblui.color.Color " +
+                "or tuple")
 
     def __repr__(self):
         return "<Texture " + str((str(id(self)), self.width,
@@ -124,9 +136,12 @@ class Texture(object):
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
         return tex
 
-class RenderTarget(Texture):
+cdef class RenderTarget(Texture):
     def __init__(self, renderer, width, height):
         super().__init__(renderer, width, height, _dontcreate=True)
+        self.set_as_target = False
+        self.previous_target = None
+        self.ever_rendered_to = False
         self._texture = sdl.SDL_CreateTexture(
             renderer,
             sdl.SDL_PIXELFORMAT_RGBA8888,
@@ -137,9 +152,6 @@ class RenderTarget(Texture):
                 "unexpectedly failed!")
         sdl.SDL_SetTextureBlendMode(self._texture,
             sdl.SDL_BLENDMODE_BLEND)
-        self.set_as_target = False
-        self.previous_target = None
-        self.ever_rendered_to = False
 
     def draw(self, x, y, w=None, h=None):
         assert(x != None and y != None)

@@ -90,7 +90,9 @@ setuptools.setup(
     package_data={
         "wobblui": ["font/packaged-fonts/*.ttf",
             "font/packaged-fonts/*.md",
-            "img/*.png"]
+            "img/*.png",
+            "*.pxd",
+            "font/*.pxd"]
     },
     install_requires=dependencies,
     long_description=long_description,

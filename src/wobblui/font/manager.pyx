@@ -34,7 +34,7 @@ from wobblui.color import Color
 import wobblui.font.info
 import wobblui.font.sdlfont as sdlfont
 from wobblui.sdlinit import initialize_sdl
-from wobblui.texture import Texture
+from wobblui.texture cimport Texture
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
@@ -128,8 +128,7 @@ cdef class Font(object):
             return
         global _reuse_draw_rect
         tex = self.get_cached_rendered_texture(renderer, text)
-        sdl.SDL_SetTextureColorMod(tex._texture,
-            color.red, color.green, color.blue)
+        tex.set_color(color)
         tex.draw(x, y)
 
     def get_cached_rendered_texture(self, renderer, str text):
