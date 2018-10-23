@@ -67,6 +67,7 @@ def change_dpi_scale_on_all_windows(new_dpi_scale):
         # widgets realize it changed:
         w.style = styles_seen[w.style]
     all_windows[:] = new_w_refs
+    trigger_global_style_changed()
 
 def get_window_by_sdl_id(sdl_id):
     global all_windows
@@ -90,7 +91,6 @@ def get_window_by_sdl_id(sdl_id):
         seen.add(str(id(w)))
         new_refs.append(w_ref)
     all_windows = new_refs
-    trigger_global_style_changed()
     return result
 
 def trigger_global_style_changed():
