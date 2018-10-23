@@ -42,9 +42,6 @@ class Label(ScrollbarDrawingWidget):
         # Relayout in any case since font sizes may have changed:
         self.known_dpi_scale = self.dpi_scale
         self.natural_size_cache = dict()
-        logdebug("Style changed relayout on label")
-        import traceback
-        logdebug(str(traceback.format_stack()))
         self.needs_relayout = True
 
     def get_intended_text_size(self):
@@ -92,7 +89,6 @@ class Label(ScrollbarDrawingWidget):
             return
         self.natural_size_cache = dict()
         self._current_align = alignment
-        logdebug("Alignment changed relayout on label " + str(self))
         self.needs_relayout = True
 
     def do_redraw(self):
@@ -164,7 +160,6 @@ class Label(ScrollbarDrawingWidget):
                 return
         (self._layout_width, self._layout_height) = self.text_obj.layout(
             max_width=layout_max_width, align_if_none=self._current_align)
-        logdebug("Layout done on label " + str(self))
         self.needs_relayout = False  # just to be sure
 
     def get_natural_width(self):
@@ -216,7 +211,6 @@ class Label(ScrollbarDrawingWidget):
             return
         self.natural_size_cache = dict()
         self.text_obj.set_text(t)
-        logdebug("Text change relayout on label " + str(self))
         self.needs_relayout = True
         self.needs_redraw = True
         self._cached_text = t
@@ -232,7 +226,6 @@ class Label(ScrollbarDrawingWidget):
         self.natural_size_cache = dict()
         self._cached_text = None
         self.text_obj.set_html(t)
-        logdebug("HTML change relayout on label " + str(self))
         self.needs_relayout = True
         self.needs_redraw = True
 
