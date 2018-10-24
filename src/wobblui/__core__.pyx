@@ -720,7 +720,7 @@ def _handle_event(event):
         return
     elif event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
-        if event_type == sdl.SDL_MOUSEBUTTONDOWN and \
+        if event.type == sdl.SDL_MOUSEBUTTONDOWN and \
                 not multitouch_gesture_active:
             last_single_finger_xpos = None
             last_single_finger_ypos = None
