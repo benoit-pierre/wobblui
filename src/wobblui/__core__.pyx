@@ -691,7 +691,7 @@ def update_multitouch():
                 w.parent_window.screen_index !=
                 touch_event_screen_index) or (hasattr(
                 self, "screen_index") and w.screen_index !=
-                touch-screen_index):
+                touch_screen_index):
             continue
         if not w.multitouch_gesture_reported_in_progress:
             w.multitouch_gesture_reported_in_progress = True
