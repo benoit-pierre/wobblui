@@ -641,8 +641,8 @@ def update_multitouch():
 
         finger_positions.append((int(fx), int(fy)))
         finger_dist = math.sqrt(math.pow(fx -
-            last_single_finger_xpos) +
-            math.pow(fy - last_single_finger_ypos))
+            last_single_finger_xpos, 2) +
+            math.pow(fy - last_single_finger_ypos, 2))
         if finger_dist < main_finger_dist or main_finger_id < 0:
             main_finger_id = i
             main_finger_dist = finger_dist
