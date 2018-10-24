@@ -346,6 +346,69 @@ class Window(WidgetBase):
     def _internal_on_focus(self, internal_data=None):
         self.focus_update()
 
+    def get_screen_offset(self):
+        if not hasattr(self, "_sdl_window") or self._sdl_window is None:
+            if hasattr(self, "_last_sdl_coordinates_x"):
+                return (self._last_sdl_coordinates_x,
+                    self._last_sdl_coordinates_y)
+            return (0, 0)
+        x = ctypes.c_int32()
+        y = ctypes.c_int32()
+        SDL_GetWindowPosition(self._sdl_window,
+            ctypes.byref(x), ctypes.byref(y))
+        factor = self.get_sdl_incorrect_scaling_correction_factor()
+        y = round(float(x) * factor)
+        y = round(float(y) * factor)
+        self._last_sdl_coordinates_x = x
+        self._last_sdl_coordinates_y = y
+        return (x, y) 
+
+    def containing_screen_dimensions(self):
+        if self._sdl_window is NOne:
+            return (0, 0)
+        screen_mode = sdl.SDL_DisplayMode()
+        result = sdl.SDL_GetCurrentDisplayMode(self.screen_index,
+            ctypes.byref(screen_mode))
+        if result != 0:
+            raise RuntimeError("unexpected failure to get " +
+                "current display mode")
+        return (int(result.w), int(result.h))
+
+    @property
+    def screen_index(self):
+        if self._sdl_window is None:
+            return 0
+        return SDL_GetWindowDisplayIndex(self._sdl_window)
+
+    def get_sdl_incorrect_scaling_correction_factor(self):
+        """ Because the SDL window API appears to be occasionally stupid
+            and return coordinates not in actual pixels, this function
+            returns the factor internally used to correct this.
+
+            Please note .width/.height and .get_screen_offset() already use
+            this internally to correct things, so you don't need to bother
+            to do this manually.
+        """
+
+        w = ctypes.c_int32()
+        h = ctypes.c_int32()
+        sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
+            ctypes.byref(h))
+        if self._renderer != None:
+            w2 = ctypes.c_int32()
+            h2 = ctypes.c_int32()
+            if sdl.SDL_GetRendererOutputSize(self._renderer,
+                    ctypes.byref(w2), ctypes.byref(h2)) != 0:
+                raise RuntimeError("unexpected failure to " +
+                    "get renderer size")
+            self._sdl_last_wrong_scaling_factor = max(
+                float(w2) / float(w), float(h2) / float(h))
+        elif hasattr(self, "_sdl_last_wrong_scaling_factor"):
+            return self._sdl_last_wrong_scaling_factor
+        else:
+            return 1.0  # likely wrong, but nothing we can do
+        return self._sdl_last_wrong_scaling_factor
+
     def update_to_real_sdlw_size(self):
         if self._sdl_window is None:
             return
@@ -353,6 +416,10 @@ class Window(WidgetBase):
         h = ctypes.c_int32()
         sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
             ctypes.byref(h))
+        if self._renderer != None:
+            if sdl.SDL_GetRendererOutputSize(self._renderer,
+                    ctypes.byref(w), ctypes.byref(h)) != 0:
+                raise RuntimeError("failed to get renderer size")
         if self._width != w.value or self._height != h.value:
             self._width = w.value
             self._height = h.value

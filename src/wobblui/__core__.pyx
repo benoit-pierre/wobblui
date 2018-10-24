@@ -410,6 +410,8 @@ def _process_mouse_click_event(event,
             # if there is ever an additional finger placed on device:
             last_single_finger_xpos = int(event.button.x)
             last_single_finger_ypos = int(event.button.y)
+            last_single_finger_sdl_windowid =\
+                event.button.windowID
 
     # Swap button 2 and 3, since SDL maps them unintuitively
     # (SDL: middle 2, right 3 - ours: middle 3, right 2)
@@ -540,12 +542,43 @@ def loading_screen_fix():
 # the single finger touchstart/touchend event (to e.g. scroll while zooming)
 last_single_finger_xpos = None
 last_single_finger_ypos = None
+last_single_finger_sdl_windowid = None
 multitouch_gesture_active = False
 active_touch_device = None
 
+def finger_coordinates_to_window_coordinates(
+        touch_device_id, finger_x, finger_y):
+    # THIS ASSIGNMENT IS WRONG.
+    # Due to an apparent SDL API design fault, there seems to be no
+    # way to get this. Once there is one, this code will be updated.
+    screen_for_touch_device = 0
+    screen_mode = sdl.SDL_DisplayMode()
+    result = sdl.SDL_GetCurrentDisplayMode(screen_for_touch_device,
+        ctypes.byref(screen_mode))
+    if result != 0:
+        raise RuntimeError("unexpected failure to get current display mode")
+    screen_touch_x = round(float(finger_x) * float(screen_mode.w))
+    screen_touch_y = round(float(finger_y) * float(screen_mode.h))
+    for w_ref in all_windows:
+        w = w_ref()
+        if w is None or not hasattr(w, "_sdl_window") or \
+                w._sdl_window is None:
+            continue
+        if w.screen_index != screen_for_touch_device:
+            continue
+        (win_x, win_y) = w.get_screen_offset()
+        if screen_touch_x >= win_x and \
+                screen_touch_x < win_x + w.width and \
+                screen_touch_y >= win_y and \
+                screen_touch_y < win_y + w.height:
+            return (w, round(screen_touch_x - win_x),
+                round(screen_touch_y - win_y))
+    return (None, -1, -1)
+
 def update_multitouch():
     global touch_pressed
-    global last_single_finger_xpos, last_single_finger_ypos
+    global last_single_finger_xpos, last_single_finger_ypos,\
+        last_single_finger_sdl_windowid
     global multitouch_gesture_active, active_touch_device
     if active_touch_device is None:
         multitouch_gesture_active = False
@@ -566,6 +599,7 @@ def update_multitouch():
                 event.button.button = 0
                 event.button.x = last_single_finger_xpos
                 event.button.y = last_single_finger_ypos
+                event.button.windowID = last_single_finger_sdl_windowid
                 _process_mouse_click_event(event)
                 touch_pressed = False
             for w_ref in all_widgets:
@@ -585,59 +619,75 @@ def update_multitouch():
     cdef int main_finger_id = -1
     cdef int main_finger_x = 0
     cdef int main_finger_y = 0
+    cdef int main_finger_sdlwindowID = -1
     cdef double main_finger_dist = 0.0
-    if last_single_finger_xpos is None:
-        last_single_finger_xpos = -9999
-        last_single_finger_ypos = -9999
     cdef object finger_positions = list()
     cdef int i = 0
     while i < finger_amount:
         finger_obj = sdl.SDL_GetTouchFinger(active_touch_device, i)
-        finger_positions.append((int(finger_obj.x), int(finger_obj.y)))
-        finger_dist = math.sqrt(math.pow(finger_obj.x -
+        (win, fx, fy) = finger_coordinates_to_window_coordinates(
+            active_touch_device, float(finger_obj.x), float(finger_obj.y))
+        if last_single_finger_sdl_windowid != None and \
+                last_single_finger_sdl_windowid != win.sdl_window_id and \
+                main_finger_id >= 0:
+            i += 1
+            continue
+        last_single_finger_sdl_windowid = win.sdl_window_id
+
+        finger_positions.append((int(fx), int(fy)))
+        finger_dist = math.sqrt(math.pow(fx -
             last_single_finger_xpos) +
-            math.pow(finger_obj.y - last_single_finger_ypos))
+            math.pow(fy - last_single_finger_ypos))
         if finger_dist < main_finger_dist or main_finger_id < 0:
             main_finger_id = i
             main_finger_dist = finger_dist
-            main_finger_x = finger_obj.x
-            main_finger_y = finger_obj.y
+            main_finger_x = fx
+            main_finger_y = fy
         i += 1
     if MULTITOUCH_DEBUG:
         logdebug("MAIN FINGER ID: " + str(main_finger_id) +
-            ", FINGER POSITIONS: " + str(finger_positions))
+            ", FINGER POSITIONS: " + str(finger_positions) +
+            ", WINDOW: " + str(last_single_finger_sdl_windowid))
 
     # Report touch press if not done yet:
     if not touch_pressed:
         touch_pressed = True
         event = sdl.SDL_Event()
         event.type = sdl.SDL_MOUSEBUTTONDOWN
+        event.button.windowID = last_single_finger_sdl_windowid
         event.button.which = sdl_touch_mouseid
         event.button.button = 0
-        event.button.x = last_single_finger_xpos
-        event.button.y = last_single_finger_ypos
+        event.button.x = main_finger_x
+        event.button.y = main_finger_y
         _process_mouse_click_event(event)
 
     # Report movement if single finger moved:
-    if abs(last_single_finger_xpos - main_finger_x) >= 1 or \
+    if last_single_finger_xpos != None and \
+            abs(last_single_finger_xpos - main_finger_x) >= 1 or \
             abs(last_single_finger_ypos - main_finger_y) >= 1:
         last_single_finger_xpos = main_finger_x
         last_single_finger_ypos = main_finger_y
         event = sdl.SDL_Event()
         event.type = sdl.SDL_MOUSEMOTION
+        event.button.windowID = last_single_finger_sdl_windowid
         event.motion.which = sdl_touch_mouseid
         event.motion.x = last_single_finger_xpos
         event.motion.y = last_single_finger_ypos
         _process_mouse_click_event(event)
 
-    # Report multitouch gesture to all widgets:
+    # Get the display where the multitouch event is happening on:
+    touch_event_screen_index = \
+        get_window_by_sdl_id(last_single_finger_sdl_windowid)
+
+    # Report multitouch gesture to all widgets in affected window:
     for w_ref in all_widgets:
         w = w_ref()
-        if w != None:
-            if not w.multitouch_gesture_reported_in_progress:
-                w.multitouch_gesture_reported_in_progress = True
-                w.multitouchstart(finger_positions)
-            w.multitouchmove(finger_positions)
+        if w == None or w.screen_index != touch_event_screen_index:
+            continue
+        if not w.multitouch_gesture_reported_in_progress:
+            w.multitouch_gesture_reported_in_progress = True
+            w.multitouchstart(finger_positions)
+        w.multitouchmove(finger_positions)
 
 annoying_sdl_hack_spacebar_outstanding = False
 touch_pressed = False
@@ -646,7 +696,8 @@ def _handle_event(event):
     global mouse_ids_button_ids_pressed, touch_pressed,\
         annoying_sdl_hack_spacebar_outstanding
     global last_single_finger_xpos,\
-        last_single_finger_ypos, multitouch_gesture_active
+        last_single_finger_ypos, multitouch_gesture_active,\
+        last_single_finger_sdl_windowid
     global active_touch_device
     cdef int x, y
     cdef str text
