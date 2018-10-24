@@ -691,7 +691,7 @@ def _handle_event(event):
     elif event.type == sdl.SDL_FINGERDOWN or\
             event.type == sdl.SDL_FINGERMOTION or \
             event.type == sdl.SDL_FINGERUP:
-        active_touch_device = event.touchId
+        active_touch_device = event.tfinger.touchId
         update_multitouch()
     elif event.type == sdl.SDL_MOUSEMOTION:
         w = get_window_by_sdl_id(event.motion.windowID)
