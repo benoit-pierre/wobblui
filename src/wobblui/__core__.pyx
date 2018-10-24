@@ -635,6 +635,9 @@ def update_multitouch():
             i += 1
             continue
         last_single_finger_sdl_windowid = win.sdl_window_id
+        if last_single_finger_xpos is None:
+            last_single_finger_xpos = fx
+            last_single_finger_ypos = fy
 
         finger_positions.append((int(fx), int(fy)))
         finger_dist = math.sqrt(math.pow(fx -
@@ -717,6 +720,10 @@ def _handle_event(event):
         return
     elif event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
+        if event_type == sdl.SDL_MOUSEBUTTONDOWN and \
+                not multitouch_gesture_active:
+            last_single_finger_xpos = None
+            last_single_finger_ypos = None
         update_multitouch()
         if multitouch_gesture_active and \
                 event.button.which == sdl_touch_mouseid:
@@ -744,6 +751,11 @@ def _handle_event(event):
     elif event.type == sdl.SDL_FINGERDOWN or\
             event.type == sdl.SDL_FINGERMOTION or \
             event.type == sdl.SDL_FINGERUP:
+        if event.type == sdl.SDL_FINGERDOWN and \
+                not multitouch_gesture_active:
+            # Reset last finger pos:
+            last_single_finger_xpos = None
+            last_single_finger_ypos = None
         active_touch_device = event.tfinger.touchId
         update_multitouch()
     elif event.type == sdl.SDL_MOUSEMOTION:
