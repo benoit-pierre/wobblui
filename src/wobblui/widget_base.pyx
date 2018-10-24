@@ -354,23 +354,25 @@ cdef class WidgetBase:
             self.parent.needs_relayout = True
             self.parent.needs_redraw = True
 
-    def _internal_on_multitouchstart(self, int finger_id, int x, int y,
+    def _internal_on_multitouchstart(self, object finger_coordinates,
             internal_data=None):
+        self.prevent_touch_long_click_due_to_gesture = True
+        self.have_long_click_callback = False
+        self.long_click_callback_id += 1
         for child in self.children:
-            child.multitouchstart(finger_id, x, y,
+            child.multitouchstart(finger_coordinates,
                 internal_data=internal_data)
 
-    def _internal_on_multitouchmove(self, int finger_id, int x, int y,
+    def _internal_on_multitouchmove(self, object finger_coordinates,
             internal_data=None):
         for child in self.children:
-            child.multitouchstart(finger_id, x, y,
+            child.multitouchstart(finger_coordinates,
                 internal_data=internal_data)
 
-    def _internal_on_multitouchend(self, int finger_id, int x, int y,
-            internal_data=None):
+    def _internal_on_multitouchend(self, internal_data=None):
+        self.prevent_touch_long_click_due_to_gesture = False
         for child in self.children:
-            child.multitouchstart(finger_id, x, y,
-                internal_data=internal_data)
+            child.multitouchstart(internal_data=internal_data)
 
     def _internal_on_touchstart(self, int x, int y, internal_data=None):
         self._post_mouse_event_handling("touchstart",
@@ -747,12 +749,13 @@ cdef class WidgetBase:
                 self.last_touch_y = y
                 
                 # Schedule test for long-press click:
-                self.long_click_callback_id += 1
-                curr_id = self.long_click_callback_id
-                self_ref = weakref.ref(self)
-                self.have_long_click_callback = True
-                schedule(self.return_long_click_test_closure(curr_id),
-                    config.get("touch_longclick_time"))
+                if not self.prevent_touch_long_click_due_to_gesture:
+                    self.long_click_callback_id += 1
+                    curr_id = self.long_click_callback_id
+                    self_ref = weakref.ref(self)
+                    self.have_long_click_callback = True
+                    schedule(self.return_long_click_test_closure(curr_id),
+                        config.get("touch_longclick_time"))
             elif event_name.startswith("touch"):
                 self.last_touch_x = x
                 self.last_touch_y = y

@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import math
 import sdl2 as sdl
 import sys
 import threading
@@ -44,6 +45,10 @@ from wobblui.widgetman import all_widgets
 from wobblui.window import all_windows, get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+
+cdef long long sdl_touch_mouseid = 4294967295
+if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
+    sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
 
 def redraw_windows(int layout_only=False):
     for w_ref in all_windows:
@@ -304,6 +309,7 @@ def do_event_processing(int ui_active=True):
             events.append(ev)
             continue
         break
+    update_multitouch()
     if len(events) == 0:
         internal_trigger_check(idle=True)
         internal_update_text_events()
@@ -373,7 +379,8 @@ def do_event_processing(int ui_active=True):
 def _process_mouse_click_event(event,
         force_no_widget_can_receive_new_input=False):
     global capture_enabled, touch_pressed, \
-        mouse_ids_button_ids_pressed
+        mouse_ids_button_ids_pressed,\
+        multitouch_gesutre_active
     _debug_mouse_fakes_touch = (
         config.get("mouse_fakes_touch_events") is True)
 
@@ -384,9 +391,6 @@ def _process_mouse_click_event(event,
         raise TypeError("invalid event type")
 
     # A few preparations:
-    cdef long long sdl_touch_mouseid = 4294967295
-    if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
-        sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
     w = get_window_by_sdl_id(event.button.windowID)
     if w is None or w.is_closed:
         return
@@ -394,6 +398,16 @@ def _process_mouse_click_event(event,
         w.set_hidden(False)
     capture_enabled = (len(mouse_ids_button_ids_pressed) > 0 or
         touch_pressed)
+
+    is_touch = False
+    if event.button.which == sdl_touch_mouseid or\
+            _debug_mouse_fakes_touch:
+        is_touch = True
+        if not multitouch_gesture_active:
+            # Update single finger pos for use in multi touch gesture
+            # if there is ever an additional finger placed on device:
+            last_single_finger_xpos = int(event.button.x)
+            last_single_finger_ypos = int(event.button.y)
 
     # Swap button 2 and 3, since SDL maps them unintuitively
     # (SDL: middle 2, right 3 - ours: middle 3, right 2)
@@ -408,6 +422,8 @@ def _process_mouse_click_event(event,
             return
         if event.button.which == sdl_touch_mouseid or \
                 _debug_mouse_fakes_touch:
+            if multitouch_gesture_active:
+                return
             touch_pressed = True
             Perf.chain("mouseevent", "callback_prep")
             w.touchstart(
@@ -435,6 +451,8 @@ def _process_mouse_click_event(event,
                 # This was an ignored gesture. Don't do anything.
                 return
             touch_pressed = False
+            if multitouch_gesture_active:
+                return
             Perf.chain("mouseevent", "callback_prep")
             w.touchend(
                 int(event.button.x), int(event.button.y),
@@ -515,12 +533,114 @@ def loading_screen_fix():
         autoclass('org.kivy.android.PythonActivity').\
             mActivity.removeLoadingScreen()
 
+
+# Used to identify the "main" finger in multitouch used to continue sending
+# the single finger touchstart/touchend event (to e.g. scroll while zooming)
+last_single_finger_xpos = None
+last_single_finger_ypos = None
+multitouch_gesture_active = False
+active_touch_device = None
+
+def update_multitouch():
+    global touch_pressed
+    global last_single_finger_xpos, last_single_finger_ypos
+    global multitouch_gesture_active, active_touch_device
+    if active_touch_device is None:
+        multitouch_gesture_active = False
+        return
+    cdef int finger_amount = sdl.SDL_GetNumTouchFingers(
+        active_touch_device)
+    if finger_amount <= 1:
+        # This is handled by regular single touch code. Stop multitouch.
+        if multitouch_gesture_active and \
+                last_single_finger_xpos != None and \
+                finger_amount == 0:
+            # Multitouch gesture still active, and we faked single touch so
+            # far -> send end event
+            if touch_pressed:
+                event = sdl.SDL_Event()
+                event.type = sdl.SDL_MOUSEBUTTONUP
+                event.button.which = sdl_touch_mouseid
+                event.button.button = 0
+                event.button.x = last_single_finger_xpos
+                event.button.y = last_single_finger_ypos
+                _process_mouse_click_event(event)
+                touch_pressed = False
+            for w_ref in all_widgets:
+                w = w_ref()
+                if w != None:
+                    if w.multitouch_gesture_reported_in_progress:
+                        w.multitouch_gesture_reported_in_progress = False
+                        w.multitouchend()
+        # End multigesture:
+        multitouch_gesture_active = False
+        return
+    multitouch_gesture_active = True
+
+    # Find main finger of multitouch gesture:
+    cdef int main_finger_id = -1
+    cdef int main_finger_x = 0
+    cdef int main_finger_y = 0
+    cdef double main_finger_dist = 0.0
+    if last_single_finger_xpos is None:
+        last_single_finger_xpos = -9999
+        last_single_finger_ypos = -9999
+    cdef object finger_positions = list()
+    cdef int i = 0
+    while i < finger_amount:
+        finger_obj = sdl.SDL_GetTouchFinger(active_touch_device, i)
+        finger_positions.append((int(finger_obj.x), int(finger_obj.y)))
+        finger_dist = math.sqrt(math.pow(finger_obj.x -
+            last_single_finger_xpos) +
+            math.pow(finger_obj.y - last_single_finger_ypos))
+        if finger_dist < main_finger_dist or main_finger_id < 0:
+            main_finger_id = i
+            main_finger_dist = finger_dist
+            main_finger_x = finger_obj.x
+            main_finger_y = finger_obj.y
+        i += 1
+
+    # Report touch press if not done yet:
+    if not touch_pressed:
+        touch_pressed = True
+        event = sdl.SDL_Event()
+        event.type = sdl.SDL_MOUSEBUTTONDOWN
+        event.button.which = sdl_touch_mouseid
+        event.button.button = 0
+        event.button.x = last_single_finger_xpos
+        event.button.y = last_single_finger_ypos
+        _process_mouse_click_event(event)
+
+    # Report movement if single finger moved:
+    if abs(last_single_finger_xpos - main_finger_x) >= 1 or \
+            abs(last_single_finger_ypos - main_finger_y) >= 1:
+        last_single_finger_xpos = main_finger_x
+        last_single_finger_ypos = main_finger_y
+        event = sdl.SDL_Event()
+        event.type = sdl.SDL_MOUSEMOTION
+        event.motion.which = sdl_touch_mouseid
+        event.motion.x = last_single_finger_xpos
+        event.motion.y = last_single_finger_ypos
+        _process_mouse_click_event(event)
+
+    # Report multitouch gesture to all widgets:
+    for w_ref in all_widgets:
+        w = w_ref()
+        if w != None:
+            if not w.multitouch_gesture_reported_in_progress:
+                w.multitouch_gesture_reported_in_progress = True
+                w.multitouchstart(finger_positions)
+            w.multitouchmove(finger_positions)
+
 annoying_sdl_hack_spacebar_outstanding = False
 touch_pressed = False
 mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
     global mouse_ids_button_ids_pressed, touch_pressed,\
         annoying_sdl_hack_spacebar_outstanding
+    global last_single_finger_xpos,\
+        last_single_finger_ypos, multitouch_gesture_active
+    global active_touch_device
     cdef int x, y
     cdef str text
     cdef int _debug_mouse_fakes_touch = (
@@ -537,11 +657,13 @@ def _handle_event(event):
         return
     elif event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
+        update_multitouch()
+        if multitouch_gesture_active and \
+                event.button.which == sdl_touch_mouseid:
+            # Don't handle this, multitouch update will do so.
+            return
         _process_mouse_click_event(event)
     elif event.type == sdl.SDL_MOUSEWHEEL:
-        sdl_touch_mouseid = 4294967295
-        if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
-            sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
         if event.wheel.which == sdl_touch_mouseid or \
                 _debug_mouse_fakes_touch:
             # We handle this separately.
@@ -559,10 +681,12 @@ def _handle_event(event):
         w.mousewheel(int(event.wheel.which),
             float(x) * config.get("mouse_wheel_speed_modifier"),
             float(y) * config.get("mouse_wheel_speed_modifier"))
+    elif event.type == sdl.SDL_FINGERDOWN or\
+            event.type == sdl.SDL_FINGERMOTION or \
+            event.type == sdl.SDL_FINGERUP:
+        active_touch_device = event.touchId
+        update_multitouch()
     elif event.type == sdl.SDL_MOUSEMOTION:
-        sdl_touch_mouseid = 4294967295
-        if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
-            sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
         w = get_window_by_sdl_id(event.motion.windowID)
         if w is None or w.is_closed:
             return
@@ -571,6 +695,10 @@ def _handle_event(event):
         if event.motion.which == sdl_touch_mouseid or \
                 _debug_mouse_fakes_touch:
             if touch_pressed:
+                if multitouch_gesture_active and \
+                        event.button.which == sdl_touch_mouseid:
+                    # Don't handle this, multitouch update will do so.
+                    return
                 w.touchmove(float(event.motion.x),
                     float(event.motion.y),
                     internal_data=[float(event.motion.x),
