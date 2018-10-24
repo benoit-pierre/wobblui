@@ -357,8 +357,8 @@ class Window(WidgetBase):
         sdl.SDL_GetWindowPosition(self._sdl_window,
             ctypes.byref(x), ctypes.byref(y))
         factor = self.get_sdl_incorrect_scaling_correction_factor()
-        y = round(float(x) * factor)
-        y = round(float(y) * factor)
+        y = round(float(x.value) * factor)
+        y = round(float(y.value) * factor)
         self._last_sdl_coordinates_x = x
         self._last_sdl_coordinates_y = y
         return (x, y) 
