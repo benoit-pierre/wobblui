@@ -50,6 +50,8 @@ cdef long long sdl_touch_mouseid = 4294967295
 if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
     sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
 
+cdef int MULTITOUCH_DEBUG = 1
+
 def redraw_windows(int layout_only=False):
     for w_ref in all_windows:
         w = w_ref()
@@ -575,6 +577,8 @@ def update_multitouch():
         # End multigesture:
         multitouch_gesture_active = False
         return
+    if MULTITOUCH_DEBUG:
+        logdebug("MULTITOUCH WITH FINGERS: " + str(finger_amount))
     multitouch_gesture_active = True
 
     # Find main finger of multitouch gesture:
@@ -599,6 +603,9 @@ def update_multitouch():
             main_finger_x = finger_obj.x
             main_finger_y = finger_obj.y
         i += 1
+    if MULTITOUCH_DEBUG:
+        logdebug("MAIN FINGER ID: " + str(main_finger_id) +
+            ", FINGER POSITIONS: " + str(finger_positions))
 
     # Report touch press if not done yet:
     if not touch_pressed:
