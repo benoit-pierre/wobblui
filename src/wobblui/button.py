@@ -37,7 +37,8 @@ from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class Button(Widget):
     def __init__(self, text="", with_border=True, clickable=True,
-            image_placement="left", text_scale=1.0):
+            image_placement="left", text_scale=1.0,
+            override_bg_color=None, override_text_color=None):
         super().__init__(is_container=False,
             can_get_focus=clickable)
         if clickable:
@@ -48,6 +49,12 @@ class Button(Widget):
         self.with_border = (with_border is True)
         self.image_placement = image_placement
         self._image_color = Color.white
+        self.override_bg_color = None
+        if override_bg_color != None:
+            self.override_bg_color = Color(override_bg_color)
+        self.override_text_color = None
+        if override_text_color != None:
+            self.override_text_color = Color(override_text_color)
         self.contained_image = None
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None
@@ -194,6 +201,8 @@ class Button(Widget):
             c = Color.white
             if self.style != None:
                 c = Color(self.style.get("button_bg"))
+            if self.override_bg_color != None:
+                c = self.override_bg_color
             fill_border = round(self.border_size * 0.3)
             draw_rectangle(self.renderer, fill_border, fill_border,
                 self.width - fill_border * 2,
@@ -234,6 +243,8 @@ class Button(Widget):
                 c = Color(self.style.get("widget_text"))
                 if self.disabled and self.style.has("widget_disabled_text"):
                     c = Color(self.style.get("widget_disabled_text"))
+            if self.override_text_color != None:
+                c = self.override_text_color
             sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
             self.contained_richtext_obj.draw(
                 self.renderer, offset_x,
