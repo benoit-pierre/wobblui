@@ -354,7 +354,7 @@ class Window(WidgetBase):
             return (0, 0)
         x = ctypes.c_int32()
         y = ctypes.c_int32()
-        SDL_GetWindowPosition(self._sdl_window,
+        sdl.SDL_GetWindowPosition(self._sdl_window,
             ctypes.byref(x), ctypes.byref(y))
         factor = self.get_sdl_incorrect_scaling_correction_factor()
         y = round(float(x) * factor)
@@ -378,7 +378,7 @@ class Window(WidgetBase):
     def screen_index(self):
         if self._sdl_window is None:
             return 0
-        return SDL_GetWindowDisplayIndex(self._sdl_window)
+        return sdl.SDL_GetWindowDisplayIndex(self._sdl_window)
 
     def get_sdl_incorrect_scaling_correction_factor(self):
         """ Because the SDL window API appears to be occasionally stupid
