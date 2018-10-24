@@ -402,7 +402,8 @@ class Window(WidgetBase):
                 raise RuntimeError("unexpected failure to " +
                     "get renderer size")
             self._sdl_last_wrong_scaling_factor = max(
-                float(w2) / float(w), float(h2) / float(h))
+                float(w2.value) / float(w.value),
+                float(h2.value) / float(h.value))
         elif hasattr(self, "_sdl_last_wrong_scaling_factor"):
             return self._sdl_last_wrong_scaling_factor
         else:
