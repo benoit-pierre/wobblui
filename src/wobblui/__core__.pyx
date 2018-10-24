@@ -626,7 +626,9 @@ def update_multitouch():
     while i < finger_amount:
         finger_obj = sdl.SDL_GetTouchFinger(active_touch_device, i)
         (win, fx, fy) = finger_coordinates_to_window_coordinates(
-            active_touch_device, float(finger_obj.x), float(finger_obj.y))
+            active_touch_device,
+            float(finger_obj.contents.x),
+            float(finger_obj.contents.y))
         if last_single_finger_sdl_windowid != None and \
                 last_single_finger_sdl_windowid != win.sdl_window_id and \
                 main_finger_id >= 0:
