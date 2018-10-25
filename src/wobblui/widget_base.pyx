@@ -210,6 +210,7 @@ cdef class WidgetBase:
         self.keyup = Event("keyup", owner=self)
         self.keydown = Event("keydown", owner=self)
         self.click = Event("click", owner=self)
+        self.multitouchzoom = Event("multitouchzoom", owner=self)
         self.doubleclick = Event("doubleclick", owner=self)
         def mouseup_pre(mouse_id, button_id, x, y, internal_data=None):
             self._pre_mouse_event_handling("mouseup",
@@ -357,6 +358,14 @@ cdef class WidgetBase:
     def _internal_on_multitouchstart(self, object finger_coordinates,
             internal_data=None):
         self.prevent_touch_long_click_due_to_gesture = True
+        self.multitouch_two_finger_distance = 0.0
+        if len(finger_coordinates) == 2:
+            dist = math.sqrt(math.pow(
+                finger_coordinates[0][0] - finger_coordinates[1][0], 2) +
+                math.pow(
+                finger_coordinates[0][1] - finger_coordinates[1][1], 2))
+            self.multitouch_two_finger_distance = max(0.05,
+                dist)
         self.have_long_click_callback = False
         self.long_click_callback_id += 1
         for child in self.children:
@@ -365,12 +374,26 @@ cdef class WidgetBase:
 
     def _internal_on_multitouchmove(self, object finger_coordinates,
             internal_data=None):
+        if len(finger_coordinates) == 2:
+            dist = max(0.05, math.sqrt(math.pow(
+                finger_coordinates[0][0] - finger_coordinates[1][0], 2) +
+                math.pow(
+                finger_coordinates[0][1] - finger_coordinates[1][1], 2)))
+            if self.multitouch_two_finger_distance == 0.0:
+                # Start zoom handling:
+                self.multitouch_two_finger_distance = max(0.05, dist)
+            else:
+                dist_change = (dist - self.multitouch_two_finger_distance)
+                logdebug("Multitouch distance change: " + str(dist_change))
+                self.multitouch_two_finger_distance = dist_change
+                self.multitouchzoom(dist_change)
         for child in self.children:
             child.multitouchstart(finger_coordinates,
                 internal_data=internal_data)
 
     def _internal_on_multitouchend(self, internal_data=None):
         self.prevent_touch_long_click_due_to_gesture = False
+        self.multitouch_two_finger_distance = 0.0
         for child in self.children:
             child.multitouchstart(internal_data=internal_data)
 

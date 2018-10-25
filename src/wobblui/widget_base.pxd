@@ -62,6 +62,7 @@ cdef class WidgetBase:
     cdef public int long_click_callback_id, have_long_click_callback
     cdef public int prevent_touch_long_click_due_to_gesture
     cdef public int multitouch_gesture_reported_in_progress
+    cdef public double multitouch_two_finger_distance
 
     # Drawing technical details:
     cdef public object internal_render_target
