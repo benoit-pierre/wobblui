@@ -688,8 +688,9 @@ def update_multitouch():
     for w_ref in all_widgets:
         w = w_ref()
         if w == None or (hasattr(w, "parent_window") and
+                (w.parent_window is None or
                 w.parent_window.screen_index !=
-                touch_event_screen_index) or (hasattr(
+                touch_event_screen_index)) or (hasattr(
                 w, "screen_index") and w.screen_index !=
                 touch_event_screen_index):
             continue
