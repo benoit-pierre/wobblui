@@ -689,6 +689,9 @@ def update_multitouch():
         get_window_by_sdl_id(last_single_finger_sdl_windowid)
 
     # Report multitouch gesture to all widgets in affected window:
+    if MULTITOUCH_DEBUG:
+        logdebug("multitouch reporting loop with" +
+            " screen index: " + str(touch_event_screen_index))
     for w_ref in all_widgets:
         w = w_ref()
         if w == None or (hasattr(w, "parent_window") and
@@ -697,11 +700,19 @@ def update_multitouch():
                 touch_event_screen_index)) or (hasattr(
                 w, "screen_index") and w.screen_index !=
                 touch_event_screen_index):
+            if MULTITOUCH_DEBUG and w != None:
+                logdebug("NOT reporting multitouch to " +
+                    "widget: " + str(w) +
+                    " (wrong screen)")
             continue
+        if MULTITOUCH_DEBUG:
+            logdebug("REPORTING multitouch to widget: " + str(w))
         if not w.multitouch_gesture_reported_in_progress:
             w.multitouch_gesture_reported_in_progress = True
             w.multitouchstart(finger_positions)
         w.multitouchmove(finger_positions)
+    if MULTITOUCH_DEBUG:
+        logdebug("MULTITOUCH handling over.")
 
 annoying_sdl_hack_spacebar_outstanding = False
 touch_pressed = False
