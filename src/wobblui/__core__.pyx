@@ -51,7 +51,7 @@ cdef long long sdl_touch_mouseid = 4294967295
 if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
     sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
 
-cdef int MULTITOUCH_DEBUG = 1
+cdef int MULTITOUCH_DEBUG = 0
 
 def redraw_windows(int layout_only=False):
     for w_ref in all_windows:

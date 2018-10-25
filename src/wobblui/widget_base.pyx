@@ -357,8 +357,6 @@ cdef class WidgetBase:
 
     def _internal_on_multitouchstart(self, object finger_coordinates,
             internal_data=None):
-        logdebug("MULTITOUCH START: " + str(finger_coordinates) +
-            " ON " + str(self))
         self.prevent_touch_long_click_due_to_gesture = True
         self.multitouch_two_finger_distance = 0.0
         if len(finger_coordinates) == 2:
@@ -373,8 +371,6 @@ cdef class WidgetBase:
 
     def _internal_on_multitouchmove(self, object finger_coordinates,
             internal_data=None):
-        logdebug("MULTITOUCH MOVE: " + str(finger_coordinates) +
-            " ON " + str(self))
         if len(finger_coordinates) == 2:
             dist = max(0.05, math.sqrt(math.pow(
                 finger_coordinates[0][0] - finger_coordinates[1][0], 2) +
@@ -385,7 +381,6 @@ cdef class WidgetBase:
                 self.multitouch_two_finger_distance = max(0.05, dist)
             else:
                 dist_change = (dist - self.multitouch_two_finger_distance)
-                logdebug("Multitouch distance change: " + str(dist_change))
                 self.multitouch_two_finger_distance = dist
                 self.multitouchzoom(dist_change)
 
