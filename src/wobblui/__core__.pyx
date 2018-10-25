@@ -625,6 +625,12 @@ def update_multitouch():
     cdef int i = 0
     while i < finger_amount:
         finger_obj = sdl.SDL_GetTouchFinger(active_touch_device, i)
+        if not finger_obj:  # null pointer
+            logwarning("SDL race condition, finger disappeared. " +
+                "This appears to be unavoidable due to the API " +
+                "design. Restarting multitouch update.")
+            update_multitouch()
+            return
         (win, fx, fy) = finger_coordinates_to_window_coordinates(
             active_touch_device,
             float(finger_obj.contents.x),
