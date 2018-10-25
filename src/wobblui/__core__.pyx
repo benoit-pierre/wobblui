@@ -687,10 +687,10 @@ def update_multitouch():
     # Report multitouch gesture to all widgets in affected window:
     for w_ref in all_widgets:
         w = w_ref()
-        if w == None or (hasattr(self, "parent_window") and
+        if w == None or (hasattr(w, "parent_window") and
                 w.parent_window.screen_index !=
                 touch_event_screen_index) or (hasattr(
-                self, "screen_index") and w.screen_index !=
+                w, "screen_index") and w.screen_index !=
                 touch_event_screen_index):
             continue
         if not w.multitouch_gesture_reported_in_progress:
