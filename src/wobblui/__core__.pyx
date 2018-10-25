@@ -605,14 +605,14 @@ def update_multitouch():
                 event.button.windowID = last_single_finger_sdl_windowid
                 _process_mouse_click_event(event)
                 touch_pressed = False
-            last_multitouch_finger_coordinates = None
-            for w_ref in all_widgets:
-                w = w_ref()
-                if w != None:
-                    if w.multitouch_gesture_reported_in_progress:
-                        w.multitouch_gesture_reported_in_progress = False
-                        w.multitouchend()
-        # End multigesture:
+        # End multitouch gesture:
+        last_multitouch_finger_coordinates = None
+        for w_ref in all_widgets:
+            w = w_ref()
+            if w != None:
+                if w.multitouch_gesture_reported_in_progress:
+                    w.multitouch_gesture_reported_in_progress = False
+                    w.multitouchend()
         multitouch_gesture_active = False
         return
     if MULTITOUCH_DEBUG:
@@ -713,6 +713,10 @@ def update_multitouch():
                 logdebug("NOT reporting multitouch to " +
                     "widget: " + str(w) +
                     " (wrong screen)")
+            if w != None and w.multitouch_gesture_reported_in_progress:
+                # End gesture for this widget.
+                w.multitouch_gesture_reported_in_progress = False
+                w.multitouchend()
             continue
         if MULTITOUCH_DEBUG:
             logdebug("REPORTING multitouch to widget: " + str(w))

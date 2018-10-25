@@ -370,9 +370,6 @@ cdef class WidgetBase:
                 dist)
         self.have_long_click_callback = False
         self.long_click_callback_id += 1
-        for child in self.children:
-            child.multitouchstart(finger_coordinates,
-                internal_data=internal_data)
 
     def _internal_on_multitouchmove(self, object finger_coordinates,
             internal_data=None):
@@ -391,15 +388,10 @@ cdef class WidgetBase:
                 logdebug("Multitouch distance change: " + str(dist_change))
                 self.multitouch_two_finger_distance = dist
                 self.multitouchzoom(dist_change)
-        for child in self.children:
-            child.multitouchstart(finger_coordinates,
-                internal_data=internal_data)
 
     def _internal_on_multitouchend(self, internal_data=None):
         self.prevent_touch_long_click_due_to_gesture = False
         self.multitouch_two_finger_distance = 0.0
-        for child in self.children:
-            child.multitouchstart(internal_data=internal_data)
 
     def _internal_on_touchstart(self, int x, int y, internal_data=None):
         self._post_mouse_event_handling("touchstart",
