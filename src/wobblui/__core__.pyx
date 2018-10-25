@@ -20,6 +20,7 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+import copy
 import ctypes
 import math
 import sdl2 as sdl
@@ -543,6 +544,7 @@ def loading_screen_fix():
 last_single_finger_xpos = None
 last_single_finger_ypos = None
 last_single_finger_sdl_windowid = None
+last_multitouch_finger_coordinates = None
 multitouch_gesture_active = False
 active_touch_device = None
 
@@ -579,7 +581,8 @@ def update_multitouch():
     global touch_pressed
     global last_single_finger_xpos, last_single_finger_ypos,\
         last_single_finger_sdl_windowid
-    global multitouch_gesture_active, active_touch_device
+    global multitouch_gesture_active, active_touch_device, \
+        last_multitouch_finger_coordinates
     if active_touch_device is None:
         multitouch_gesture_active = False
         return
@@ -602,6 +605,7 @@ def update_multitouch():
                 event.button.windowID = last_single_finger_sdl_windowid
                 _process_mouse_click_event(event)
                 touch_pressed = False
+            last_multitouch_finger_coordinates = None
             for w_ref in all_widgets:
                 w = w_ref()
                 if w != None:
@@ -684,9 +688,14 @@ def update_multitouch():
                     internal_data=[float(main_finger_x),
                         float(main_finger_y)])
 
+    # If no finger moved from last time, don't report anything:
+    if last_multitouch_finger_coordinates == finger_positions:
+        return
+    last_multitouch_finger_coordinates = finger_positions
+
     # Get the display where the multitouch event is happening on:
     touch_event_screen_index = \
-        get_window_by_sdl_id(last_single_finger_sdl_windowid)
+        get_window_by_sdl_id(last_single_finger_sdl_windowid).screen_index
 
     # Report multitouch gesture to all widgets in affected window:
     if MULTITOUCH_DEBUG:
@@ -707,10 +716,11 @@ def update_multitouch():
             continue
         if MULTITOUCH_DEBUG:
             logdebug("REPORTING multitouch to widget: " + str(w))
+        coords_copy = copy.copy(finger_positions)
         if not w.multitouch_gesture_reported_in_progress:
             w.multitouch_gesture_reported_in_progress = True
-            w.multitouchstart(finger_positions)
-        w.multitouchmove(finger_positions)
+            w.multitouchstart(coords_copy)
+        w.multitouchmove(coords_copy)
     if MULTITOUCH_DEBUG:
         logdebug("MULTITOUCH handling over.")
 
