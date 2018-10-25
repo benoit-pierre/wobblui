@@ -672,13 +672,11 @@ def update_multitouch():
             abs(last_single_finger_ypos - main_finger_y) >= 1:
         last_single_finger_xpos = main_finger_x
         last_single_finger_ypos = main_finger_y
-        event = sdl.SDL_Event()
-        event.type = sdl.SDL_MOUSEMOTION
-        event.button.windowID = last_single_finger_sdl_windowid
-        event.motion.which = sdl_touch_mouseid
-        event.motion.x = last_single_finger_xpos
-        event.motion.y = last_single_finger_ypos
-        _process_mouse_click_event(event)
+        w = get_window_by_sdl_id(last_single_finger_sdl_windowid)
+        w.touchmove(float(main_finger_x),
+                    float(main_finger_y),
+                    internal_data=[float(main_finger_x),
+                        float(main_finger_y)])
 
     # Get the display where the multitouch event is happening on:
     touch_event_screen_index = \
