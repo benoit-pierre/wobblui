@@ -139,6 +139,20 @@ class Window(WidgetBase):
     def get_window_dpi(self):
         guessed_scale = 1.0
 
+        # --- SCREEN SIZE BASED GUESSING ---
+        (sw, sh) = self.containing_screen_dimensions()
+        if (sw + sh) > ((1920 * 1080) * 0.9):
+            # About 1080p / 2K:
+            guessed_scale = max(guessed_scale, 1.5)
+        elif (sw + sh) > ((2500 + 1500) * 0.9):
+            # Between 2K and 3K:
+            guessed_scale = max(guessed_scale, 1.7)
+        elif (sw + sh) > ((3840 + 2160) * 0.9):
+            # About 4K
+            guessed_scale = max(guessed_scale, 2.0)
+
+        # --- WINDOW SIZE BASED GUESSING ---
+
         if not is_android():
             # If window is really large, just scale up nevertheless:
             if guessed_scale < 1.5 and self.width > 2000 and \
@@ -157,7 +171,7 @@ class Window(WidgetBase):
 
         # On android, always scale up some more:
         if is_android():
-            guessed_scale = max(guessed_scale, 1.4)
+            guessed_scale *= 1.4
 
         # If this changed anything, inform everything after we bailed
         # out of this function back into the global main loop:
@@ -364,7 +378,7 @@ class Window(WidgetBase):
         return (x, y) 
 
     def containing_screen_dimensions(self):
-        if self._sdl_window is NOne:
+        if self._sdl_window is None:
             return (0, 0)
         screen_mode = sdl.SDL_DisplayMode()
         result = sdl.SDL_GetCurrentDisplayMode(self.screen_index,
@@ -372,7 +386,7 @@ class Window(WidgetBase):
         if result != 0:
             raise RuntimeError("unexpected failure to get " +
                 "current display mode")
-        return (int(result.w), int(result.h))
+        return (int(screen_mode.w), int(screen_mode.h))
 
     @property
     def screen_index(self):
