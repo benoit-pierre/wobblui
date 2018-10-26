@@ -61,6 +61,12 @@ cdef class Widget(WidgetBase):
             p = p.parent
         return None
 
+    def __del__(self):
+        # Note: WON'T BE CALLED BY CYTHON ON OBJECT DESTRUCTION.
+        # Just here because some deriving widget may call it on
+        # super() for some reason.
+        pass
+
     def focus_next(self):
         if not self.focused:
             raise RuntimeError("widget isn't focused")
