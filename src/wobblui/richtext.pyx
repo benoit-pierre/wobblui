@@ -23,6 +23,7 @@ freely, subject to the following restrictions:
 import copy
 import ctypes
 import html
+import math
 import sdl2 as sdl
 import string
 import sys
@@ -54,7 +55,7 @@ class TagInfo(object):
 
 cdef class RichTextObj(object):
     cdef public int x, y, width, italic, bold, px_size
-    cdef public double draw_scale
+    cdef public double _draw_scale
     cdef public str font_family
 
     def __init__(self):
@@ -65,7 +66,19 @@ cdef class RichTextObj(object):
         self.bold = False
         self.font_family = "Sans Serif"
         self.px_size = 12
-        self.draw_scale = 1.0
+        self._draw_scale = 1.0
+
+    @property
+    def draw_scale(self):
+        return self._draw_scale
+
+    @draw_scale.setter
+    def draw_scale(self, v):
+        self.update_to_draw_scale(v)
+        self._draw_scale = v
+
+    def update_to_draw_scale(self, v):
+        pass
 
     def compute_height(self):
         raise RuntimeError("abstract function not implemented")
@@ -130,9 +143,14 @@ cdef class RichTextFragment(RichTextObj):
         self._cached_parts = None
         self.px_size = px_size
         self.align = None
-        self.draw_scale = 1.0
+        self._draw_scale = 1.0
         self._width_cache = dict()
         self._cached_height = -1
+
+    def update_to_draw_scale(self, v):
+        if abs(v - self._draw_scale) > 0.001:
+            self._cached_height = -1
+            self._width_cache = dict()
 
     @property
     def text(self):
@@ -195,6 +213,7 @@ cdef class RichTextFragment(RichTextObj):
                 " y: " + str(self.y)
         if self.forced_text_color != None:
             t += " color: " + str(self.forced_text_color.html)
+        t += " draw_scale=" + str(self.draw_scale)
         t += " px_size=" + str(self.px_size) + ">"
         return t
 
@@ -208,7 +227,7 @@ cdef class RichTextFragment(RichTextObj):
         if color is None:
             color = Color.black
         if draw_scale is None:
-            draw_scale = self.draw_scale
+            draw_scale = self._draw_scale
         font = self.get_font(draw_scale=draw_scale)
         if self.forced_text_color != None:
             color = self.forced_text_color
@@ -237,7 +256,7 @@ cdef class RichTextFragment(RichTextObj):
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
-            draw_scale=self.draw_scale)
+            draw_scale=self._draw_scale)
         cdef int w, h
         (w, h) = font.render_size(text_part)
         self._width_cache[index] = w
@@ -249,7 +268,7 @@ cdef class RichTextFragment(RichTextObj):
         font = font_manager().get_font(self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
-            draw_scale=self.draw_scale)
+            draw_scale=self._draw_scale)
         cdef int w, h
         (w, h) = font.render_size(self.text)
         self._cached_height = max(0, h)
