@@ -1075,15 +1075,6 @@ cdef class WidgetBase:
         Perf.chain(chain_id, "propagate_end")
         Perf.stop(chain_id)
 
-    def __del__(self):
-        if self.internal_render_target != None:
-            if config.get("debug_texture_references"):
-                logdebug("WidgetBase.__del__: " +
-                    "DUMPED self.internal_render_target on " +
-                    str(self))
-            self.internal_render_target = None
-        return
-
     def renderer_update(self):
         if self.internal_render_target != None:
             if config.get("debug_texture_references"):
