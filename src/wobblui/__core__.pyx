@@ -162,6 +162,7 @@ def stuck_check():
                 logwarning(str(th))
                 logwarning(str("\n".join(
                     traceback.format_stack(sys._current_frames()[th.ident]))))
+            del(th)
             # Make sure we don't fire this again right away:
             last_alive_time = time.monotonic()
 
