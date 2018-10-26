@@ -236,7 +236,8 @@ class ListEntry(object):
         (w, h) = text_copy.layout(max_width=None)
         if self.extra_html_at_right_obj != None:
             w += max(1, round(self.extra_html_at_right_padding * self.dpi_scale))
-            (w2, h2) = self.extra_html_at_right_obj.layout(max_width=None)
+            (w2, h2) = self.extra_html_at_right_obj.layout(
+                max_width=None)
             w += w2
         if self.extra_html_as_subtitle_obj != None:
             (subtitle_width, h) = self.extra_html_as_subtitle_obj.\
