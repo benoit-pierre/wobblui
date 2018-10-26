@@ -39,9 +39,9 @@ from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
 
-render_size_cache = KeyValueCache(size=50000)
+render_size_cache = KeyValueCache(size=500)
 
-rendered_words_cache = KeyValueCache(size=500,
+rendered_words_cache = KeyValueCache(size=50,
     destroy_func=lambda x: x._force_unload())
 
 _reuse_draw_rect = sdl.SDL_Rect()
