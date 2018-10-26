@@ -31,6 +31,7 @@ from wobblui.uiconf import config
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 all_textures = []
+sdl_tex_count = 0
 
 def mark_textures_invalid(sdl_renderer):
     global all_textures
@@ -47,11 +48,12 @@ cdef class Texture(object):
     def __init__(self, renderer, width, height, _dontcreate=False):
         if renderer is None:
             raise ValueError("not a valid renderer, is None")
-        global all_textures
+        global all_textures, sdl_tex_count
         self._texture = None
         self.renderer = renderer
         self.renderer_key = str(ctypes.addressof(self.renderer.contents))
         if not _dontcreate:
+            sdl_tex_count += 1
             self._texture = sdl.SDL_CreateTexture(
                 self.renderer,
                 sdl.SDL_PIXELFORMAT_RGBA8888,
@@ -101,16 +103,22 @@ cdef class Texture(object):
         sdl.SDL_RenderCopy(self.renderer, self._texture, src, tg)
 
     def _force_unload(self):
-        if hasattr(self, "_texture") and self._texture != None:
+        global sdl_tex_count
+        if self._texture != None:
             try:
                 if config.get("debug_texture_references"):
                     logdebug("Texture._force_unload: " +
-                        "definite dump of texture " + str(self))
+                        "definite dump of texture " + str(self) +
+                        ", total still loaded: " + str(sdl_tex_count))
             finally:
+                sdl_tex_count -= 1
                 sdl.SDL_DestroyTexture(self._texture)
                 self._texture = None
 
     def __del__(self):
+        self._force_unload()
+
+    def __dealloc__(self):
         self._force_unload()
 
     def internal_clean_if_renderer(self, renderer):
@@ -127,21 +135,25 @@ cdef class Texture(object):
 
     @staticmethod
     def new_from_sdl_surface(renderer, srf):
+        global sdl_tex_count
         if not renderer:
             raise ValueError("need a valid renderer! not NULL / None")
         if not srf:
             raise ValueError("need valid surface! not NULL / None")
         tex = Texture(renderer, srf.contents.w, srf.contents.h,
             _dontcreate=True)
+        sdl_tex_count += 1
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
         return tex
 
 cdef class RenderTarget(Texture):
     def __init__(self, renderer, width, height):
+        global sdl_tex_count
         super().__init__(renderer, width, height, _dontcreate=True)
         self.set_as_target = False
         self.previous_target = None
         self.ever_rendered_to = False
+        sdl_tex_count += 1
         self._texture = sdl.SDL_CreateTexture(
             renderer,
             sdl.SDL_PIXELFORMAT_RGBA8888,
