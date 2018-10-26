@@ -84,54 +84,51 @@ cdef class WidgetBase:
         self._children = []
         self._parent = None
         self._disabled = False
-        self_ref = weakref.ref(self)
         self.internal_render_target = None
         self.internal_render_target_width = -1
         self.internal_render_target_height = -1
 
         def start_redraw(internal_data=None):
-            self_value = self_ref()
-            if self_value is None or self_value.renderer is None:
+            if self.renderer is None:
                 return
-            assert(self_value.renderer != None)
-            if self_value.needs_relayout:
-                self_value.relayout()
-            renderer = self_value.renderer
+            assert(self.renderer != None)
+            if self.needs_relayout:
+                self.relayout()
+            renderer = self.renderer
             assert(renderer != None)
-            dpi_scale = self_value.style.dpi_scale
-            tex_x = max(1, math.ceil(self_value.width + 1.0))
-            tex_y = max(1, math.ceil(self_value.height + 1.0))
-            if self_value.internal_render_target is None or \
-                    self_value.internal_render_target_width != tex_x or \
-                    self_value.internal_render_target_height != tex_y:
+            dpi_scale = self.style.dpi_scale
+            tex_x = max(1, math.ceil(self.width + 1.0))
+            tex_y = max(1, math.ceil(self.height + 1.0))
+            if self.internal_render_target is None or \
+                    self.internal_render_target_width != tex_x or \
+                    self.internal_render_target_height != tex_y:
                 if renderer is None or \
                         tex_x <= 0 or tex_y <= 0:
                     if renderer is None:
                         self.needs_redraw = True
                     return
-                if self_value.internal_render_target != None:
+                if self.internal_render_target != None:
                     if config.get("debug_texture_references"):
                         logdebug("WidgetBase.<closure>.start_redraw: " +
                             "DUMPED self.internal_render_target")
-                    self_value.internal_render_target = None 
-                self_value.internal_render_target = RenderTarget(
+                    self.internal_render_target = None 
+                self.internal_render_target = RenderTarget(
                     renderer, tex_x, tex_y)
                 if config.get("debug_texture_references"):
                         logdebug("WidgetBase.<closure>.start_redraw: " +
                             "NEW self.internal_render_target")
-                self_value.internal_render_target_width = tex_x
-                self_value.internal_render_target_height = tex_y
-            self_value.internal_render_target.set_as_rendertarget()
+                self.internal_render_target_width = tex_x
+                self.internal_render_target_height = tex_y
+            self.internal_render_target.set_as_rendertarget()
         def end_redraw(internal_data=None):
-            self_value = self_ref()
-            if self_value is None or self_value.renderer is None or \
+            if self.renderer is None or \
                     self.internal_render_target is None:
                 return
-            if hasattr(self_value, "do_redraw"):
-                self_value.do_redraw()
-            self_value.internal_render_target.unset_as_rendertarget()
-            self_value.needs_redraw = False
-            self_value.post_redraw()
+            if hasattr(self, "do_redraw"):
+                self.do_redraw()
+            self.internal_render_target.unset_as_rendertarget()
+            self.needs_redraw = False
+            self.post_redraw()
         self.redraw = Event("redraw", owner=self,
             special_post_event_func=end_redraw,
             special_pre_event_func=start_redraw)
