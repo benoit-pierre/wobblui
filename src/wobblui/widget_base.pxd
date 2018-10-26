@@ -76,4 +76,5 @@ cdef class WidgetBase:
         keyup, keydown, click, doubleclick, relayout, moved, resized,\
         focus, unfocus
 
-
+    # Allow weakrefs to this type:
+    cdef object __weakref__
