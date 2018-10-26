@@ -132,24 +132,40 @@ class Window(WidgetBase):
         self.next_reopen_width = width
         self.next_reopen_height = height
         self.internal_app_reopen()
+        
+        # Now that SDL window is open, we can access screen geometry:
+        if self._sdl_window != None:
+            scale = self.screen_based_scale()
+            # Correct our initial size:
+            if scale > 1.0:
+                self._width = round(width * scale)
+                self._height = round(height * scale)
+                sdl.SDL_SetWindowSize(self._sdl_window,
+                    self._width, self._height)
+
         self.last_known_dpi_scale = None
         self.schedule_global_dpi_scale_update = False
         all_windows.append(weakref.ref(self))
+
+    def screen_based_scale(self):
+        scale = 1.0
+        (sw, sh) = self.containing_screen_dimensions()
+        if (sw + sh) > ((1920 * 1080) * 0.9):
+            # About 1080p / 2K:
+            scale = max(scale, 1.5)
+        elif (sw + sh) > ((2500 + 1500) * 0.9):
+            # Between 2K and 3K:
+            scale = max(scale, 1.7)
+        elif (sw + sh) > ((3840 + 2160) * 0.9):
+            # About 4K
+            scale = max(scale, 2.0)
+        return scale
 
     def get_window_dpi(self):
         guessed_scale = 1.0
 
         # --- SCREEN SIZE BASED GUESSING ---
-        (sw, sh) = self.containing_screen_dimensions()
-        if (sw + sh) > ((1920 * 1080) * 0.9):
-            # About 1080p / 2K:
-            guessed_scale = max(guessed_scale, 1.5)
-        elif (sw + sh) > ((2500 + 1500) * 0.9):
-            # Between 2K and 3K:
-            guessed_scale = max(guessed_scale, 1.7)
-        elif (sw + sh) > ((3840 + 2160) * 0.9):
-            # About 4K
-            guessed_scale = max(guessed_scale, 2.0)
+        guessed_scale = max(guessed_scale, self.screen_based_scale())
 
         # --- WINDOW SIZE BASED GUESSING ---
 
