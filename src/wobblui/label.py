@@ -37,6 +37,13 @@ class Label(ScrollbarDrawingWidget):
             self.text = text
         self._user_set_color = color
 
+    def __repr__(self):
+        t = self.text
+        if len(t) > 20:
+            t = t + "..."
+        t = t.replace("'", "'\"'\"'")
+        return "<wobblui.Label at " + str(id(self)) + " text='" + t + "'>"
+
     def on_stylechanged(self):
         self.font_size_refresh()
         # Relayout in any case since font sizes may have changed:
@@ -174,7 +181,7 @@ class Label(ScrollbarDrawingWidget):
         if not "natural_height" in self.natural_size_cache:
             self.natural_size_cache["natural_height"] = dict()
         self.natural_size_cache["natural_height"][None] = h
-        return w
+        return self.natural_size_cache["natural_width"]
 
     def get_natural_height(self, given_width=None):
         if len(self.text) == 0:
