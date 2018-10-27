@@ -151,6 +151,7 @@ cdef class Font(object):
             raise RuntimeError("failed to render text: " +
                 str(text_bytes))
         tex = Texture.new_from_sdl_surface(renderer, surface)
+        sdl.SDL_FreeSurface(surface)
         rendered_words_cache.add(key, tex)
         return tex
 
