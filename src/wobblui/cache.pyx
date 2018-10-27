@@ -34,7 +34,8 @@ cdef class KeyValueCache(object):
         self.clear()        
 
     def clear(self):
-        self.mutex.acquire()
+        if not self.mutex.acquire(timeout=5):
+            raise RuntimeError("failed to get mutex lock")
         _got_error = None
         if self.destroy_func != None and \
                 self.cache_key_to_value != None:
@@ -72,36 +73,48 @@ cdef class KeyValueCache(object):
             # to the cache twice which isn't bad.
             return None
         self.mutex.acquire()
-        result = None
-        if key in self.cache_keys:
-            result = self.cache_key_to_value[key]
+        try:
+            result = None
+            if key in self.cache_keys:
+                result = self.cache_key_to_value[key]
+        finally:
+            self.mutex.release()
+        return result
+
+    def count(self):
+        self.mutex.acquire()
+        result = 0
+        if self.cache_queries != None:
+            result = len(self.cache_queries)
         self.mutex.release()
         return result
 
     def add(self, object key, object value):
         self.mutex.acquire()
-        if key in self.cache_keys:
-            self.destroy_func(self.cache_key_to_value[key])
-            self.cache_key_to_value[key] = value
-            self.mutex.release()
-            return
-        if len(self.cache_queries) > self.size:
-            try:
+        try:
+            if key in self.cache_keys:
                 if self.destroy_func != None:
-                    self.destroy_func(
-                        self.cache_key_to_value[self.cache_queries[0]])
-            except Exception as e:
-                self.mutex.release()
-                raise e
-            finally:
+                    self.destroy_func(self.cache_key_to_value[key])
+                self.cache_key_to_value[key] = value
+                return
+            if len(self.cache_queries) >= self.size:
                 try:
-                    self.cache_key_to_value.pop(self.cache_queries[0])
-                except KeyError:
-                    pass
-                self.cache_keys.discard(self.cache_queries[0])
-                self.cache_queries = self.cache_queries[1:]
-        self.cache_key_to_value[key] = value
-        self.cache_queries.append(key)
-        self.cache_keys.add(key)
-        self.mutex.release()
+                    if self.destroy_func != None:
+                        self.destroy_func(
+                            self.cache_key_to_value[self.cache_queries[0]])
+                except Exception as e:
+                    self.mutex.release()
+                    raise e
+                finally:
+                    try:
+                        self.cache_key_to_value.pop(self.cache_queries[0])
+                    except KeyError:
+                        pass
+                    self.cache_keys.discard(self.cache_queries[0])
+                    self.cache_queries = self.cache_queries[1:]
+            self.cache_key_to_value[key] = value
+            self.cache_queries.append(key)
+            self.cache_keys.add(key)
+        finally:
+            self.mutex.release()
 

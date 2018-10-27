@@ -25,7 +25,6 @@ import queue
 import sdl2.sdlttf as sdlttf
 import threading
 
-from wobblui.cache import KeyValueCache
 from wobblui.sdlinit import initialize_sdl
 
 cdef int shutdown_in_progress = False
@@ -69,14 +68,14 @@ cdef class SDLFontSizeJob(ThreadJob):
         self.result_waiter.set()
 
 cdef class SDLFontCloseJob(ThreadJob):
-    cdef object sdl_font
+    cdef object font_ref
 
-    def __init__(self, sdl_font):
+    def __init__(self, sdl_ttf_font_ref):
         super().__init__()
-        self.sdl_font = sdl_font
+        self.font_ref = sdl_ttf_font_ref
 
     def execute(self):
-        sdlttf.TTF_CloseFont(self.sdl_font.font)
+        sdlttf.TTF_CloseFont(self.font_ref)
         self.result_waiter.set()
 
 def get_sdl_font(str font_path, int px_size):
@@ -140,17 +139,20 @@ def get_thread_safe_render_size(sdl_ttf_font, char* text):
         return size_job.result
 
 class SDLFontWrapper(object):
-    def __init__(self, sdl_font, name=None, px_size=None):
+    def __init__(self, object sdl_font, name=None, px_size=None):
         self.font = sdl_font
-        self.name = None
-        self.px_size = None
+        self.name = name
+        self.px_size = px_size
 
     def __repr__(self):
         return "<SDLFontWrapper name=" + str(self.name) +\
             " px_size=" + str(self.px_size) + ">"
 
     def __del__(self):
-        job_queue.put(SDLFontCloseJob(self))
+        job_queue.put(SDLFontCloseJob(self.font))
+
+    def __dealloc__(self):
+        job_queue.put(SDLFontCloseJob(self.font))
 
 ttf_was_initialized = False
 def get_thread_safe_sdl_font(path, px_size):
