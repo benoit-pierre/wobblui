@@ -44,8 +44,9 @@ def mark_textures_invalid(sdl_renderer):
         tex.internal_clean_if_renderer(sdl_renderer)
     all_textures[:] = new_refs
 
-cdef class Texture(object):
-    def __init__(self, renderer, width, height, _dontcreate=False):
+class Texture(object):
+    def __init__(self, object renderer, int width, int height,
+            int _dontcreate=False):
         if renderer is None:
             raise ValueError("not a valid renderer, is None")
         global all_textures, sdl_tex_count
@@ -81,7 +82,7 @@ cdef class Texture(object):
         return "<Texture " + str((str(id(self)), self.width,
                 self.height)) + ">"
 
-    def draw(self, x, y, w=None, h=None):
+    def draw(self, int x, int y, w=None, h=None):
         if (w != None and w <= 0) or (
                 h != None and h <= 0):
             return
@@ -146,7 +147,7 @@ cdef class Texture(object):
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
         return tex
 
-cdef class RenderTarget(Texture):
+class RenderTarget(Texture):
     def __init__(self, renderer, width, height):
         global sdl_tex_count
         super().__init__(renderer, width, height, _dontcreate=True)

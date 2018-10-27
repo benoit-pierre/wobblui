@@ -34,7 +34,7 @@ from wobblui.color import Color
 import wobblui.font.info
 import wobblui.font.sdlfont as sdlfont
 from wobblui.sdlinit import initialize_sdl
-from wobblui.texture cimport Texture
+from wobblui.texture import Texture
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000

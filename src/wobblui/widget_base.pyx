@@ -38,7 +38,7 @@ from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.mouse import cursor_seen_during_mousemove
 from wobblui.keyboard import enable_text_events
 from wobblui.perf cimport CPerf as Perf
-from wobblui.texture cimport RenderTarget
+from wobblui.texture import RenderTarget
 from wobblui.timer import schedule
 from wobblui.uiconf import config
 from wobblui.widgetman import add_widget, all_widgets, \
