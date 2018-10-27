@@ -164,7 +164,7 @@ def stuck_check():
                     traceback.format_stack(sys._current_frames()[th.ident]))))
             del(th)
             # Make sure we don't fire this again right away:
-            last_alive_time = time.monotonic()
+            last_alive_time = time.monotonic() + 30.0
 
 def event_loop(app_cleanup_callback=None):
     global stuck_thread, last_alive_time
