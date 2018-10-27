@@ -54,7 +54,7 @@ cdef class SDLFontSizeJob(ThreadJob):
     cdef object sdl_font
     cdef bytes text
 
-    def __init__(self, object sdl_font, text):
+    def __init__(self, object sdl_font, bytes text):
         super().__init__()
         self.sdl_font = sdl_font
         self.text = text

@@ -34,9 +34,11 @@ cdef class KeyValueCache(object):
         self.clear()        
 
     def clear(self):
+        self.mutex.acquire()
         _got_error = None
-        if self.destroy_func != None:
-            for v in self.values:
+        if self.destroy_func != None and \
+                self.cache_key_to_value != None:
+            for v in self.cache_key_to_value.values():
                 try:
                     self.destroy_func(v)
                 except Exception as e:
@@ -44,8 +46,12 @@ cdef class KeyValueCache(object):
         self.cache_keys = set()
         self.cache_key_to_value = dict()
         self.cache_queries = list()
+        self.mutex.release()
         if _got_error != None:
             raise _got_error
+
+    def __dealloc__(self):
+        self.clear()
 
     @property
     def values(self):
@@ -75,6 +81,8 @@ cdef class KeyValueCache(object):
     def add(self, object key, object value):
         self.mutex.acquire()
         if key in self.cache_keys:
+            self.destroy_func(self.cache_key_to_value[key])
+            self.cache_key_to_value[key] = value
             self.mutex.release()
             return
         if len(self.cache_queries) > self.size:

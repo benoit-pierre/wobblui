@@ -144,6 +144,7 @@ class Texture(object):
         tex = Texture(renderer, srf.contents.w, srf.contents.h,
             _dontcreate=True)
         sdl_tex_count += 1
+        assert(tex._texture is None)
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
         return tex
 
@@ -155,6 +156,7 @@ class RenderTarget(Texture):
         self.previous_target = None
         self.ever_rendered_to = False
         sdl_tex_count += 1
+        assert(self._texture is None)
         self._texture = sdl.SDL_CreateTexture(
             renderer,
             sdl.SDL_PIXELFORMAT_RGBA8888,
@@ -165,6 +167,12 @@ class RenderTarget(Texture):
                 "unexpectedly failed!")
         sdl.SDL_SetTextureBlendMode(self._texture,
             sdl.SDL_BLENDMODE_BLEND)
+
+    def __del__(self):
+        if self.set_as_target:
+            sdl.SDL_SetRenderTarget(self.renderer, None)
+        self.set_as_target = False
+        super().__del__()
 
     def draw(self, x, y, w=None, h=None):
         assert(x != None and y != None)
