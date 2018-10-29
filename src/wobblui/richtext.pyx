@@ -702,6 +702,8 @@ cdef class RichText(object):
                     str(layouted_elements))
                 logwarning("Loop progress: " + str(i) + "/" +
                     str(fragment_count))
+                logwarning("Caller backtrace: " +
+                    str("\n".join(traceback.format_stack())))
                 stuck_warning_start_time = time.monotonic()
             # Get next element:
             perf_10 = Perf.start("before fitting loop")
