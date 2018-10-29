@@ -62,6 +62,31 @@ class Box(Widget):
                 self.width, self.height, color=self.bg_color)
         self.draw_children()
 
+    def got_exactly_one_flexible_child(self):
+        """ Check if there is exactly one child that is both shrinkable
+            and expandable, and all other children are fixed (not shrinkable,
+            and not expandable).
+
+            Returns True if these conditions are met, otherwise Fals.e
+        """
+
+        flexible_children_count = 0
+        child_id = -1
+        for item in self._children:
+            child_id += 1
+            if child_id in self.expand_info and \
+                    self.expand_info[child_id]:
+                if not child_id in self.shrink_info or \
+                        not self.shrink_info[child_id]:
+                    return False
+                flexible_children_count += 1
+                if flexible_children_count > 1:
+                    return False
+            elif child_id in self.shrink_info and \
+                    self.shrink_info[child_id]:
+                return False
+        return (flexible_children_count == 1)
+
     def on_relayout(self):
         # Adjust items on the non-box axis:
         for item in self._children:
@@ -102,8 +127,22 @@ class Box(Widget):
                 child.width = child.get_natural_width()
                 child_space += child.width + item_padding
             else:
-                child.height = child.\
-                    get_natural_height(given_width=child.width)
+                if not self.got_exactly_one_flexible_child() or \
+                        not self.expand_info[child_id]:
+                    # Regular case: add up all children as usual
+                    child.height = child.\
+                        get_natural_height(given_width=child.width)
+                else:
+                    # SPECIAL CASE / OPTIMIZATION:
+                    # This is the only flexible child widget, all others
+                    # are fixed. This means it will be stretched/shrunk, but
+                    # without need for proportional stretching since it's
+                    # only this widget stretched/shrunk. (Proportional
+                    # would require it to have its proper natural size here)
+                    #   --> we'll stuff it in whatever, non-natural size,
+                    #       since natural size may take long in rare cases
+                    if child.height <= 0:
+                        child.height = 1
                 child_space += child.height + item_padding
         remaining_space = (self.height - child_space -
             round(self.box_surrounding_padding * self.dpi_scale * 2))
