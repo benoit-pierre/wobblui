@@ -701,6 +701,8 @@ cdef class RichText(object):
             if bailout_func != None:
                 if bailout_func(layout_w, layout_h):
                     # Add remaining fragments unlayouted and bail out:
+                    if left_over_fragment != None:
+                        layouted_elements.append(left_over_fragment)
                     while i < fragment_count:
                         layouted_elements.append(self.fragments[i])
                         i += 1
