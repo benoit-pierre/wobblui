@@ -19,8 +19,10 @@ class Label(ScrollbarDrawingWidget):
         self.text_scale = text_scale
         font_family = self.style.get("widget_font_family")
         self.px_size = self.get_intended_text_size()
-        self._layout_height = 0
-        self._layout_width = 0
+        self.known_font_family = font_family
+        self._layout_height = -1
+        self._layouted_for_width = -1
+        self._layout_width = -1
         self.scroll_y_offset = 0
         self.natural_size_cache = dict()
         self.known_dpi_scale = self.dpi_scale
@@ -46,10 +48,6 @@ class Label(ScrollbarDrawingWidget):
 
     def on_stylechanged(self):
         self.font_size_refresh()
-        # Relayout in any case since font sizes may have changed:
-        self.known_dpi_scale = self.dpi_scale
-        self.natural_size_cache = dict()
-        self.needs_relayout = True
 
     def get_intended_text_size(self):
         if self.style == None:
@@ -97,6 +95,9 @@ class Label(ScrollbarDrawingWidget):
         self.natural_size_cache = dict()
         self._current_align = alignment
         self.needs_relayout = True
+        self._layouted_for_width = -1
+        self._layout_width = -1
+        self._layout_height = -1
 
     def do_redraw(self):
         # Calculate content height:
@@ -138,20 +139,37 @@ class Label(ScrollbarDrawingWidget):
 
     def font_size_refresh(self):
         new_px_size = self.get_intended_text_size()
+        new_font_family = self.style.get("widget_font_family")
         if new_px_size != self.px_size or \
-                abs(self.dpi_scale - self.current_draw_scale) > 0.001:
+                abs(self.dpi_scale - self.current_draw_scale) > 0.001 or \
+                new_font_family != self.known_font_family:
             # Font size update!
             self.px_size = new_px_size
             self.natural_size_cache = dict()
+            self.known_font_family = new_font_family
+            self.text_obj.default_font_family = new_font_family
+            # FIXME: font will not actually be updated. fix at some point
             self.text_obj.px_size = self.px_size
             self.text_obj.draw_scale = self.dpi_scale
             self.current_draw_scale = self.dpi_scale
+            self._layout_width = -1
+            self._layout_height = -1
+            self._layouted_for_width = -1
 
     def on_relayout(self):
         self.font_size_refresh()
         layout_max_width = self.width
         if self._max_width >= 0 and self._max_width < layout_max_width:
             layout_max_width = self._max_width
+
+        # If we don't need to update layout size, don't do it:
+        if self._layouted_for_width == layout_max_width and \
+                self._layout_width >= 0 and \
+                self._layout_height >= 0:
+            # We can keep our current values
+            return
+
+        # See if we can get dimensions out of natural size cache:
         if "natural_width" in self.natural_size_cache and \
                 "natural_height" in self.natural_size_cache and \
                 None in self.natural_size_cache["natural_height"]:
@@ -165,8 +183,15 @@ class Label(ScrollbarDrawingWidget):
                 self._layout_height = self.natural_size_cache\
                     ["natural_height"][None]
                 return
+
+        # Update dimensions:
+        self._layouted_for_width = layout_max_width
         (self._layout_width, self._layout_height) = self.text_obj.layout(
             max_width=layout_max_width, align_if_none=self._current_align)
+        if not "natural_height" in self.natural_size_cache:
+            self.natural_size_cache["natural_height"] = dict()
+        self.natural_size_cache["natural_height"][self._layout_width] =\
+            self._layout_height
         self.needs_relayout = False  # just to be sure
 
     def get_natural_width(self):
