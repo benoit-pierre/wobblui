@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -21,10 +22,11 @@ freely, subject to the following restrictions:
 
 from wobblui.color import Color
 from wobblui.gfx import draw_rectangle
-from wobblui.widget import Widget
+from wobblui.widget cimport Widget
 
-class ScrollbarDrawingWidget(Widget):
-    def draw_scrollbar(self, scroll_height, visible_height, y_offset):
+cdef class ScrollbarDrawingWidget(Widget):
+    def draw_scrollbar(self, int scroll_height,
+            int visible_height, int y_offset):
         max_scroll_down = max(0, scroll_height - visible_height)
         if max_scroll_down <= 0.0001:
             return

@@ -23,11 +23,12 @@ freely, subject to the following restrictions:
 cdef class WidgetBase:
     cdef public str type
     cdef public int _focusable
+    cdef public object focus_index  # integer or None
     cdef public int needs_redraw
     cdef public int id
     cdef public int added_order
     cdef public int no_mouse_events  # disables callbacks AND propagation
-    cdef public int continue_infinite_scroll_when_uncofused
+    cdef public int continue_infinite_scroll_when_unfocused
     cdef public int fake_mouse_even_with_native_touch_support
     cdef public int has_native_touch_support, takes_text_input
     cdef public int _prevent_mouse_event_propagate
@@ -74,7 +75,7 @@ cdef class WidgetBase:
         multitouchmove, multitouchend, touchstart, touchmove, touchend,\
         mousemove, mousedown, mouseup, mousewheel, stylechanged,\
         keyup, keydown, click, doubleclick, relayout, moved, resized,\
-        focus, unfocus
+        focus, unfocus, redraw, post_redraw, multitouchzoom
 
     # Allow weakrefs to this type:
     cdef object __weakref__
