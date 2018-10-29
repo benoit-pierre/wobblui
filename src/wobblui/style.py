@@ -27,8 +27,8 @@ class AppStyle(object):
         self._dpi_scale = 1.0
         self.is_android = (sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android")
-        if self.is_android:
-            self._dpi_scale_base = 1.2
+        #if self.is_android:
+        #    self._dpi_scale_base = 1.2
         self.values = dict()
 
     def copy(self):
