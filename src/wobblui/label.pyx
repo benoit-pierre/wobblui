@@ -315,6 +315,9 @@ cdef class Label(ScrollbarDrawingWidget):
         self.text_obj.set_html(t)
         self.needs_relayout = True
         self.needs_redraw = True
+        self._layouted_for_width = -1
+        self._layout_width = -1
+        self._layout_height = -1
 
 class ImageWithLabel(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,
