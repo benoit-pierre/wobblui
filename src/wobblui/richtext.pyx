@@ -590,12 +590,14 @@ cdef class RichText(object):
             for fragment in self.fragments]
         return new_text
 
-    def layout(self, max_width=None, align_if_none=None):
+    def layout(self, max_width=None, align_if_none=None,
+            bailout_func=None):
         if max_width == None:
             max_width = -1
-        return self._layout_internal(max_width, align_if_none)
+        return self._layout_internal(max_width, align_if_none, bailout_func)
 
-    def _layout_internal(self, int max_width, align_if_none):
+    def _layout_internal(self, int max_width, align_if_none,
+            bailout_func):
         perf_id = Perf.start("richtext_layout")
         perf_1 = Perf.start("richtext_layout_1")
         self.simplify()
@@ -695,6 +697,16 @@ cdef class RichText(object):
         cdef int max_letters
 
         while i < fragment_count:
+            # See if we're supposed to bail out early:
+            if bailout_func != None:
+                if bailout_func(layout_w, layout_h):
+                    # Add remaining fragments unlayouted and bail out:
+                    while i < fragment_count:
+                        layouted_elements.append(self.fragments[i])
+                        i += 1
+                    break
+            
+            # Warning if we've been stuck here for a long time:
             if stuck_warning_start_time + 30.0 < time.monotonic():
                 logwarning("This is the layouting loop of wobblui. I'm " +
                     "doing this for a long time already. Am I stuck???")

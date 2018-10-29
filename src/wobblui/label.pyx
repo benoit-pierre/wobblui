@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 import sdl2 as sdl
+import time
 
 from wobblui.button import Button
 from wobblui.color import Color
@@ -228,12 +229,35 @@ cdef class Label(ScrollbarDrawingWidget):
         self.font_size_refresh()
         if "natural_width" in self.natural_size_cache:
             return self.natural_size_cache["natural_width"]
+
+        # Copy full layout for width computation:
         text_obj_copy = self.text_obj.copy()
-        (w, h) = text_obj_copy.layout()
+
+        # Bailout helpers for really excessively long texts:
+        start_time = time.monotonic()
+        layout_min_bailout_height = 1000
+        if self.parent_window != None:
+            layout_min_bailout_height = self.parent_window.height * 2
+        bailed_out = False
+        def bailout_if_excessively_long(layout_w, layout_h):
+            nonlocal bailed_out
+            if layout_h > layout_min_bailout_height and \
+                    start_time + 1.0 < time.monotonic():
+                bailed_out = True
+                return True
+            return False
+
+        # Run actual layouting to get width:
+        (w, h) = text_obj_copy.layout(bailout_func=\
+            bailout_if_excessively_long)
+        if bailed_out:
+            w = int(w * 1.05)  # give headroom since this is inaccurate
         self.natural_size_cache["natural_width"] = w
         if not "natural_height" in self.natural_size_cache:
             self.natural_size_cache["natural_height"] = dict()
-        self.natural_size_cache["natural_height"][None] = h
+        if not bailed_out:
+            # If not bailed out, also keep the resulting height cached:
+            self.natural_size_cache["natural_height"][None] = h
         return self.natural_size_cache["natural_width"]
 
     def get_natural_height(self, given_width=None):
