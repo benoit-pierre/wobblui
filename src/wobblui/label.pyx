@@ -296,6 +296,9 @@ cdef class Label(ScrollbarDrawingWidget):
         self.natural_size_cache = dict()
         self.text_obj.set_text(t)
         self.needs_relayout = True
+        self._layout_width = -1
+        self._layout_height = -1
+        self._layouted_for_width = -1
         self.needs_redraw = True
         self._cached_text = t
 
