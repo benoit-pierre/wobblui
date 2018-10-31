@@ -29,10 +29,10 @@ import string
 import sys
 import threading
 import time
-import traceback
 
 from wobblui.color import Color
 import wobblui.cssparse as cssparse
+cimport wobblui.debug as debug
 import nettools.htmlparse as htmlparse
 from wobblui.font.manager import font_manager
 from wobblui.perf cimport CPerf as Perf
@@ -592,6 +592,8 @@ cdef class RichText(object):
 
     def layout(self, max_width=None, align_if_none=None,
             bailout_func=None):
+        if max_width != None and max_width <= 0:
+            raise RuntimeError("invalid layout with zero or negative width")
         if max_width == None:
             max_width = -1
         return self._layout_internal(max_width, align_if_none, bailout_func)
@@ -716,8 +718,7 @@ cdef class RichText(object):
                     str(layouted_elements))
                 logwarning("Loop progress: " + str(i) + "/" +
                     str(fragment_count))
-                logwarning("Caller backtrace: " +
-                    str("\n".join(traceback.format_stack())))
+                logwarning("Caller backtrace: " + debug.get_backtrace())
                 stuck_warning_start_time = time.monotonic()
             # Get next element:
             perf_10 = Perf.start("before fitting loop")
