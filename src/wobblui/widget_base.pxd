@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 cdef class WidgetBase:
+    # Base settings:
     cdef public str type
     cdef public int _focusable
     cdef public object focus_index  # integer or None
@@ -31,10 +32,11 @@ cdef class WidgetBase:
     cdef public int continue_infinite_scroll_when_unfocused
     cdef public int fake_mouse_even_with_native_touch_support
     cdef public int has_native_touch_support, takes_text_input
-    cdef public int _prevent_mouse_event_propagate
+    cdef int _prevent_mouse_event_propagate
     cdef public int needs_relayout
     cdef public int generate_double_click_for_touches 
     cdef public int _x, _y, _width, _height, _max_width, _max_height
+    cdef public int mouse_event_shift_x, mouse_event_shift_y
     cdef public int is_container
     cdef public object _children
     cdef object _parent

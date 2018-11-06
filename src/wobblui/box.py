@@ -24,6 +24,7 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.gfx import draw_rectangle
+from wobblui.scrollbarwidget import ScrollbarDrawingWidget
 from wobblui.widget import Widget
 
 class BoxSpacer(Widget):
@@ -36,7 +37,7 @@ class BoxSpacer(Widget):
     def get_natural_height(self, given_width=None):
         return 0
 
-class Box(Widget):
+class Box(ScrollbarDrawingWidget):
     def __init__(self, horizontal, box_surrounding_padding=0,
             stretch_children_on_secondary_axis=True):
         super().__init__(is_container=True)
@@ -49,6 +50,9 @@ class Box(Widget):
         self.box_surrounding_padding =\
             max(0, box_surrounding_padding)
         self.bg_color = None
+        self.actual_layout_height = None
+        self.actual_layout_width = None
+        self.scroll_offset_y = 0
 
     def set_background_color(self, c):
         if c is None:
@@ -60,7 +64,31 @@ class Box(Widget):
         if self.bg_color != None:
             draw_rectangle(self.renderer, 0, 0,
                 self.width, self.height, color=self.bg_color)
-        self.draw_children()
+        max_scroll = (self.actual_layout_height - self.height)
+        self.scroll_offset_y = max(0, min(self.scroll_offset_y, max_scroll))
+        self.mouse_event_shift_y = -round(self.scroll_offset_y)
+        if max_scroll > 2:
+            self.draw_scrollbar(self.actual_layout_height,
+                self.height, self.scroll_offset_y)
+
+        # Draw with temporarily applied scroll offset:
+        move_y = round(self.scroll_offset_y)
+        for child in self.children:
+            child.y -= move_y
+        try:
+            self.draw_children()
+        finally:
+            for child in self.children:
+                child.y += move_y
+
+    def on_mousewheel(self, mouse_id, x, y):
+        self.scroll_offset_y = max(0,
+            self.scroll_offset_y -
+            y * 50.0 * self.dpi_scale)
+        max_scroll = (self.actual_layout_height - self.height)
+        self.scroll_offset_y = max(0, min(self.scroll_offset_y, max_scroll))
+        self.mouse_event_shift_y = -round(self.scroll_offset_y)
+        self.needs_redraw = True
 
     def got_exactly_one_flexible_child(self):
         """ Check if there is exactly one child that is both shrinkable
@@ -88,6 +116,9 @@ class Box(Widget):
         return (flexible_children_count == 1)
 
     def on_relayout(self):
+        layout_height = 0
+        layout_width = 0
+
         # Adjust items on the non-box axis:
         for item in self._children:
             if self.horizontal:
@@ -244,7 +275,16 @@ class Box(Widget):
                         round(self.box_surrounding_padding *
                             self.dpi_scale * 2)) / 2.0)
 
+        # Compute layout dimensions:
+        for child in self.children:
+            if child.invisible:
+                continue
+            layout_width = max(layout_width, child.x + child.width)
+            layout_height = max(layout_height, child.y + child.height)
+
         self.needs_redraw = True
+        self.actual_layout_width = layout_width
+        self.actual_layout_height = layout_height
 
     def got_visible_child_after_index(self, index):
         index += 1
