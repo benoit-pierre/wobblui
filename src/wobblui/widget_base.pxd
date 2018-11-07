@@ -36,7 +36,7 @@ cdef class WidgetBase:
     cdef public int needs_relayout
     cdef public int generate_double_click_for_touches 
     cdef public int _x, _y, _width, _height, _max_width, _max_height
-    cdef public int mouse_event_shift_x, mouse_event_shift_y
+    cdef public int _child_mouse_event_shift_x, _child_mouse_event_shift_y
     cdef public int is_container
     cdef public object _children
     cdef object _parent

@@ -268,6 +268,20 @@ cdef class WidgetBase:
         add_widget(self)
 
     @property
+    def mouse_event_shift_x(self):
+        p = self.parent
+        if p != None:
+            return p._child_mouse_event_shift_x
+        return 0
+
+    @property
+    def mouse_event_shift_y(self):
+        p = self.parent
+        if p != None:
+            return p._child_mouse_event_shift_y
+        return 0
+
+    @property
     def cursor(self):
         if not hasattr(self, "_cursor") or \
                 self._cursor is None:
