@@ -26,7 +26,8 @@ cdef class Event(object):
     """
     cdef public object funcs, on_object
     cdef int _disabled
-    cdef object special_post_event_func, special_pre_event_func
+    cdef object special_post_event_func, special_pre_event_func,\
+        parameter_transform_func
     cdef public str name
     cdef public int widget_must_get_event
 

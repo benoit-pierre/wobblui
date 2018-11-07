@@ -100,6 +100,17 @@ cdef class Event(object):
                                        in regular callback processing,
                                        and cannot be prevented by any
                                        regular callback returning `True`
+        @param parameter_transform_func function to transform parameters
+                                        before event fires. gets passed the
+                                        `name` of the event as first
+                                        parameter, `second` as second
+                                        parameter, then all the
+                                        event parameters (including the
+                                        `internal_data` keyword parameter).
+                                        it is expected to return a tuple of
+                                        the transformed parameters, with the
+                                        internal data parameter last in the
+                                        tuple.
         @param allow_preventing_widget_callback_by_user_callbacks Control
                                        event order. See text above!
     """
@@ -107,6 +118,7 @@ cdef class Event(object):
     def __init__(self, str name, owner=None,
             special_pre_event_func=None,
             special_post_event_func=None,
+            parameter_transform_func=None,
             allow_preventing_widget_callback_by_user_callbacks=True):
         self.name = name
         self.widget_must_get_event = \
@@ -116,6 +128,7 @@ cdef class Event(object):
         self._disabled = False
         self.special_post_event_func = special_post_event_func
         self.special_pre_event_func = special_pre_event_func
+        self.parameter_transform_func = parameter_transform_func
 
     """ Property whether the event is disabled. Disabled events will
         not do anything when triggered (no error, the trigger is just
@@ -215,12 +228,27 @@ cdef class Event(object):
         if config.get("debug_events") is True:
             logdebug("EVENT TRIGGER: " + str(self.name) +
                 " ON " + str(self.on_object))
+
+        # Extra tracking of the specific 'redraw' event (a bit of a hack):
         cdef str perf_id = None
         if self.name == "redraw":
             perf_id = Perf.start("Event_redraw_" +
                 str(self.on_object.__class__.__name__)
                 if self.on_object != None else
                 "<no_associated_object>")
+
+        # Transform event parameters:
+        if self.parameter_transform_func != None:
+            result = tuple(self.parameter_transform_func(
+                *([self.name, self.on_object] + list(args))))
+            if len(result) > 0:
+                internal_data = result[-1]
+                args = result[:-1]
+            else:
+                internal_data = None
+                args = []
+
+        # Handle event:
         try:
             if self._disabled:
                 return True
@@ -309,6 +337,19 @@ cdef class InternalOnlyDummyEvent(Event):
                 " ON " + str(self.on_object))
         if self._disabled:
             return True
+
+        # Transform event parameters:
+        if self.parameter_transform_func != None:
+            result = tuple(self.parameter_transform_func(
+                *([self.name, self.on_object] + list(args))))
+            if len(result) > 0:
+                internal_data = result[-1]
+                args = result[:-1]
+            else:
+                internal_data = None
+                args = []
+
+        # Handle evnet:
         if self.special_pre_event_func != None:
             self.special_pre_event_func(*args,
                 internal_data=internal_data)

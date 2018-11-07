@@ -153,56 +153,90 @@ cdef class WidgetBase:
 
         self.parentchanged = Event("parentchanged", owner=self,
             allow_preventing_widget_callback_by_user_callbacks=False)
+        def touchstart_pre(int x, int y, internal_data=None):
+            self._pre_mouse_event_handling("touchstart",
+                [x, y], internal_data=internal_data)
+        def touchmove_pre(int x, int y, internal_data=None):
+            self._pre_mouse_event_handling("touchmove",
+                [x, y], internal_data=internal_data)
+        def touchend_pre(int x, int y, internal_data=None):
+            self._pre_mouse_event_handling("touchend",
+                [x, y], internal_data=internal_data)
         if has_native_touch_support:
             self.has_native_touch_support = True
-            self.multitouchstart = Event("multitouchstart", owner=self)
-            self.multitouchmove = Event("multitouchmove", owner=self)
-            self.multitouchend = Event("multitouchend", owner=self)
-            self.touchstart = Event("touchstart", owner=self)
-            self.touchmove = Event("touchmove", owner=self)
-            self.touchend = Event("touchend", owner=self)
+            self.multitouchstart = Event("multitouchstart", owner=self,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
+            self.multitouchmove = Event("multitouchmove", owner=self,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
+            self.multitouchend = Event("multitouchend", owner=self,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
+            self.touchstart = Event("touchstart", owner=self,
+                special_pre_event_func=touchstart_pre,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
+            self.touchmove = Event("touchmove", owner=self,
+                special_pre_event_func=touchmove_pre,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
+            self.touchend = Event("touchend", owner=self,
+                special_pre_event_func=touchend_pre,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
         else:
             self.multitouchstart = InternalOnlyDummyEvent(
-                "multitouchstart", owner=self)
+                "multitouchstart", owner=self,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment
+                )
             self.multitouchmove = InternalOnlyDummyEvent(
-                "multitouchmove", owner=self)
+                "multitouchmove", owner=self,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
             self.multitouchend = InternalOnlyDummyEvent(
-                "multitouchend", owner=self)
-            def touchstart_pre(int x, int y, internal_data=None):
-                self._pre_mouse_event_handling("touchstart",
-                    [x, y], internal_data=internal_data)
+                "multitouchend", owner=self,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
             self.touchstart = InternalOnlyDummyEvent(
                 "touchstart", owner=self,
-                special_pre_event_func=touchstart_pre)
-            def touchmove_pre(int x, int y, internal_data=None):
-                self._pre_mouse_event_handling("touchmove",
-                    [x, y], internal_data=internal_data)
+                special_pre_event_func=touchstart_pre,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
             self.touchmove = InternalOnlyDummyEvent(
                 "touchmove", owner=self,
-                special_pre_event_func=touchmove_pre)
-            def touchend_pre(int x, int y, internal_data=None):
-                self._pre_mouse_event_handling("touchend",
-                    [x, y], internal_data=internal_data)
+                special_pre_event_func=touchmove_pre,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
             self.touchend = InternalOnlyDummyEvent(
                 "touchend", owner=self,
-                special_pre_event_func=touchend_pre)
+                special_pre_event_func=touchend_pre,
+                parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
             self.has_native_touch_support = False
         def mousemove_pre(int mouse_id, int x, int y, internal_data=None):
             self._pre_mouse_event_handling("mousemove",
                 [mouse_id, x, y], internal_data=internal_data)
         self.mousemove = Event("mousemove", owner=self,
-            special_pre_event_func=mousemove_pre)
+            special_pre_event_func=mousemove_pre,
+            parameter_transform_func=\
+                    self.mouse_event_param_adjustment)
         def mousedown_pre(int mouse_id, int button_id, int x, int y,
                 internal_data=None):
             self._pre_mouse_event_handling("mousedown",
                 [mouse_id, button_id, x, y], internal_data=internal_data)
         self.mousedown = Event("mousedown", owner=self,
-            special_pre_event_func=mousedown_pre)
+            special_pre_event_func=mousedown_pre,
+            parameter_transform_func=\
+                self.mouse_event_param_adjustment)
         def mousewheel_pre(int mouse_id, int x, int y, internal_data=None):
             self._pre_mouse_event_handling("mousewheel",
                 [mouse_id, x, y], internal_data=internal_data)
         self.mousewheel = Event("mousewheel", owner=self,
-            special_pre_event_func=mousewheel_pre)
+            special_pre_event_func=mousewheel_pre,
+            parameter_transform_func=\
+                self.mouse_event_param_adjustment)
         self.stylechanged = Event("stylechanged", owner=self)
         self.keyup = Event("keyup", owner=self)
         self.keydown = Event("keydown", owner=self)
@@ -239,6 +273,60 @@ cdef class WidgetBase:
                 self._cursor is None:
             self._cursor = self.get_default_cursor() or "normal"
         return self._cursor
+
+    def mouse_event_param_adjustment(self, event_name, owner,
+            *args, internal_data=None):
+        args = list(args)
+        if self._in_touch_fake_event_processing:
+            # The touch event itself already translated coordinates.
+            # --> Nothing to do
+            return args + [internal_data]
+        if self.mouse_event_shift_x == 0 and self.mouse_event_shift_y == 0:
+            # Nothing to shift.
+            return args + [internal_data]
+
+        # Do actual shift:
+
+        # If internal data has absolute mouse pos, shift it as well:
+        if internal_data != None and len(internal_data) == 2:
+            internal_data = (
+                internal_data[0] + self.mouse_event_shift_x,
+                internal_data[1] + self.mouse_event_shift_y)
+
+        # Shift regular event parameters:
+        if event_name == "mousedown" or event_name == "mouseup" or \
+                event_name == "click" or event_name == "doubleclick":
+            # args: (mouse_id, button, x, y),
+            # internal data: (abs_x, abs_y)
+            return [args[0], args[1],
+                args[1] + self.mouse_event_shift_x,
+                args[2] + self.mouse_event_shift_y] + [internal_data]
+        if event_name == "mousemove":
+            # args: (mouse_id, x, y)
+            return [args[0],
+                args[1] + self.mouse_event_shift_x,
+                args[2] + self.mouse_event_shift_y] + [internal_data]
+        if event_name == "mousewheel":
+            # args: (mouse_id, x, y)
+            return args + [internal_data]
+        if event_name == "touchstart" or event_name == "touchmove" or \
+                event_name == "touchend":
+            # args: (x, y)
+            return [args[0] + self.mouse_event_shift_x,
+                args[1] + self.mouse_event_shift_y] + [internal_data]
+        if event_name == "multitouchstart" or \
+                event_name == "multitouchmove":
+            # args: (finger coordinates list)
+            new_coordinates = []
+            for (x, y) in args[0]:
+                new_coordinates.append((
+                    x + self.mouse_event_shift_x,
+                    y + self.mouse_event_shift_y))
+            return (new_coordinates, internal_data)
+        if event_name == "multitouchend":
+            # no args, nothing to translate.
+            return [internal_data]
+        raise RuntimeError("unknown parameter translation event")
 
     @cursor.setter
     def cursor(self, v):
@@ -412,11 +500,13 @@ cdef class WidgetBase:
             [mouse_id, button, x, y],
             internal_data=internal_data)
 
-    def _internal_on_mousemove(self, int mouse_id, int x, int y, internal_data=None):
+    def _internal_on_mousemove(self, int mouse_id, int x, int y,
+            internal_data=None):
         self._post_mouse_event_handling("mousemove", [mouse_id, x, y],
             internal_data=internal_data)
 
-    def _internal_on_mousewheel(self, int mouse_id, double x, double y, internal_data=None):
+    def _internal_on_mousewheel(self, int mouse_id, double x, double y,
+            internal_data=None):
         self._post_mouse_event_handling("mousewheel",
             [mouse_id, float(x), float(y)],
             internal_data=internal_data)

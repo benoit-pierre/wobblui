@@ -66,7 +66,7 @@ class Box(ScrollbarDrawingWidget):
                 self.width, self.height, color=self.bg_color)
         max_scroll = (self.actual_layout_height - self.height)
         self.scroll_offset_y = max(0, min(self.scroll_offset_y, max_scroll))
-        self.mouse_event_shift_y = -round(self.scroll_offset_y)
+        self.mouse_event_shift_y = round(self.scroll_offset_y)
         if max_scroll > 2:
             self.draw_scrollbar(self.actual_layout_height,
                 self.height, self.scroll_offset_y)
@@ -87,7 +87,7 @@ class Box(ScrollbarDrawingWidget):
             y * 50.0 * self.dpi_scale)
         max_scroll = (self.actual_layout_height - self.height)
         self.scroll_offset_y = max(0, min(self.scroll_offset_y, max_scroll))
-        self.mouse_event_shift_y = -round(self.scroll_offset_y)
+        self.mouse_event_shift_y = round(self.scroll_offset_y)
         self.needs_redraw = True
 
     def got_exactly_one_flexible_child(self):
