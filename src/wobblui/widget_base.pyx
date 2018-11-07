@@ -307,7 +307,7 @@ cdef class WidgetBase:
                 args[1] + self.mouse_event_shift_x,
                 args[2] + self.mouse_event_shift_y] + [internal_data]
         if event_name == "mousewheel":
-            # args: (mouse_id, x, y)
+            # args: (mouse_id, wx, wy)
             return args + [internal_data]
         if event_name == "touchstart" or event_name == "touchmove" or \
                 event_name == "touchend":
