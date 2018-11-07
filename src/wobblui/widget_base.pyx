@@ -618,12 +618,14 @@ cdef class WidgetBase:
             scalar = 0.3
             self._prevent_mouse_event_propagate = True
             try:
+                self._in_touch_fake_event_processing = True
                 self.mousewheel(0,
                     effective_vel_x * scalar,
                     effective_vel_y * scalar,
                     internal_data=[
                     self.last_seen_infinitescroll_touch_x + self.abs_x,
                     self.last_seen_infinitescroll_touch_y + self.abs_y])
+                self._in_touch_fake_event_processing = False
             finally:
                 self._prevent_mouse_event_propagate = False
         else:
