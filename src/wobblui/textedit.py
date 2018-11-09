@@ -356,6 +356,22 @@ class TextEditBase(Widget):
             self.selection_length = 0
             self.needs_redraw = True
 
+
+    def draw_touch_selection_handles_if_any(self, overall_w, overall_h):
+        if self.selection_length == 0:
+            return
+
+        sx = round(self.abs_x)
+        sy = round(self.abs_y)
+        (x1, y1, h1) = self.text_obj.character_index_to_offset(
+            max(0, self.cursor_offset or 0))
+        (x2, y2, h2) = self.text_obj.character_index_to_offset(
+            max(0, self.cursor_offset or 0) +
+            self.selection_length)
+        self.draw_selection_drag_and_copy_ui(
+            sx + x1, sy + y1, h1,
+            sx + x2, sy + y2, h2)
+
     def do_redraw(self):
         border_size = max(1, round(1.0 * self.dpi_scale))
         # Draw basic bg:

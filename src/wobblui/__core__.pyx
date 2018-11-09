@@ -68,7 +68,8 @@ def redraw_windows(int layout_only=False):
                     break
                 i += 1
             if i == 20:
-                logwarning("WARNING: a widget appears to be causing a " +
+                logwarning(
+                    "WARNING: a widget appears to be causing a " +
                     "relayout() loop !!! affected window: " +
                     str(w) + ", all widgets that need relayouting: " +
                     str([widget for widget in [

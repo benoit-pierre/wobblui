@@ -288,6 +288,11 @@ cdef class WidgetBase:
             self._cursor = self.get_default_cursor() or "normal"
         return self._cursor
 
+    def draw_touch_selection_handles_if_any(self,
+            window_width, window_height):
+        """ Needs to be impleemnted by concrete widgets."""
+        pass
+
     def mouse_event_param_adjustment(self, event_name, owner,
             *args, internal_data=None):
         args = list(args)
@@ -661,9 +666,74 @@ cdef class WidgetBase:
         return self._pre_or_post_mouse_event_handling(event_name,
             event_args, internal_data=None, is_post=False)
 
-    def draw_selection_drag_handle(self, double _x, double _y, line_height):
+    def draw_selection_drag_and_copy_ui(self,
+            double selection_1_x,
+            double selection_1_y,
+            double selection_1_height,
+            double selection_2_x,
+            double selection_2_y,
+            double selection_2_height):
+        position_info = self.selection_drag_handle_positions(
+            selection_1_x, selection_1_y, selection_1_height,
+            selection_2_x, selection_2_y, selection_2_height)
+        self.draw_single_selection_drag_handle(
+            position_info["handle_1"]["x"],
+            position_info["handle_1"]["y"],
+            position_info["handle_1"]["line_height"],
+            flipdown=position_info["handle_1"]["flipped"])
+        self.draw_single_selection_drag_handle(
+            position_info["handle_2"]["x"],
+            position_info["handle_2"]["y"],
+            position_info["handle_2"]["line_height"],
+            flipdown=position_info["handle_2"]["flipped"])
+
+    def selection_drag_handle_positions(self,
+            double selection_1_x,
+            double selection_1_y,
+            double selection_1_height,
+            double selection_2_x,
+            double selection_2_y,
+            double selection_2_height):
+        square_size = max(3, 5.0 * self.dpi_scale)
+        flip_selection_1_handle = False
+        if selection_1_y < square_size:
+            flip_selection_1_handle = True
+        flip_selection_2_handle = False
+        if selection_2_y < square_size:
+            flip_selection_2_handle = True
+        return {
+            "handle_1": {
+                "x": selection_1_x,
+                "y": selection_1_y,
+                "line_height": selection_1_height,
+                "square_offset_x": -max(1, round(square_size / 2.0)),
+                "square_offset_y": (-square_size if
+                    not flip_selection_1_handle else
+                    selection_1_height),
+                "square_size": square_size,
+                "flipped": flip_selection_1_handle,
+            },
+            "handle_2": {
+                "x": selection_2_x,
+                "y": selection_2_y,
+                "line_height": selection_2_height,
+                "square_offset_x": -max(1, round(square_size / 2.0)),
+                "square_offset_y": (-square_size if
+                    not flip_selection_2_handle else
+                    selection_2_height),
+                "square_size": square_size,
+                "flipped": flip_selection_2_handle,
+            },
+            "floating_box": {
+                
+            },
+        }
+
+    def draw_single_selection_drag_handle(self, double _x, double _y,
+            double _line_height, int flipdown=False):
         cdef int x = round(_x)
         cdef int y = round(_y)
+        cdef int line_height = round(_line_height)
         c = Color.black
         if self.style != None and self.style.has(
                 "touch_selection_drag_handles"):
@@ -676,7 +746,10 @@ cdef class WidgetBase:
             line_thickness, line_height, color=c)
         square_size = max(3, round(5.0 * self.dpi_scale))
         square_offset_x = x - -max(1, round(square_size / 2.0))
-        square_offset_y = y - square_size
+        if not flipdown:
+            square_offset_y = y - square_size
+        else:
+            square_offset = y + line_height
         draw_rectangle(self.renderer, square_offset_x,
             square_offset_y, square_size, square_size, color=c)
 

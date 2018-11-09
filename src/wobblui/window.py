@@ -27,6 +27,7 @@ import sdl2.sdlttf as sdlttf
 import weakref
 
 from wobblui.color import Color
+from wobblui.dragselection import draw_drag_selection_handles
 from wobblui.event import Event
 import wobblui.font.manager
 import wobblui.gfx
@@ -523,6 +524,7 @@ class Window(WidgetBase):
             self.width, self.height, color=c)
 
         self.draw_children()
+        draw_drag_selection_handles(self)
 
     def _internal_on_resized(self, internal_data=None):
         self.needs_relayout = True

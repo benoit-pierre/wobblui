@@ -289,7 +289,7 @@ def internal_update_text_events():
                 not widget.parent_window.hidden:
             current_text_events_active_widgets.append(widget)
 
-    # Udpate SDL text input state accordingly to available active widgets:
+    # Update SDL text input state accordingly to available active widgets:
     if len(current_text_events_active_widgets) > 0 and \
             text_input_suspended:
         sdl.SDL_StartTextInput()
@@ -313,9 +313,11 @@ def enable_text_events(widget):
     internal_update_text_events()
 
 def get_active_text_widget():
-    global current_text_events_widget
     widgets = internal_update_text_events()
     if len(widgets) == 0:
         return None
     return widgets[0]
+
+def get_all_active_text_widgets():
+    return internal_update_text_events()
 
