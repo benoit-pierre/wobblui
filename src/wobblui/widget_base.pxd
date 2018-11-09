@@ -45,7 +45,8 @@ cdef class WidgetBase:
 
     # Event processing internal state:
     cdef public int _in_touch_fake_event_processing
-    cdef public int last_mouse_move_was_inside
+    cdef public int last_mouse_move_was_inside,\
+        last_mouse_move_was_fake_touch
     cdef public object last_mouse_down_presses
     cdef public object last_mouse_click_with_time
     cdef public int last_touch_was_inside

@@ -362,7 +362,7 @@ cdef class WidgetBase:
         return self._invisible
 
     def is_mouse_event_actually_touch(self):
-        return self._in_touch_fake_event_processing
+        return (self._in_touch_fake_event_processing is True)
 
     @invisible.setter
     def invisible(self, int v):
@@ -636,6 +636,7 @@ cdef class WidgetBase:
             self.last_seen_infinitescroll_touch_y += effective_vel_y
             scalar = 0.3
             self._prevent_mouse_event_propagate = True
+            old_value = self._in_touch_fake_event_processing
             try:
                 self._in_touch_fake_event_processing = True
                 self.mousewheel(0,
@@ -644,8 +645,8 @@ cdef class WidgetBase:
                     internal_data=[
                     self.last_seen_infinitescroll_touch_x + self.abs_x,
                     self.last_seen_infinitescroll_touch_y + self.abs_y])
-                self._in_touch_fake_event_processing = False
             finally:
+                self._in_touch_fake_event_processing = old_value
                 self._prevent_mouse_event_propagate = False
         else:
             self.last_infinite_ts = 0
@@ -828,6 +829,11 @@ cdef class WidgetBase:
         # If we arrived here, the internal event wasn't prevented from
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
+
+        # If this is a mouse move, remember whether it was fake touch:
+        if is_post and event_name == "mousemove":
+            self.last_mouse_move_was_fake_touch =\
+                self._in_touch_fake_event_processing
 
         cdef str r = str(random.random()).replace(".", "")
         cdef str chain_id = "_pre_or_post_mouse_event_handling" + r +\
@@ -1082,7 +1088,7 @@ cdef class WidgetBase:
                         internal_data=[
                         orig_touch_start_x, orig_touch_start_y])
                 finally:
-                    self._in_touch_fake_event_processing = False
+                    self._in_touch_fake_event_processing = old_value
                     self._prevent_mouse_event_propagate = False
 
         Perf.chain(chain_id, "fakemouse_events_done")
@@ -1187,33 +1193,55 @@ cdef class WidgetBase:
                         child.last_mouse_click_with_time[
                             (event_args[0], event_args[1])] = \
                             now
-                        child.click(mouse_id, event_args[1],
-                            rel_x - child.x,
-                            rel_y - child.y,
-                            internal_data=internal_data)
+                        try:
+                            child._in_touch_fake_event_processing =\
+                                self._in_touch_fake_event_processing
+                            child.click(mouse_id, event_args[1],
+                                rel_x - child.x,
+                                rel_y - child.y,
+                                internal_data=internal_data)
+                        finally:
+                            child._in_touch_fake_event_processing = False
                 # Trigger actual event on the child widget:
                 if event_name == "mousemove":
-                    if not child.mousemove(mouse_id,
-                            rel_x - child.x, rel_y - child.y,
-                            internal_data=internal_data):
-                        Perf.chain(chain_id, "propagate_end")
-                        Perf.stop(chain_id)
-                        return True
+                    try:
+                        child._in_touch_fake_event_processing =\
+                            self._in_touch_fake_event_processing
+                        child.last_mouse_move_was_fake_touch =\
+                            self._in_touch_fake_event_processing
+                        if not child.mousemove(mouse_id,
+                                rel_x - child.x, rel_y - child.y,
+                                internal_data=internal_data):
+                            Perf.chain(chain_id, "propagate_end")
+                            Perf.stop(chain_id)
+                            return True
+                    finally:
+                        child._in_touch_fake_event_processing = False
                 elif event_name == "mousewheel":
-                    if not child.mousewheel(mouse_id, float(wx),
-                            float(wy),
-                            internal_data=internal_data):
-                        Perf.chain(chain_id, "propagate_end")
-                        Perf.stop(chain_id)
-                        return True
+                    try:
+                        child._in_touch_fake_event_processing =\
+                            self._in_touch_fake_event_processing
+                        if not child.mousewheel(mouse_id, float(wx),
+                                float(wy),
+                                internal_data=internal_data):
+                            Perf.chain(chain_id, "propagate_end")
+                            Perf.stop(chain_id)
+                            return True
+                    finally:
+                        child._in_touch_fake_event_processing = False
                 else:
-                    if not getattr(child, event_name)(mouse_id,
-                            event_args[1],
-                            rel_x - child.x, rel_y - child.y,
-                            internal_data=internal_data):
-                        Perf.chain(chain_id, "propagate_end")
-                        Perf.stop(chain_id)
-                        return True
+                    try:
+                        child._in_touch_fake_event_processing =\
+                            self._in_touch_fake_event_processing
+                        if not getattr(child, event_name)(mouse_id,
+                                event_args[1],
+                                rel_x - child.x, rel_y - child.y,
+                                internal_data=internal_data):
+                            Perf.chain(chain_id, "propagate_end")
+                            Perf.stop(chain_id)
+                            return True
+                    finally:
+                        child._in_touch_fake_event_processing = False
             else:
                 if event_name.startswith("touch") and \
                         child.last_touch_was_inside:
@@ -1228,14 +1256,20 @@ cdef class WidgetBase:
                 if event_name.startswith("mouse") and \
                         child.last_mouse_move_was_inside:
                     child.last_mouse_move_was_inside = False
-                    if force_no_more_matches:
-                        # Need to use true outside fake coordinates
-                        # to remove focus etc
-                        child.mousemove(mouse_id, -5, -5)
-                    else:
-                        child.mousemove(mouse_id,
-                            rel_x - child.x, rel_y - child.y,
-                            internal_data=internal_data)
+                    try:
+                        child._in_touch_fake_event_processing =\
+                            child.last_mouse_move_was_fake_touch
+                        if force_no_more_matches:
+                            # Need to use true outside fake coordinates
+                            # to remove focus etc
+                            child.mousemove(mouse_id, -5, -5)
+                        else:
+                            child.mousemove(mouse_id,
+                                rel_x - child.x, rel_y - child.y,
+                                internal_data=internal_data)
+                    finally:
+                        child.last_mouse_move_was_fake_touch = False
+                        child._in_touch_fake_event_processing = False
                 if event_name == "mouseup" and \
                         (event_args[0], event_args[1]) in \
                         child.last_mouse_down_presses:
