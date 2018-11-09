@@ -695,12 +695,12 @@ cdef class WidgetBase:
             double selection_2_x,
             double selection_2_y,
             double selection_2_height):
-        square_size = max(3, 5.0 * self.dpi_scale)
+        square_size = max(3, 15.0 * self.dpi_scale)
         flip_selection_1_handle = False
-        if selection_1_y < square_size:
+        if selection_1_y < square_size * 1.2:
             flip_selection_1_handle = True
         flip_selection_2_handle = False
-        if selection_2_y < square_size:
+        if selection_2_y < square_size * 1.2:
             flip_selection_2_handle = True
         return {
             "handle_1": {
@@ -745,8 +745,8 @@ cdef class WidgetBase:
         line_offset_x = math.floor(line_thickness / 0.5)
         draw_rectangle(self.renderer, x + line_offset_x, y,
             line_thickness, line_height, color=c)
-        square_size = max(3, round(5.0 * self.dpi_scale))
-        square_offset_x = x - -max(1, round(square_size / 2.0))
+        square_size = max(3, round(15.0 * self.dpi_scale))
+        square_offset_x = x - max(1, round(square_size / 2.0))
         if not flipdown:
             square_offset_y = y - square_size
         else:
