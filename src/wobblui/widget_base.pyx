@@ -681,12 +681,16 @@ cdef class WidgetBase:
             position_info["handle_1"]["x"],
             position_info["handle_1"]["y"],
             position_info["handle_1"]["line_height"],
-            flipdown=position_info["handle_1"]["flipped"])
+            flipdown=position_info["handle_1"]["flipped"],
+            square_shift_x=position_info["handle_1"]["square_shift_x"],
+            square_shift_y=position_info["handle_1"]["square_shift_y"])
         self.draw_single_selection_drag_handle(
             position_info["handle_2"]["x"],
             position_info["handle_2"]["y"],
             position_info["handle_2"]["line_height"],
-            flipdown=position_info["handle_2"]["flipped"])
+            flipdown=position_info["handle_2"]["flipped"],
+            square_shift_x=position_info["handle_2"]["square_shift_x"],
+            square_shift_y=position_info["handle_2"]["square_shift_y"])
 
     def selection_drag_handle_positions(self,
             double selection_1_x,
@@ -702,26 +706,45 @@ cdef class WidgetBase:
         flip_selection_2_handle = False
         if selection_2_y < square_size * 1.2:
             flip_selection_2_handle = True
+
+        square_1_extra_offset_x = 0
+        square_2_extra_offset_x = 0
+        square_1_extra_offset_y = 0
+        square_2_extra_offset_y = 0
+        if (flip_selection_1_handle and \
+                flip_selection_2_handle) or (
+                not flip_selection_1_handle and
+                not flip_selection_2_handle):
+            # If too close together, move them to the side:
+            if abs(selection_1_x - selection_2_x) < square_size * 1.3:
+                square_1_extra_offset_x -= round(square_size / 2)
+                square_2_extra_offset_x += round(square_size / 2)
         return {
             "handle_1": {
                 "x": selection_1_x,
                 "y": selection_1_y,
                 "line_height": selection_1_height,
-                "square_offset_x": -max(1, round(square_size / 2.0)),
+                "square_offset_x": -max(1, round(square_size / 2.0)) +
+                    square_1_extra_offset_x,
                 "square_offset_y": (-square_size if
                     not flip_selection_1_handle else
-                    selection_1_height),
+                    selection_1_height) + square_1_extra_offset_y,
                 "square_size": square_size,
+                "square_shift_x": square_1_extra_offset_x,
+                "square_shift_y": square_1_extra_offset_y,
                 "flipped": flip_selection_1_handle,
             },
             "handle_2": {
                 "x": selection_2_x,
                 "y": selection_2_y,
                 "line_height": selection_2_height,
-                "square_offset_x": -max(1, round(square_size / 2.0)),
+                "square_offset_x": -max(1, round(square_size / 2.0)) +
+                    square_2_extra_offset_x,
                 "square_offset_y": (-square_size if
                     not flip_selection_2_handle else
-                    selection_2_height),
+                    selection_2_height) + square_2_extra_offset_y,
+                "square_shift_x": square_2_extra_offset_x,
+                "square_shift_y": square_2_extra_offset_y,
                 "square_size": square_size,
                 "flipped": flip_selection_2_handle,
             },
@@ -731,7 +754,8 @@ cdef class WidgetBase:
         }
 
     def draw_single_selection_drag_handle(self, double _x, double _y,
-            double _line_height, int flipdown=False):
+            double _line_height, int flipdown=False,
+            double square_shift_x=0, double square_shift_y=0):
         cdef int x = round(_x)
         cdef int y = round(_y)
         cdef int line_height = round(_line_height)
@@ -741,18 +765,24 @@ cdef class WidgetBase:
             c = Color(self.style.get("touch_selection_drag_handles"))
         elif self.style != None and self.style.has("scrollbar_knob_fg"):
             c = Color(self.style.get("scrollbar_knob_fg"))
-        line_thickness = max(1, round(1.0 * self.dpi_scale))
-        line_offset_x = math.floor(line_thickness / 0.5)
-        draw_rectangle(self.renderer, x + line_offset_x, y,
+
+        line_thickness = max(1, round(2.0 * self.dpi_scale))
+        line_offset_x = -round(line_thickness * 0.5)
+        draw_rectangle(self.renderer,
+            x + line_offset_x,
+            y,
             line_thickness, line_height, color=c)
+
         square_size = max(3, round(15.0 * self.dpi_scale))
-        square_offset_x = x - max(1, round(square_size / 2.0))
+        square_pos_x = x - max(1, round(square_size / 2.0))
         if not flipdown:
-            square_offset_y = y - square_size
+            square_pos_y = y - square_size
         else:
-            square_offset = y + line_height
-        draw_rectangle(self.renderer, square_offset_x,
-            square_offset_y, square_size, square_size, color=c)
+            square_pos_y = y + line_height
+        draw_rectangle(self.renderer,
+            round(square_pos_x + square_shift_x),
+            round(square_pos_y + square_shift_y),
+            square_size, square_size, color=c)
 
     def return_long_click_test_closure(self, callback_id):
         self_ref = weakref.ref(self)

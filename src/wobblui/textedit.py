@@ -369,8 +369,10 @@ class TextEditBase(Widget):
             max(0, self.cursor_offset or 0) +
             self.selection_length)
         self.draw_selection_drag_and_copy_ui(
-            sx + x1, sy + y1, h1,
-            sx + x2, sy + y2, h2)
+            sx + self.padding + x1,
+            sy + self.padding + y1, h1,
+            sx + self.padding + x2,
+            sy + self.padding + y2, h2)
 
     def do_redraw(self):
         border_size = max(1, round(1.0 * self.dpi_scale))
