@@ -290,7 +290,7 @@ cdef class WidgetBase:
 
     def draw_touch_selection_handles_if_any(self,
             window_width, window_height):
-        """ Needs to be impleemnted by concrete widgets."""
+        """ Needs to be implemented by concrete widgets."""
         pass
 
     def mouse_event_param_adjustment(self, event_name, owner,
