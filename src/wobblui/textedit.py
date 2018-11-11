@@ -356,6 +356,23 @@ class TextEditBase(Widget):
             self.selection_length = 0
             self.needs_redraw = True
 
+    def on_doubleclick(self, mouse_id, button, x, y):
+        self.cursor_offset = max(0, min(len(self.text) - 1,
+            self.mouse_offset_to_cursor_offset(
+                x, y)))
+        word_start = max(0, self.cursor_offset)
+        word_end = max(0, self.cursor_offset)
+        word_seps = set([" ", "\n", "\t", ",", ":",
+            ";"])
+        while word_start > 0 and \
+                self.text[word_start - 1] not in word_seps:
+            word_start -= 1
+        while word_end < len(self.text) and \
+                self.text[word_end] not in word_seps:
+            word_end += 1
+        self.cursor_offset = word_start
+        self.selection_length = (word_end - word_start)
+        self.update()
 
     def draw_touch_selection_handles_if_any(self, overall_w, overall_h):
         if self.selection_length == 0:
