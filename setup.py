@@ -45,7 +45,10 @@ class cythonize_build_ext_hook(build_ext):
                 c_path = full_path.rpartition(".")[0] + ".c"
                 if os.path.exists(c_path):
                     os.remove(c_path)
-                cythonize(full_path)
+                cythonize(full_path,
+                    include_path=[os.path.join(os.path.dirname(
+                    os.path.abspath(__file__)), "src")],
+                )
         super().run()
 
 def extensions():
@@ -75,33 +78,35 @@ def extensions():
             result.append(Extension(module, [c_relpath]))
     return result
 
-setuptools.setup(
-    name="wobblui",
-    version=package_version,
-    cmdclass={
-        "build_ext": cythonize_build_ext_hook},
-    author="Jonas Thiem",
-    author_email="jonas@thiem.email",
-    description="A simple, universal and " +
-        "cross-platform UI toolkit for Python 3",
-    packages=["wobblui"] + ["wobblui." + p for p in setuptools.find_packages("src/wobblui")],
-    ext_modules = extensions(),
-    package_dir={'':'src'},
-    package_data={
-        "wobblui": ["font/packaged-fonts/*.ttf",
-            "font/packaged-fonts/*.md",
-            "img/*.png",
-            "*.pxd",
-            "font/*.pxd"]
-    },
-    install_requires=dependencies,
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/JonasT/wobblui",
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "Operating System :: OS Independent",
-    ],
-)
+if __name__ == "__main__":
+    setuptools.setup(
+        name="wobblui",
+        version=package_version,
+        cmdclass={
+            "build_ext": cythonize_build_ext_hook},
+        author="Jonas Thiem",
+        author_email="jonas@thiem.email",
+        description="A simple, universal and " +
+            "cross-platform UI toolkit for Python 3",
+        packages=["wobblui"] + ["wobblui." + p
+            for p in setuptools.find_packages("src/wobblui")],
+        ext_modules = extensions(),
+        package_dir={'':'src'},
+        package_data={
+            "wobblui": ["font/packaged-fonts/*.ttf",
+                "font/packaged-fonts/*.md",
+                "img/*.png",
+                "*.pxd",
+                "font/*.pxd"]
+        },
+        install_requires=dependencies,
+        long_description=long_description,
+        long_description_content_type="text/markdown",
+        url="https://github.com/JonasT/wobblui",
+        classifiers=[
+            "Programming Language :: Python :: 3",
+            "Operating System :: OS Independent",
+        ],
+    )
 
 
