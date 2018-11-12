@@ -25,6 +25,7 @@ import weakref
 
 from wobblui.widgetman import all_windows
 
+exit_callbacks = list()
 registered_shortcuts = list()
 
 def sanitize_shortcut_keys(shortcut_keys):
@@ -320,4 +321,24 @@ def get_active_text_widget():
 
 def get_all_active_text_widgets():
     return internal_update_text_events()
+
+def push_exit_callback(callback):
+    global exit_callbacks
+    exit_callbacks.append(callback)
+
+def pop_exit_callback():
+    global exit_callbacks
+    exit_callbacks = exit_callbacks[:-1]
+
+def trigger_exit_callback():
+    global exit_callbacks
+    try:
+        if len(exit_callbacks) > 0:
+            exit_callbacks[-1]()
+    finally:
+        pop_exit_callback()
+
+def clear_exit_callbacks():
+    global exit_callbacks
+    exit_callbacks[:] = []
 

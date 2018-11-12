@@ -33,7 +33,8 @@ from wobblui.keyboard import internal_update_text_events,\
     get_active_text_widget, get_modifiers, \
     internal_update_keystate_keydown, \
     internal_update_keystate_keyup, \
-    clean_global_shortcuts
+    clean_global_shortcuts, \
+    trigger_exit_callback
 from wobblui.mouse import cursors_seen_during_mousemove,\
     reset_cursors_seen_during_mousemove, set_cursor
 from wobblui.osinfo import is_android
@@ -528,6 +529,10 @@ def _process_key_event(event,
             virtual_key, physical_key)
         if widget_is_aware:
             w.keyup(virtual_key, physical_key, modifiers)
+    if trigger_shortcuts and \
+            (virtual_key == "escape" or virtual_key == "exit") and\
+            event.type == sdl.SDL_KEYDOWN:
+        trigger_exit_callback()
 
 def loading_screen_fix():
     if sdl.SDL_GetPlatform().decode(
