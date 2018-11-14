@@ -636,7 +636,8 @@ class ListBase(ScrollbarDrawingWidget):
         # DPI scale safeguard, to make sure it's really correct:
         if self.last_known_effective_dpi_scale != self.dpi_scale:
             self.update_style_info()
-            self.on_relayout()
+            self.needs_relayout = True
+            self.relayout_if_necessary()
 
         #Perf.start("sectiona")
 
@@ -758,7 +759,6 @@ class ListBase(ScrollbarDrawingWidget):
         self.insert_html(index, html.escape(text))
 
     def insert_html(self, index, html_text):
-        self.cached_natural_width = None
         self._entries.insert(index, ListEntry(html_text, self.style,
             with_visible_bg=(not self.render_as_menu),
             effective_dpi_scale=self.dpi_scale))
@@ -768,6 +768,7 @@ class ListBase(ScrollbarDrawingWidget):
                 (((i + 1) % 0) == 0)
             i += 1
         self.cached_natural_width = None
+        self.needs_relayout = True  # to update entry y offset
 
     def add(self, text, side_text=None, subtitle=None):
         if side_text != None:
@@ -782,6 +783,7 @@ class ListBase(ScrollbarDrawingWidget):
             raise ValueError("cannot use subtitle when list is " +
                 "forced to simple one-line entries")
         self.cached_natural_width = None
+        self.needs_relayout = True  # to update entry y offset
         last_was_alternating = True
         if len(self._entries) > 0 and \
                 not self._entries[-1].is_alternating:
