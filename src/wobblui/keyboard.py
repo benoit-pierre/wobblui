@@ -332,11 +332,13 @@ def pop_exit_callback():
 
 def trigger_exit_callback():
     global exit_callbacks
+    result = None
     try:
         if len(exit_callbacks) > 0:
-            exit_callbacks[-1]()
+            result = exit_callbacks[-1]()
     finally:
-        pop_exit_callback()
+        if not result is False:
+            pop_exit_callback()
 
 def clear_exit_callbacks():
     global exit_callbacks
