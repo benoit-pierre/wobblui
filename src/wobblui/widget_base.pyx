@@ -1385,12 +1385,12 @@ cdef class WidgetBase:
 
     def relayout_if_necessary(self):
         cdef int changed = False
-        for child in self.children:
-            if child.relayout_if_necessary():
-                changed = True
         if self.needs_relayout:
             changed = True
             self.relayout()
+        for child in self.children:
+            if child.relayout_if_necessary():
+                changed = True
         return changed
 
     def redraw_if_necessary(self):
@@ -1706,7 +1706,7 @@ cdef class WidgetBase:
         self.needs_relayout = True
         item.internal_override_parent(self)
         self.needs_redraw = True
-        item.relayout()
+        item.needs_relayout = True
         if trigger_resize:
             self.resized()
 

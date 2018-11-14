@@ -697,11 +697,12 @@ cdef class RichText(object):
         cdef int next_width = -1
         cdef int part_amount
         cdef int max_letters
+        cdef int last_successful_part_amount = -1
 
         while i < fragment_count:
             # See if we're supposed to bail out early:
             if bailout_func != None:
-                if bailout_func(layout_w, layout_h):
+                if bailout_func(layout_w, layout_h) is True:
                     # Add remaining fragments unlayouted and bail out:
                     if left_over_fragment != None:
                         layouted_elements.append(left_over_fragment)
@@ -718,6 +719,7 @@ cdef class RichText(object):
                     str(layouted_elements))
                 logwarning("Loop progress: " + str(i) + "/" +
                     str(fragment_count))
+                logwarning("Layouting for width: " + str(max_width))
                 logwarning("Caller backtrace: " + debug.get_backtrace())
                 stuck_warning_start_time = time.monotonic()
             # Get next element:
@@ -759,6 +761,11 @@ cdef class RichText(object):
             Perf.stop(perf_10)
             perf_2 = Perf.start("fitting loop")
             max_part_amount = part_amount
+            if last_successful_part_amount >= 0 and \
+                    last_successful_part_amount < max_part_amount / 3.0:
+                # This is extraordinarily short. Don't search full area to
+                # start with, but try a shorter range:
+                part_amount = max(1, round(last_successful_part_amount * 2))
             previously_downwards = True
             # Force jump amount >= 2 such that the first loop can't
             # immediately exit. Boundary enforcements will prevent jumping
@@ -777,7 +784,8 @@ cdef class RichText(object):
                 if max_width < 0 or \
                         current_x + next_width <= max_width:
                     if (part_amount >= max_part_amount or (
-                            previously_downwards and abs(jump_amount) <= 1)):
+                            previously_downwards and
+                            abs(jump_amount) <= 1)):
                         # Already at upper edge. We're done!
                         partial = (part_amount < max_part_amount)
                         break
@@ -822,6 +830,7 @@ cdef class RichText(object):
                 previously_downwards = True
                 jump_amount = -max(1, abs(round(jump_amount / 2.0)))
             Perf.stop(perf_2)
+            last_successful_part_amount = part_amount
             perf_9 = Perf.start("after fitting loop")
             if part_amount == 0:
                 if len(layouted_elements) > 0 and\
