@@ -323,6 +323,7 @@ class HoverCircleImageButton(Button):
             self.circle_pil = PIL.Image.open(stock_image("hovercircle"))
         if self.circle_img is None:
             self.circle_img = RenderImage(self.circle_pil)
+            self.circle_img.set_color(self.circle_color)
         if self.renderer is None:
             return
         self.circle_img.draw(self.renderer, x, y, w=w, h=h)
