@@ -28,6 +28,7 @@ import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
 import time
 
+from wobblui.color import Color
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.texture import Texture
@@ -45,7 +46,7 @@ def stock_image(name):
             return (p + ".jpg")
     return p
 
-def image_to_sdl_surface(pil_image, retries=5):
+def _internal_image_to_sdl_surface(pil_image, retries=5):
     global sdlimage_initialized
     initialize_sdl()
     if not sdlimage_initialized:
@@ -89,14 +90,41 @@ def image_to_sdl_surface(pil_image, retries=5):
             str(err_msg))
     return sdl_image
 
-def image_to_sdl_texture(renderer, pil_image):
-    initialize_sdl()
-    sdl_image = image_to_sdl_surface(pil_image)
-    try:
-        return Texture.new_from_sdl_surface(renderer, sdl_image)
-    finally:
-        sdl.SDL_FreeSurface(sdl_image)
-    return texture
+class RenderImage(object):
+    def __init__(self, pil_image):
+        initialize_sdl()
+        self.pil_image = pil_image
+        self.surface = _internal_image_to_sdl_surface(
+            pil_image)
+        self._texture = None
+        self.color = Color.white
+
+    def __del__(self):
+        if hasattr(self, "surface") and self.surface is not None:
+            sdl.SDL_FreeSurface(self.surface)
+            self.surface = None
+
+    def to_texture(self, renderer):
+        initialize_sdl()
+        if self._texture is None or \
+                self._texture.is_unloaded() or \
+                not self._texture.is_for_renderer(renderer):
+            self._texture = Texture.new_from_sdl_surface(renderer,
+                self.surface)
+            self._apply_color()
+        return self._texture
+
+    def set_color(self, c):
+        self.color = Color(c)
+        self._apply_color()
+
+    def _apply_color(self):
+        if self._texture is not None and not self._texture.is_unloaded():
+            self._texture.set_color(self.color)
+
+    def draw(self, renderer, x, y, w=None, h=None):
+        tex = self.to_texture(renderer)
+        tex.draw(x, y, w, h)
 
 def image_as_grayscale(pil_image):
     if pil_image.mode.upper() == "RGBA":

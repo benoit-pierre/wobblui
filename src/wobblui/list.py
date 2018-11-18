@@ -592,6 +592,10 @@ class ListBase(ScrollbarDrawingWidget):
             self.needs_redraw = True
 
     def coords_to_entry(self, x, y):
+        if self.needs_relayout:
+            self.on_relayout()
+            self.needs_relayout = False
+
         if x < 0 or x >= self.width:
             return -1
         if y < 0 or y >= self.height:

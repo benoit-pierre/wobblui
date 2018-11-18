@@ -67,6 +67,16 @@ class Texture(object):
         self.height = height
         all_textures.append(weakref.ref(self))
 
+    def is_for_renderer(self, renderer):
+        renderer_cmp_key = str(
+            ctypes.addressof(renderer))
+        if self.renderer_key != renderer_cmp_key:
+            return False
+        return True
+
+    def is_unloaded(self):
+        return (self._texture is None)
+
     def set_color(self, o):
         if isinstance(o, Color):
             sdl.SDL_SetTextureColorMod(
@@ -113,7 +123,12 @@ class Texture(object):
                         ", total still loaded: " + str(sdl_tex_count))
             finally:
                 sdl_tex_count -= 1
-                sdl.SDL_DestroyTexture(self._texture)
+                try:
+                    sdl.SDL_DestroyTexture(self._texture)
+                except TypeError:
+                    # We're shutting down and the SDL module is already
+                    # unloaded.
+                    pass
                 self._texture = None
 
     def __del__(self):
@@ -131,7 +146,7 @@ class Texture(object):
     def set_as_rendertarget(self):
         raise TypeError("this is not a render target")
 
-    def unset_as_rendertarget(Self):
+    def unset_as_rendertarget(self):
         raise TypeError("this is not a render target")
 
     @staticmethod

@@ -34,6 +34,15 @@ last_add = -1
 all_widgets = list()
 all_windows = list()
 
+def reduce_memory():
+    remove_refs = []
+    for wref in all_widgets:
+        w = wref()
+        if w is None:
+            remove_refs.append(wref)
+    for rref in remove_refs:
+        all_widgets.remove(rref)
+
 def tab_sort(a, b):
     if a.focus_index is None and b.focus_index != None:
         return -1

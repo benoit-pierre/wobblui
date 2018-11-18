@@ -28,7 +28,7 @@ import sdl2 as sdl
 from wobblui.color import Color
 from wobblui.event import ForceDisabledDummyEvent, Event
 from wobblui.gfx import draw_rectangle
-from wobblui.image import image_to_sdl_surface, stock_image
+from wobblui.image import RenderImage, stock_image
 from wobblui.richtext import RichText
 from wobblui.texture import Texture
 from wobblui.uiconf import config
@@ -58,8 +58,7 @@ class Button(Widget):
         self.contained_image = None
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None
-        self.contained_image_srf = None
-        self.contained_image_texture = None
+        self.contained_image_pil = None
         self.text_layout_width = None
         self.text_scale = text_scale
         self._html = ""
@@ -77,23 +76,9 @@ class Button(Widget):
     def __del__(self):
         if hasattr(super(), "__del__"):
             super().__del__()
-        if hasattr(self, "contained_image_srf") and \
-                self.contained_image_srf != None:
-            sdl.SDL_FreeSurface(self.contained_image_srf)
-        if hasattr(self, "contained_image_texture") and \
-                self.contained_image_texture != None:
-            if config.get("debug_texture_references"):
-                logdebug("Button: " +
-                    "DUMPED self.contained_image_texture")
-            self.contained_image_texture = None
 
     def renderer_update(self):
         super().renderer_update()
-        if self.contained_image_texture != None:
-            if config.get("debug_texture_references"):
-                logdebug("Button: " +
-                    "DUMPED self.contained_image_texture")
-            self.contained_image_texture = None
 
     def internal_set_extra_image_render(self, func):
         """ Allows setting an extra function that runs right
@@ -126,18 +111,10 @@ class Button(Widget):
             pil_image_or_path = PIL.Image.open(pil_image_or_path)
         if scale_to_width != None:
             scale = scale_to_width / float(pil_image_or_path.size[0])
-        self.contained_image = pil_image_or_path
+        self.contained_image_pil = pil_image_or_path
         assert(scale != None)
         self.contained_image_scale = scale
-        if self.contained_image_srf != None:
-            sdl.SDL_FreeSurface(self.contained_image_srf)
-            self.contained_image_srf = None
-        if self.contained_image_texture != None:
-            if config.get("debug_texture_references"):
-                logdebug("Button: " +
-                    "DUMPED self.contained_image_texture")
-            self.contained_image_texture = None
-        self.contained_image_srf = image_to_sdl_surface(pil_image_or_path)
+        self.contained_image = RenderImage(self.contained_image_pil)
 
     def set_image_color(self, color):
         self.image_color = color
@@ -191,12 +168,13 @@ class Button(Widget):
             self.update_texture_color()
 
     def update_texture_color(self):
-        if self.contained_image_texture != None:
-            self.contained_image_texture.set_color(self.image_color)
+        if self.contained_image is not None:
+            self.contained_image.set_color(self.image_color)
 
     def do_redraw(self):
         if self.renderer is None:
             return
+        self.update_texture_color()
         if self.with_border:
             c = Color.white
             if self.style != None:
@@ -213,27 +191,24 @@ class Button(Widget):
         if full_available_size < 0:
             return
         used_up_size = (self.text_layout_width or 0)
-        if self.contained_image != None:
-            used_up_size += math.ceil(self.contained_image.size[0] *
+        if self.contained_image_pil != None:
+            used_up_size += math.ceil(
+                self.contained_image_pil.size[0] *
                 self.contained_image_scale * self.dpi_scale) +\
                 round(self.border_size * 0.7)
         extra_size = max(0, full_available_size - used_up_size)
         offset_x += max(0, math.floor(extra_size / 2.0))
         if self.contained_image != None:
-            if self.contained_image_texture is None:
-                self.contained_image_texture =\
-                    Texture.new_from_sdl_surface(self.renderer,
-                        self.contained_image_srf)
-                self.update_texture_color()
             x = offset_x
             y = round(self.border_size)
-            w = math.ceil(self.contained_image.size[0] *
+            w = math.ceil(self.contained_image_pil.size[0] *
                 self.contained_image_scale * self.dpi_scale * 1.0)
-            h = math.ceil(self.contained_image.size[1] *
+            h = math.ceil(self.contained_image_pil.size[1] *
                 self.contained_image_scale * self.dpi_scale * 1.0)
             if self.extra_image_render_func != None:
                 self.extra_image_render_func(x, y, w, h)
-            self.contained_image_texture.draw(
+            self.contained_image.draw(
+                self.renderer,
                 x, y,
                 w=w, h=h)
             offset_x += w + round(self.border_size * 0.7)
@@ -261,7 +236,7 @@ class Button(Widget):
         my_h = round(self.border_size * 2)
         if self.contained_image != None:
             my_h = max(my_h,
-                round(self.contained_image.size[1] *\
+                round(self.contained_image_pil.size[1] *\
                 self.contained_image_scale * self.dpi_scale +
                 self.border_size * 2))
         if self.contained_richtext_obj != None:
@@ -272,7 +247,7 @@ class Button(Widget):
     def get_natural_width(self):
         my_w = round(self.border_size * 2)
         if self.contained_image != None:
-            my_w += round(self.contained_image.size[0] *\
+            my_w += round(self.contained_image_pil.size[0] *\
                 self.contained_image_scale * self.dpi_scale)
         if self.contained_image != None and \
                 self.contained_richtext_obj != None:
@@ -322,8 +297,7 @@ class HoverCircleImageButton(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None):
         super().__init__(with_border=False, clickable=True)
         self.image_path = image_path
-        self.circle_srf = None
-        self.circle_tex = None
+        self.circle_pil = None
         self.circle_img = None
         color = Color.white
         self.set_image(image_path, scale=scale,
@@ -333,9 +307,6 @@ class HoverCircleImageButton(Button):
         self.circle_color = Color((0, 150, 250))
 
     def __del__(self):
-        if hasattr(self, "circle_srf") and self.circle_srf != None:
-            sdl.SDL_FreeSurface(self.circle_srf)
-            self.circle_srf = None
         self.dump_textures()
         super().__del__()
 
@@ -344,20 +315,15 @@ class HoverCircleImageButton(Button):
         self.dump_textures()
 
     def dump_textures(self):
-        if hasattr(self, "circle_tex") and self.circle_tex != None:
-            if config.get("debug_texture_references"):
-                logdebug("HoverCircleImageButtonButton: " +
-                    "DUMPED self.circle_tex")
-            self.circle_tex = None
+        if hasattr(super(), "dump_textures"):
+            super().dump_textures()
 
     def render_circle(self, x, y, w, h):
+        if self.circle_pil is None:
+            self.circle_pil = PIL.Image.open(stock_image("hovercircle"))
         if self.circle_img is None:
-            self.circle_img = PIL.Image.open(stock_image("hovercircle"))
-        if self.circle_srf is None:
-            self.circle_srf = image_to_sdl_surface(self.circle_img)
-        if self.circle_tex is None:
-            self.circle_tex = Texture.new_from_sdl_surface(
-                self.renderer, self.circle_srf)
-            self.circle_tex.set_color(self.circle_color)
-        self.circle_tex.draw(x, y, w=w, h=h)
+            self.circle_img = RenderImage(self.circle_pil)
+        if self.renderer is None:
+            return
+        self.circle_img.draw(self.renderer, x, y, w=w, h=h)
 
