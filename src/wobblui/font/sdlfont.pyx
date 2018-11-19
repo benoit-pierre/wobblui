@@ -21,14 +21,16 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import cython
 import queue
+from queue import Queue
 import sdl2.sdlttf as sdlttf
 import threading
 
 from wobblui.sdlinit import initialize_sdl
 
 cdef int shutdown_in_progress = False
-def stop_queue_for_process_shutdown():
+cpdef void stop_queue_for_process_shutdown():
     global shutdown_in_progress
     shutdown_in_progress = True
 
@@ -49,6 +51,33 @@ cdef class ThreadJob(object):
             break
         return self.result
 
+ctypedef int (*_sdl_TextSize_utf8_type)(
+    void* font, char* text,
+    int* resultw, int* resulth) nogil
+cdef _sdl_TextSize_utf8_type _sdl_TextSize_utf8 = NULL
+
+cdef tuple _get_font_size_fast_unthreaded(object sdl_font, char* text):
+    global _sdl_TextSize_utf8
+    if not _sdl_TextSize_utf8:
+        _sdl_TextSize_utf8 = <_sdl_TextSize_utf8_type>(
+            cython.operator.dereference(<size_t*>(
+            <size_t>ctypes.addressof(sdlttf.TTF_SizeUTF8))))
+    cdef int w, h
+    cdef int call_result
+    cdef size_t font_address = (<long long>(
+            ctypes.addressof(sdl_font.font.contents)))
+    cdef char* t = text
+    cdef _sdl_TextSize_utf8_type local_func = _sdl_TextSize_utf8
+    with nogil:
+        call_result = local_func(
+            <void*>font_address,
+            t,
+            &w, &h)
+        if call_result != 0:
+            w = 0
+            h = 0
+    return (w, h)
+
 cdef class SDLFontSizeJob(ThreadJob):
     cdef object sdl_font
     cdef bytes text
@@ -59,12 +88,8 @@ cdef class SDLFontSizeJob(ThreadJob):
         self.text = text
 
     def execute(self):
-        width = ctypes.c_int32()
-        height = ctypes.c_int32()
-        sdlttf.TTF_SizeUTF8(
-            self.sdl_font.font, self.text,
-            ctypes.byref(width), ctypes.byref(height))
-        self.result = (int(width.value), int(height.value))
+        cdef char* t = self.text
+        self.result = _get_font_size_fast_unthreaded(self.sdl_font, t)
         self.result_waiter.set()
 
 cdef class SDLFontCloseJob(ThreadJob):
@@ -111,10 +136,11 @@ cdef class SDLFontLoadJob(ThreadJob):
             pass
         self.result_waiter.set()
 
-job_queue = queue.Queue()
-def process_jobs():
+cdef object job_queue = Queue()
+cpdef int process_jobs():
     global job_queue
-    processed_a_job = False
+    cdef int processed_a_job = False
+    cdef object result
     while True:
         try:
             result = job_queue.get_nowait()
@@ -124,21 +150,22 @@ def process_jobs():
         result.execute()
     return processed_a_job
 
-def is_main_thread():
+cpdef int is_main_thread():
     return (threading.current_thread() == threading.main_thread())
 
-def get_thread_safe_render_size(sdl_ttf_font, char* text):
-    text_bytes = bytes(text)
-    size_job = SDLFontSizeJob(sdl_ttf_font, text_bytes)
+cpdef tuple get_thread_safe_render_size(sdl_ttf_font, char* text):
     if is_main_thread():
-        size_job.execute()
-        return size_job.result
+        return _get_font_size_fast_unthreaded(sdl_ttf_font, text)
     else:
+        text_bytes = bytes(text)
+        size_job = SDLFontSizeJob(sdl_ttf_font, text_bytes)
         job_queue.put(size_job)
         size_job.wait_for_done()
         return size_job.result
 
-class SDLFontWrapper(object):
+cdef class SDLFontWrapper:
+    """ MEMBERS ARE IN font/sdlfont.pxd """
+
     def __init__(self, object sdl_font, name=None, px_size=None):
         self.font = sdl_font
         self.name = name
@@ -148,14 +175,11 @@ class SDLFontWrapper(object):
         return "<SDLFontWrapper name=" + str(self.name) +\
             " px_size=" + str(self.px_size) + ">"
 
-    def __del__(self):
-        job_queue.put(SDLFontCloseJob(self.font))
-
     def __dealloc__(self):
         job_queue.put(SDLFontCloseJob(self.font))
 
 ttf_was_initialized = False
-def get_thread_safe_sdl_font(path, px_size):
+cpdef SDLFontWrapper get_thread_safe_sdl_font(path, px_size):
     global ttf_was_initialized
     if not ttf_was_initialized:
         ttf_was_initialized = True

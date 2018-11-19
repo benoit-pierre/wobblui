@@ -29,10 +29,10 @@ import sdl2.sdlttf as sdlttf
 import threading
 import time
 
-from wobblui.cache import KeyValueCache
+from wobblui.cache cimport KeyValueCache
 from wobblui.color import Color
 import wobblui.font.info
-import wobblui.font.sdlfont as sdlfont
+cimport wobblui.font.sdlfont as sdlfont
 from wobblui.sdlinit import initialize_sdl
 from wobblui.texture import Texture
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
@@ -205,14 +205,7 @@ cdef class Font(object):
         return result
 
 cdef class FontManager(object):
-    cdef public int cache_size
-    cdef public object font_by_sizedpistyle_cache,\
-        font_by_sizedpistyle_cache_times,\
-        font_metrics_by_styledpi_cache,\
-        load_debug_info_shown,\
-        missing_fonts,\
-        avg_letter_width_cache,\
-        mutex 
+    """ MEMBERS ARE IN font/manager.pxd """
 
     def __init__(self):
         self.font_by_sizedpistyle_cache = dict()
@@ -307,9 +300,12 @@ cdef class FontManager(object):
             style)]
 
 cdef object font_manager_singleton = None
-def font_manager():
+cdef FontManager c_font_manager():
     global font_manager_singleton
     if font_manager_singleton is None:
         font_manager_singleton = FontManager()
     return font_manager_singleton
+
+def font_manager():
+    return c_font_manager()
 

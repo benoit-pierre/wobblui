@@ -34,7 +34,7 @@ from wobblui.color import Color
 import wobblui.cssparse as cssparse
 cimport wobblui.debug as debug
 import nettools.htmlparse as htmlparse
-from wobblui.font.manager import font_manager
+from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
@@ -53,7 +53,7 @@ class TagInfo(object):
             return True
         return False
 
-cdef class RichTextObj(object):
+cdef class RichTextObj:
     cdef public int x, y, width, italic, bold, px_size
     cdef public double _draw_scale
     cdef public str font_family
@@ -421,12 +421,8 @@ cdef class RichTextLinebreak(RichTextObj):
             return ""
         return "<br/>"
 
-cdef class RichText(object):
-    cdef public str default_font_family
-    cdef str _cached_text
-    cdef int _px_size
-    cdef public double draw_scale
-    cdef public object fragments
+cdef class RichText:
+    """ MEMBERS ARE IN richtext.pxd """
 
     def __init__(self, text="", font_family="Tex Gyre Heros",
             px_size=12, draw_scale=1.0):

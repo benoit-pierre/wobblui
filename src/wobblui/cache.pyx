@@ -22,10 +22,8 @@ freely, subject to the following restrictions:
 
 import threading
 
-cdef class KeyValueCache(object):
-    cdef int size
-    cdef object destroy_func, mutex
-    cdef object cache_keys, cache_key_to_value, cache_queries
+cdef class KeyValueCache:
+    """ MEMBERS IN cache.pxd """
 
     def __init__(self, int size=5000, destroy_func=None):
         self.size = size

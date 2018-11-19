@@ -176,37 +176,27 @@ class ImageWidget(Widget):
                 max(1, round(imgh * scaledown))], PIL.Image.ANTIALIAS)
         self.fit_to_width = fit_to_width
         self.fit_to_height = fit_to_height
-        self.image_texture = None
+        self.render_image = None
 
     def __del__(self):
         if hasattr(super(), "__del__"):
             super().__del__()
-        if self.image_texture != None:
-            if config.get("debug_texture_references"):
-                logdebug("ImageWidget: " +
-                    "DUMPED self.image_texture")
-            self.image_texture = None
 
     def update_renderer(self):
         super().update_renderer()
-        if self.image_texture != None:
-            if config.get("debug_texture_references"):
-                logdebug("ImageWidget: " +
-                    "DUMPED self.image_texture")
-            self.image_texture = None
 
     def on_redraw(self):
         if self.renderer is None:
             return
-        if self.image_texture is None:
-            self.image_texture = image_to_sdl_texture(
-                self.renderer, self.pil_image_small)
+        if self.image_image is None:
+            self.render_image = RenderImage(self.pil_image_small)
         (imgw, imgh) = self.pil_image.size
         scale_w = (self.width / imgw)
         scale_h = (self.height / imgh)
         scale = min(scale_w, scale_h)
         sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
-        self.image_texture.draw(0, 0, w=round(imgw * scale),
+        self.render_image.draw(self.renderer,
+            0, 0, w=round(imgw * scale),
             h=round(imgh * scale))
 
     def get_natural_width(self):

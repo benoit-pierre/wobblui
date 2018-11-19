@@ -26,9 +26,8 @@ import time
 from wobblui.button import Button
 from wobblui.color import Color
 from wobblui.image import stock_image
-from wobblui.richtext import RichText
+from wobblui.richtext cimport RichText
 from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
-from wobblui.widget import Widget
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 cdef class Label(ScrollbarDrawingWidget):
