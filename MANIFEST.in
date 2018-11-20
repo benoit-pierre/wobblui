@@ -1,2 +1,2 @@
 include *.md
-recursive-include src *.ttf *.py *.md *.png
+recursive-include src *.ttf *.py *.pxd *.md *.png
