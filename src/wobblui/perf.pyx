@@ -25,7 +25,7 @@ import threading
 import time
 
 from wobblui.uiconf import config
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cdef class _PerfClass(object):
     """ The class implementing the global singleton performance tracker.
