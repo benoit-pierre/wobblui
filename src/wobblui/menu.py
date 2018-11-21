@@ -35,6 +35,7 @@ from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class MenuSeparator(ListEntry):
     def __init__(self, style, is_alternating=False):
+        assert(is_alternating != None)
         super().__init__("---", style,
             is_alternating=is_alternating)
         self.disabled = True

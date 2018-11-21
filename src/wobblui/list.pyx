@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -25,18 +26,52 @@ import math
 import sdl2 as sdl
 
 from wobblui.color import Color
-from wobblui.event import Event
+from wobblui.event cimport Event
 from wobblui.gfx import draw_dashed_line, draw_rectangle
 from wobblui.osinfo import is_android
-from wobblui.perf import Perf
-from wobblui.richtext import RichText
-from wobblui.scrollbarwidget import ScrollbarDrawingWidget
+from wobblui.perf cimport CPerf as Perf
+from wobblui.richtext cimport RichText
+from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
 from wobblui.texture import RenderTarget
 from wobblui.uiconf import config
-from wobblui.widget import Widget
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.widget cimport Widget
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
-class ListEntry(object):
+cdef class ListEntry:
+    cdef public int with_visible_bg
+    cdef public int _max_width
+    cdef public object _cached_natural_width
+    cdef public object _cached_render_tex
+    cdef int _width
+    cdef public object _style
+    cdef str _html, _text
+    cdef public object override_dpi_scale
+    cdef public object extra_html_at_right
+    cdef public double extra_html_at_right_scale
+    cdef int extra_html_at_right_x
+    cdef int extra_html_at_right_y
+    cdef int extra_html_at_right_w
+    cdef int extra_html_at_right_h
+    cdef object extra_html_at_right_obj
+    cdef double extra_html_at_right_padding
+    cdef public object extra_html_as_subtitle
+    cdef public double extra_html_as_subtitle_scale
+    cdef int subtitle_x
+    cdef int subtitle_y
+    cdef int subtitle_w
+    cdef int subtitle_h
+    cdef object extra_html_as_subtitle_obj
+    cdef double extra_html_as_subtitle_padding
+    cdef public int disabled
+    cdef public int is_alternating
+    cdef public double px_size_scaler
+    cdef public object text_obj
+    cdef public int need_size_update
+    cdef public int _height
+    cdef public double effective_dpi_scale
+    cdef public object y_offset  # can be None
+    cdef public int text_width, text_height
+
     def __init__(self, html, style,
             px_size_scaler=1.0,
             extra_html_as_subtitle=None,
@@ -44,7 +79,8 @@ class ListEntry(object):
             extra_html_at_right=None,
             extra_html_at_right_scale=0.8, is_alternating=False,
             with_visible_bg=False,
-            effective_dpi_scale=None):
+            override_dpi_scale=None):
+        self.y_offset = None
         self.with_visible_bg = with_visible_bg
         self._max_width = -1
         self._cached_natural_width = None
@@ -52,7 +88,10 @@ class ListEntry(object):
         self._width = 0
         self._style = style
         self._html = html
-        self.effective_dpi_scale = effective_dpi_scale
+        self.effective_dpi_scale = 1.0
+        self.override_dpi_scale = override_dpi_scale
+        if self.override_dpi_scale != None:
+            self.effective_dpi_scale = self.override_dpi_scale
         self.extra_html_at_right = extra_html_at_right
         self.extra_html_at_right_scale = extra_html_at_right_scale
         self.extra_html_as_subtitle = extra_html_as_subtitle
@@ -63,9 +102,7 @@ class ListEntry(object):
         self._style = style
         self.px_size_scaler = px_size_scaler
         self.update_text_objects()
-
-    def __del__(self):
-        self.clear_texture()
+        self.need_size_update = True
 
     def update_text_objects(self):
         if self._cached_render_tex != None:
@@ -78,8 +115,8 @@ class ListEntry(object):
                 self.px_size_scaler)
             dpi_scale = self.style.dpi_scale
             font_family = self.style.get("widget_font_family")
-        if self.effective_dpi_scale != None:
-            dpi_scale = self.effective_dpi_scale
+        if self.override_dpi_scale != None:
+            dpi_scale = self.override_dpi_scale
 
         # Main text:
         self.text_obj = RichText(font_family=font_family,
@@ -124,7 +161,7 @@ class ListEntry(object):
 
         self._max_width = -1
         self.need_size_update = True
-        self.dpi_scale = dpi_scale
+        self.effective_dpi_scale = dpi_scale
 
     @property
     def text(self):
@@ -181,9 +218,11 @@ class ListEntry(object):
             if not draw_hover and not draw_selected:
                 if not self.is_alternating:
                     c = Color(self.style.get("inner_widget_bg") or
-                        not self.style.has("inner_widget_alternating_bg"))
+                        not self.style.has(
+                            "inner_widget_alternating_bg"))
                 else:
-                    c = Color(self.style.get("inner_widget_alternating_bg"))
+                    c = Color(self.style.get(
+                        "inner_widget_alternating_bg"))
             if draw_hover:
                 no_bg = False
                 c = Color(self.style.get("hover_bg"))
@@ -202,21 +241,21 @@ class ListEntry(object):
                 c = Color(self.style.get("widget_disabled_text"))
         perf_id = Perf.start("ListItem.draw -> text_objs draw")
         self.text_obj.draw(renderer,
-            round(5.0 * self.dpi_scale) + x,
-            round(self.vertical_padding * self.dpi_scale) + y,
+            round(5.0 * self.effective_dpi_scale) + x,
+            round(self.vertical_padding * self.effective_dpi_scale) + y,
             color=c)
         if self.extra_html_as_subtitle_obj != None:
             self.extra_html_as_subtitle_obj.draw(renderer,
-                round(5.0 * self.dpi_scale) +\
+                round(5.0 * self.effective_dpi_scale) +\
                 self.subtitle_x + x,
-                round(self.vertical_padding * self.dpi_scale) +\
+                round(self.vertical_padding * self.effective_dpi_scale) +\
                 self.subtitle_y +  y,
                 color=c)
         if self.extra_html_at_right_obj != None:
             self.extra_html_at_right_obj.draw(renderer,
-                round(5.0 * self.dpi_scale) +\
+                round(5.0 * self.effective_dpi_scale) +\
                 self.extra_html_at_right_x + x,
-                round(self.vertical_padding * self.dpi_scale) +\
+                round(self.vertical_padding * self.effective_dpi_scale) +\
                 max(0, self.extra_html_at_right_y) + y,
                 color=c)
         Perf.stop(perf_id)
@@ -235,7 +274,8 @@ class ListEntry(object):
         text_copy = self.text_obj.copy()
         (w, h) = text_copy.layout(max_width=None)
         if self.extra_html_at_right_obj != None:
-            w += max(1, round(self.extra_html_at_right_padding * self.dpi_scale))
+            w += max(1, round(self.extra_html_at_right_padding *
+                self.effective_dpi_scale))
             (w2, h2) = self.extra_html_at_right_obj.layout(
                 max_width=None)
             w += w2
@@ -243,7 +283,8 @@ class ListEntry(object):
             (subtitle_width, h) = self.extra_html_as_subtitle_obj.\
                 layout(max_width=None)
             w = max(w, subtitle_width)
-        self._cached_natural_width = (w + round(10.0 * self.dpi_scale))
+        self._cached_natural_width = (w + round(10.0 *
+            self.effective_dpi_scale))
         return self._cached_natural_width
 
     @property
@@ -306,9 +347,9 @@ class ListEntry(object):
         self.need_size_update = False
         if self._cached_render_tex != None:
             self.clear_texture()
-        padding = max(0, round(5.0 * self.dpi_scale))
+        padding = max(0, round(5.0 * self.effective_dpi_scale))
         padding_vertical = max(0,
-            round(self.vertical_padding * self.dpi_scale))
+            round(self.vertical_padding * self.effective_dpi_scale))
         mw = self.max_width
         if mw >= 0:
             mw = min(self.width, mw) - padding * 2
@@ -323,7 +364,7 @@ class ListEntry(object):
         self.subtitle_x = 0
         self.subtitle_y = 0
         self.subtitle_w = 0
-        self.subtilte_h = 0
+        self.subtitle_h = 0
         if self.extra_html_as_subtitle_obj != None:
             (subtitle_w, subtitle_h) = self.extra_html_as_subtitle_obj.\
                 layout(max_width=mw)
@@ -339,21 +380,22 @@ class ListEntry(object):
                 max_width=None)
             missing_space = max(0, math.ceil((natural_w +
                 self.extra_html_at_right_padding *
-                self.dpi_scale + natural_w2) - mw))
+                self.effective_dpi_scale + natural_w2) - mw))
             if mw < (natural_w * 0.5 +
-                    self.extra_html_at_right_padding * self.dpi_scale +
+                    self.extra_html_at_right_padding *
+                    self.effective_dpi_scale +
                     natural_w2 * 0.5) and mw <= natural_w * 1.2 and \
-                    missing_space > 5.0 * self.dpi_scale:
+                    missing_space > 5.0 * self.effective_dpi_scale:
                 # Put the extra HTML part below
                 (self.text_width, self.text_height) = \
                     self.text_obj.layout(max_width=mw)
                 self.subtitle_y = self.text_height +\
                     math.ceil(self.extra_html_as_subtitle_padding *
-                        self.dpi_scale)
+                        self.effective_dpi_scale)
                 self.extra_html_at_right_x = 0
                 self.extra_html_at_right_y = self.text_height +\
                     math.ceil(self.extra_html_as_subtitle_padding * 2.0 *
-                    self.dpi_scale) +\
+                    self.effective_dpi_scale) +\
                     self.subtitle_h
                 (self.extra_html_at_right_w, self.extra_html_at_right_h) =\
                     self.extra_html_at_right_obj.layout(max_width=mw)
@@ -374,18 +416,18 @@ class ListEntry(object):
                     max_width=left_side_w)
                 self.subtitle_y = self.text_height +\
                     math.ceil(self.extra_html_as_subtitle_padding *
-                        self.dpi_scale)
+                        self.effective_dpi_scale)
                 self.extra_html_at_right_y = 0
-                self.extra_html_at_right_x = self.text_width +\
-                    self.extra_html_as_subtitle_padding
+                self.extra_html_at_right_x = round(self.text_width +
+                    self.extra_html_as_subtitle_padding)
                 (self.extra_html_at_right_w, self.extra_html_at_right_h) =\
                     self.extra_html_at_right_obj.\
                         layout(max_width=right_side_w)
                 self.extra_html_at_right_y = max(0,
                     round((self.text_height -
                     self.extra_html_at_right_h) / 2.0))
-                self.extra_html_at_right_x = mw -\
-                    self.extra_html_at_right_w - round(padding * 2)
+                self.extra_html_at_right_x = round(mw -
+                    self.extra_html_at_right_w - round(padding * 2))
                 self._height = round(max(self.subtitle_y +
                     self.subtitle_h,
                     self.extra_html_at_right_y +
@@ -396,7 +438,7 @@ class ListEntry(object):
             self._height = round(self.text_height + padding_vertical * 2)
             self.subtitle_y = self.text_height +\
                 math.ceil(self.extra_html_as_subtitle_padding *
-                    self.dpi_scale)
+                    self.effective_dpi_scale)
             if self.extra_html_as_subtitle_obj != None:
                 self._height = round(self.subtitle_y +
                     self.subtitle_h) + padding_vertical * 2
@@ -411,6 +453,7 @@ class ListBase(ScrollbarDrawingWidget):
         super().__init__(is_container=False, can_get_focus=True,
             generate_double_click_for_touches=(
             not triggered_by_single_click))
+        self.needs_relayout = True
         self.triggered = Event("triggered", owner=self)
         self.triggered_by_single_click =\
             triggered_by_single_click
@@ -442,11 +485,13 @@ class ListBase(ScrollbarDrawingWidget):
     def update_style_info(self):
         self.cached_natural_width = None
         entry = ListEntry("", self.style,
-            effective_dpi_scale=self.dpi_scale)
+            override_dpi_scale=self.dpi_scale)
         self.usual_entry_height = entry.height
+        if self.usual_entry_height <= 0:
+            raise RuntimeError("got invalid zero height for entry")
         del(entry)
         for entry in self._entries:
-            entry.effective_dpi_scale = self.dpi_scale
+            entry.override_dpi_scale = self.dpi_scale
             entry.style = self.style
             entry.on_stylechanged()
         self.last_known_effective_dpi_scale = self.dpi_scale
@@ -609,6 +654,10 @@ class ListBase(ScrollbarDrawingWidget):
         entry_id = -1
         for entry in self._entries:
             entry_id += 1
+            if entry.y_offset is None:
+                raise RuntimeError("order issue: " +
+                    "relayouting appears not to have set y_offset " +
+                    "on list entry: " + str(entry))
             if entry.y_offset < y + round(self.scroll_y_offset) and \
                     entry.y_offset + entry.height >\
                     y + round(self.scroll_y_offset):
@@ -623,7 +672,7 @@ class ListBase(ScrollbarDrawingWidget):
             border_size = 0
         cy = 0
         for entry in self._entries:
-            entry.effective_dpi_scale = self.dpi_scale
+            entry.override_dpi_scale = self.dpi_scale
             entry.style = self.style
             entry.width = self.width - round(border_size * 2)
             entry.y_offset = cy
@@ -641,7 +690,9 @@ class ListBase(ScrollbarDrawingWidget):
         if self.last_known_effective_dpi_scale != self.dpi_scale:
             self.update_style_info()
             self.needs_relayout = True
+        if self.needs_relayout:
             self.relayout_if_necessary()
+            self.needs_relayout = False
 
         #Perf.start("sectiona")
 
@@ -685,7 +736,7 @@ class ListBase(ScrollbarDrawingWidget):
         if self.fixed_one_line_entries:
             skip_start_items = math.floor(
                 round(self.scroll_y_offset) /
-                self.usual_entry_height)
+                max(1, self.usual_entry_height))
         cx = border_size
         cy = border_size
         entry_id = -1 + skip_start_items
@@ -765,7 +816,7 @@ class ListBase(ScrollbarDrawingWidget):
     def insert_html(self, index, html_text):
         self._entries.insert(index, ListEntry(html_text, self.style,
             with_visible_bg=(not self.render_as_menu),
-            effective_dpi_scale=self.dpi_scale))
+            override_dpi_scale=self.dpi_scale))
         i = 0
         while i < len(self._entries):
             self._entries[i].is_alternating = \
@@ -773,6 +824,7 @@ class ListBase(ScrollbarDrawingWidget):
             i += 1
         self.cached_natural_width = None
         self.needs_relayout = True  # to update entry y offset
+        self.needs_redraw = True
 
     def add(self, text, side_text=None, subtitle=None):
         if side_text != None:
@@ -797,7 +849,7 @@ class ListBase(ScrollbarDrawingWidget):
             extra_html_at_right=side_html,
             extra_html_as_subtitle=subtitle_html,
             with_visible_bg=(not self.render_as_menu),
-            effective_dpi_scale=self.dpi_scale))
+            override_dpi_scale=self.dpi_scale))
         
 class List(ListBase):
     def __init__(self, fixed_one_line_entries=False,

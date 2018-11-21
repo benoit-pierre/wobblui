@@ -26,17 +26,17 @@ import time
 
 logmutex = threading.Lock()
 
-log_callback = None
-def set_log_callback(callback):
+cdef object log_callback = None
+cpdef set_log_callback(callback):
     global log_callback
     log_callback = callback
 
-log_do_print = True
-def set_log_print(do_print):
+cdef int log_do_print = True
+cpdef set_log_print(int do_print):
     global log_do_print
     log_do_print = (do_print == True)
 
-def _dolog(label, msg):
+cdef _dolog(label, msg):
     if log_do_print:
         logmutex.acquire()
         try:
@@ -55,19 +55,18 @@ def _dolog(label, msg):
                 file=sys.stderr, flush=True)
             pass
 
-def logdebug(*args):
+cpdef logdebug(str arg):
     try:
         if _dolog != None:
-            _dolog("debug", "\n".join(args))
+            _dolog("debug", arg)
     except NameError:
         pass
 
-def logwarning(*args):
-    _dolog("warning", "\n".join(args))
+cpdef logwarning(str arg):
+    _dolog("warning", arg)
 
-def loginfo(*args):
-    _dolog("info", "\n".join(args))
+cpdef loginfo(str arg):
+    _dolog("info", arg)
 
-def logerror(*args):
-    _dolog("error", "\n".join(args))
-
+cpdef logerror(str arg):
+    _dolog("error", arg)
