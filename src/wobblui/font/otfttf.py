@@ -1,4 +1,3 @@
-
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
 
@@ -47,7 +46,6 @@ SOFTWARE.
 
 '''
 
-from __future__ import print_function, division, absolute_import
 import sys
 import argparse
 
