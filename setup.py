@@ -159,7 +159,8 @@ def get_requirements_and_dep_links():
         if url != None:
             dep_links.append(fetch_url + version_part)
             if version != None:
-                requirements.append(package_name + "==" + version + " @ " + fetch_url)
+                requirements.append(package_name + " @ " + fetch_url + "#egg=" +
+                    package_name + "-" + version)
             else:
                 requirements.append(package_name + " @ " + fetch_url)
         else:
