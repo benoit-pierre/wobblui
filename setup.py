@@ -78,6 +78,17 @@ def extensions():
             result.append(Extension(module, [c_relpath]))
     return result
 
+def get_requirements_and_dep_links():
+    dep_links = []
+    requirements = []
+    for dep in dependencies:
+        if dep.startswith("git+"):
+            dep_links.append(dep)
+            package_name = dep.partition("egg=")[2].strip()
+            if len(package_name) > 0:
+                requirements.append(package_name)
+    return (requirements, dep_links)
+
 if __name__ == "__main__":
     setuptools.setup(
         name="wobblui",
@@ -99,7 +110,8 @@ if __name__ == "__main__":
                 "*.pxd",
                 "font/*.pxd"]
         },
-        install_requires=dependencies,
+        install_requires=get_requirements_and_dep_links()[0],
+        dependency_links=get_requirements_and_dep_links()[1],
         long_description=long_description,
         long_description_content_type="text/markdown",
         url="https://github.com/JonasT/wobblui",

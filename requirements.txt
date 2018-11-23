@@ -1,4 +1,4 @@
+git+https://github.com/JonasT/nettools@master#egg=nettools
 PySDL2>=0.9.6
 Cython
 Pillow
-https://github.com/JonasT/nettools/archive/master.zip
