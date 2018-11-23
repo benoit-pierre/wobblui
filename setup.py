@@ -78,14 +78,94 @@ def extensions():
             result.append(Extension(module, [c_relpath]))
     return result
 
+
+def parse_dependency_url(url):
+    package_name = None
+    version = None
+    fetch_type = None
+    branch = None
+    if url.startswith("-e "):
+        url = url.partition("-e ")[2].lstrip()
+    if url.startswith("git+") or (url.find("@") > 0 and
+            url.find(" git+") > url.find("@")):
+        url = url[url.find("git+"):]
+        fetch_type = "git"
+    elif url.startswith("https:"):
+        fetch_type = "https"
+    elif url.find("@") > 0 and url.find("://") > url.find("@"):
+        # bla @ <url> format
+        package_name = url.partition("@")[0].strip()
+        (_, version, url, fetch_type) = \
+            parse_dependency_url(url.partition("@")[2].lstrip())
+        return (package_name, version, url, fetch_type)
+    elif url.find("://") < 0:
+        package_name = url
+        if package_name.find("==") > 0:
+            version = package_name.partition("==")[2]
+            package_name = package_name.partition("==")[0]
+        return (package_name, version, None, "pip")
+    if url.find("@") > 0:
+        branch = url.partition("@")[2]
+        url = url.partition("@")[0]
+        if branch.find("#egg=") > 0:
+            url += branch[branch.find("#egg="):]
+            branch = branch.partition("#egg=")[0]
+    if url.find("#egg=") >= 0:
+        if package_name is None:
+            package_name = url.partition("#egg=")[2].strip()
+            if len(package_name) == 0:
+                package_name = None
+        url = url.partition("#egg=")[0]
+    if package_name != None:
+        def is_digit(c):
+            if ord(c) >= ord("0") and ord(c) <= ord("9"):
+                return True
+            return False
+        version_part = ""
+        i = 0
+        while i < len(package_name) - 1:
+            if package_name[i] == "-":
+                if is_digit(package_name[i + 1]) or \
+                        package_name[i:].startswith("-master"):
+                    version_part = package_name[i + 1:]
+                    package_name = package_name[:i]
+                    break
+            i += 1
+        if len(version_part.strip()) > 0:
+            version = version_part
+    else:
+        if url.find("/tarball/") > 0:
+            pname = url[:url.find("/tarball/")]
+            if pname.find("/") >= 0:
+                pname = pname.rpartition("/")[2]
+            package_name = pname
+    if version == "master":
+        # Not a true version that can be properly checked
+        version = None
+    return (package_name, version, url, fetch_type)
+
 def get_requirements_and_dep_links():
     dep_links = []
     requirements = []
     for dep in dependencies:
-        if dep.startswith("git+"):
-            dep_links.append(dep)
-            package_name = dep.partition("egg=")[2].strip()
-            if len(package_name) > 0:
+        (package_name, version, url, fetch_type) =\
+            parse_dependency_url(dep)
+        version_part = "#egg=" + str(package_name)
+        if version != None:
+            version_part += "-" + version
+        fetch_url = url
+        if url != None and fetch_type == "git":
+            fetch_url = "git+" + fetch_url
+        if url != None:
+            dep_links.append(fetch_url + version_part)
+            if version != None:
+                requirements.append(package_name + "==" + version + " @ " + fetch_url)
+            else:
+                requirements.append(package_name + " @ " + fetch_url)
+        else:
+            if version != None:
+                requirements.append(package_name + "==" + version)
+            else:
                 requirements.append(package_name)
     return (requirements, dep_links)
 
