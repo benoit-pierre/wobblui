@@ -588,9 +588,9 @@ cdef class RichText:
 
     def layout(self, max_width=None, align_if_none=None,
             bailout_func=None):
-        if max_width != None and max_width <= 0:
-            raise RuntimeError("invalid layout with zero or negative width")
-        if max_width == None:
+        if max_width is not None and max_width < 1:
+            max_width = 1
+        if max_width is None:
             max_width = -1
         return self._layout_internal(max_width, align_if_none, bailout_func)
 
