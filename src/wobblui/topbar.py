@@ -31,9 +31,11 @@ class Topbar(Widget):
     def __init__(self, padding=None):
         super().__init__(is_container=True)
         self.type = "topbar"
-        self.padding = 15
+        self.padding = 14
+        self.padding_vertical = 7
         if padding != None:
             self.padding = max(0, round(padding))
+            self.padding_vertical = max(0, round(padding * 0.5))
         self.child_padding = 8
         if self.padding <= 0:
             self.child_padding = 0
@@ -82,10 +84,12 @@ class Topbar(Widget):
         sdl.SDL_RenderClear(self.renderer)
 
         # Draw topbar background:
-        topbar_actual_height = max(round(self.padding * 2),
+        topbar_actual_height = max(
+            round(self.padding_vertical * 2),
             self.topbar_height)
         draw_rectangle(self.renderer, 0, 0,
-            self._width, topbar_actual_height,
+            self._width,
+            topbar_actual_height,
             color=c)
 
         # Draw topbar items:
@@ -119,7 +123,7 @@ class Topbar(Widget):
         topbar_height = round((5 + self.padding * 2) * self.dpi_scale)
         current_x = round(self.padding * self.dpi_scale)
         first_child = True
-        current_y = round(self.padding * self.dpi_scale)
+        current_y = round(self.padding_vertical * self.dpi_scale)
         self.topbar_box.relayout_if_necessary()
         self.topbar_box.x = current_x
         self.topbar_box.y = current_y
@@ -128,7 +132,7 @@ class Topbar(Widget):
         self.topbar_box.height = self.topbar_box.get_natural_height(
             given_width=self.topbar_box.width)
         topbar_height = round(self.topbar_box.height + (
-            self.padding * 2) * self.dpi_scale)
+            self.padding_vertical * 2) * self.dpi_scale)
         for child in self._children:
             child.x = 0
             child.y = topbar_height + self.border_size

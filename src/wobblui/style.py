@@ -153,5 +153,5 @@ class AppStyleDark(AppStyle):
         self.set("touch_selection_drag_handles", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
-        self.set("topbar_text_size", 27)
+        self.set("topbar_text_size", 25)
 
