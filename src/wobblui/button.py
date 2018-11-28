@@ -302,7 +302,7 @@ class HamburgerButton(ImageButton):
     def __init__(self, override_color=None):
         super().__init__(stock_image("sandwich"))
 
-class HoverCircleImageButton(Button):
+class CircleImageButton(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,
             inner_image_scale=1.0):
         super().__init__(with_border=False, clickable=True)
@@ -331,7 +331,7 @@ class HoverCircleImageButton(Button):
 
     def render_circle(self, x, y, w, h):
         if self.circle_pil is None:
-            self.circle_pil = PIL.Image.open(stock_image("hovercircle"))
+            self.circle_pil = PIL.Image.open(stock_image("circlebutton"))
         if self.circle_img is None:
             self.circle_img = RenderImage(self.circle_pil)
             self.circle_img.set_color(self.circle_color)
