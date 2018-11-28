@@ -47,6 +47,7 @@ class Button(Widget):
             self.triggered = ForceDisabledDummyEvent(
                 "triggered", owner=self)
         self.with_border = (with_border is True)
+        self._image_draw_scaledown = 1.0
         self.image_placement = image_placement
         self._image_color = Color.white
         self.override_bg_color = None
@@ -201,12 +202,20 @@ class Button(Widget):
         if self.contained_image != None:
             x = offset_x
             y = round(self.border_size)
-            w = math.ceil(self.contained_image_pil.size[0] *
-                self.contained_image_scale * self.dpi_scale * 1.0)
-            h = math.ceil(self.contained_image_pil.size[1] *
-                self.contained_image_scale * self.dpi_scale * 1.0)
+            w_full_float = (self.contained_image_pil.size[0] *
+                self.contained_image_scale *
+                self.dpi_scale * 1.0)
+            h_full_float = (self.contained_image_pil.size[1] *
+                self.contained_image_scale *
+                self.dpi_scale * 1.0)
+            w_full = math.ceil(w_full_float)
+            h_full = math.ceil(h_full_float)
+            w = math.ceil(w_full_float * self._image_draw_scaledown)
+            h = math.ceil(h_full_float * self._image_draw_scaledown)
             if self.extra_image_render_func != None:
-                self.extra_image_render_func(x, y, w, h)
+                self.extra_image_render_func(x, y, w_full, h_full)
+            x += round((w_full - w) * 0.5)
+            y += round((h_full - h) * 0.5)
             self.contained_image.draw(
                 self.renderer,
                 x, y,
@@ -294,7 +303,8 @@ class HamburgerButton(ImageButton):
         super().__init__(stock_image("sandwich"))
 
 class HoverCircleImageButton(Button):
-    def __init__(self, image_path, scale=None, scale_to_width=None):
+    def __init__(self, image_path, scale=None, scale_to_width=None,
+            inner_image_scale=1.0):
         super().__init__(with_border=False, clickable=True)
         self.image_path = image_path
         self.circle_pil = None
@@ -303,6 +313,7 @@ class HoverCircleImageButton(Button):
         self.set_image(image_path, scale=scale,
             scale_to_width=scale_to_width)
         self.set_image_color(color)
+        self._image_draw_scaledown = inner_image_scale
         self.internal_set_extra_image_render(self.render_circle)
         self.circle_color = Color((0, 150, 250))
 
