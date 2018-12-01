@@ -188,7 +188,7 @@ class ImageWidget(Widget):
     def on_redraw(self):
         if self.renderer is None:
             return
-        if self.image_image is None:
+        if self.render_image is None:
             self.render_image = RenderImage(self.pil_image_small)
         (imgw, imgh) = self.pil_image.size
         scale_w = (self.width / imgw)
