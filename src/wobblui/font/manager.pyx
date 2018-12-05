@@ -51,6 +51,7 @@ cdef class Font(object):
     cdef char* font_family_bytes
     cdef char* _unique_key
     cdef double _avg_letter_width
+    cdef int _space_char_width
     cdef object _sdl_font, mutex
 
     def __init__(self, str font_family,
@@ -69,7 +70,8 @@ cdef class Font(object):
         self.px_size = pixel_size
         self.italic = italic
         self.bold = bold
-        self._avg_letter_width = 0
+        self._avg_letter_width = -1
+        self._space_char_width = -1
         self._sdl_font = None
         self.mutex = threading.Lock()
 
@@ -189,9 +191,22 @@ cdef class Font(object):
         raise ValueError("TTF font not found: " +
             str(self.font_family + " " + variant))
 
+    def get_space_character_width(self):
+        self.mutex.acquire()
+        if self._space_char_width > 0:
+            result = self._space_char_width
+            self.mutex.release()
+            return result
+        self.mutex.release()
+        (width, height) = self.render_size(" ")
+        self.mutex.acquire()
+        self._space_char_width = max(round(width), 1)
+        self.mutex.release()
+        return max(round(width), 1)
+
     def get_average_letter_width(self):
         self.mutex.acquire()
-        if self._avg_letter_width > 0:
+        if self._avg_letter_width >= 0:
             result = self._avg_letter_width
             self.mutex.release()
             return result
