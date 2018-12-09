@@ -31,19 +31,19 @@ import time
 import traceback
 import weakref
 
-from wobblui.color import Color
-from wobblui.event import Event, ForceDisabledDummyEvent,\
+from wobblui.color cimport Color
+from wobblui.event cimport Event, ForceDisabledDummyEvent,\
     InternalOnlyDummyEvent
-from wobblui.gfx import draw_dashed_line, draw_rectangle
+from wobblui.gfx cimport draw_dashed_line, draw_rectangle
 from wobblui.mouse import cursor_seen_during_mousemove
 from wobblui.keyboard import enable_text_events
 from wobblui.perf cimport CPerf as Perf
-from wobblui.texture import RenderTarget
+from wobblui.texture cimport RenderTarget
 from wobblui.timer import schedule
 from wobblui.uiconf import config
 from wobblui.widgetman import add_widget, all_widgets, \
     get_widget_id, get_add_id, tab_sort
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cdef class WidgetBase:
     # MEMBERS SEE WidgetBase.pxd FILE !!!
@@ -759,7 +759,7 @@ cdef class WidgetBase:
         cdef int x = round(_x)
         cdef int y = round(_y)
         cdef int line_height = round(_line_height)
-        c = Color.black
+        c = Color.black()
         if self.style != None and self.style.has(
                 "touch_selection_drag_handles"):
             c = Color(self.style.get("touch_selection_drag_handles"))
@@ -1631,7 +1631,7 @@ cdef class WidgetBase:
     def draw_keyboard_focus(self, x, y, width, height):
         perf_id = Perf.start("draw_keyboard_focus")
         focus_border_thickness = 1.0
-        c = Color.red
+        c = Color.red()
         if c != None:
             c = Color(self.style.get("focus_border"))
         draw_dashed_line(self.renderer,

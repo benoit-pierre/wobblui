@@ -25,16 +25,17 @@ import math
 import sdl2 as sdl
 import weakref
 
-from wobblui.color import Color
-from wobblui.font.manager import font_manager
+from wobblui.color cimport Color
+from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
 from wobblui.uiconf import config
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 
 _rect = sdl.SDL_Rect()
-def draw_rectangle(renderer, x, y, w, h, color=None,
-        filled=True, unfilled_border_thickness=1.0):
+cpdef draw_rectangle(renderer, int x, int y, int w, int h,
+        color=None,
+        int filled=True, unfilled_border_thickness=1.0):
     global _rect
     if color is None:
         color = Color("#aaa")
@@ -60,15 +61,15 @@ def draw_rectangle(renderer, x, y, w, h, color=None,
     if _rect.w <= 0 or _rect.h <= 0:
         return
     sdl.SDL_SetRenderDrawColor(renderer,
-        round(color.red), round(color.green),
-        round(color.blue), 255)
+        round(color.value_red), round(color.value_green),
+        round(color.value_blue), 255)
     sdl.SDL_RenderFillRect(renderer, _rect)
 
 dash_tex_dashlength = 10
 dash_tex_length = (dash_tex_dashlength * 100)
 dash_tex_wide = 32
 dashed_texture_store = dict()
-def get_dashed_texture(renderer, vertical=False):
+cdef get_dashed_texture(renderer, int vertical=False):
     global dashed_texture_store
     renderer_key = str(ctypes.addressof(renderer.contents))
     if (vertical, renderer_key) in dashed_texture_store:
@@ -92,13 +93,13 @@ def get_dashed_texture(renderer, vertical=False):
         _draw_dashed_line_uncached(renderer,
             0, round(dash_tex_wide / 2), dash_tex_length,
             round(dash_tex_wide / 2),
-            color=Color.white, dash_length=dash_tex_dashlength,
+            color=Color.white(), dash_length=dash_tex_dashlength,
             thickness=round(dash_tex_wide * 1.5))
     else:
         _draw_dashed_line_uncached(renderer,
             round(dash_tex_wide / 2), 0,
             round(dash_tex_wide / 2), dash_tex_length,
-            color=Color.white, dash_length=dash_tex_dashlength,
+            color=Color.white(), dash_length=dash_tex_dashlength,
             thickness=round(dash_tex_wide * 1.5))
 
     sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
@@ -106,7 +107,7 @@ def get_dashed_texture(renderer, vertical=False):
     dashed_texture_store[(vertical, renderer_key)] = tex
     return tex
 
-def clear_renderer(renderer):
+cpdef clear_renderer_gfx(renderer):
     global dashed_texture_store
     renderer_key = str(ctypes.addressof(renderer.contents))
     new_dashed_store = dict()
@@ -117,9 +118,9 @@ def clear_renderer(renderer):
         new_dashed_store[entry] = dashed_texture_store[entry]
     dashed_texture_store = new_dashed_store
 
-def draw_dashed_line(
-        renderer, x1, y1, x2, y2, color=None,
-        dash_length=7.0, thickness=3.0):
+cpdef draw_dashed_line(
+        renderer, int x1, int y1, int x2, int y2, color=None,
+        double dash_length=7.0, double thickness=3.0):
     if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
         raise NotImplementedError("lines that aren't straight vertical or " +
             "horizontal aren't implemented yet")
@@ -143,7 +144,7 @@ def draw_dashed_line(
     source_rect = sdl.SDL_Rect()
     target_rect = sdl.SDL_Rect()
     sdl.SDL_SetTextureColorMod(tex,
-        color.red, color.blue, color.blue)
+        color.value_red, color.value_green, color.value_blue)
     offset = 0
     while offset < length:
         tex_target_uncut_length = max(1,
@@ -178,12 +179,12 @@ def draw_dashed_line(
             sdl.SDL_RenderCopy(renderer, tex, source_rect, target_rect)
         offset += tex_target_length
 
-def _draw_dashed_line_uncached(
-        renderer, x1, y1, x2, y2, color=None,
-        dash_length=7.0, thickness=3.0):
+cdef _draw_dashed_line_uncached(
+        renderer, int x1, int y1, int x2, int y2, color=None,
+        double dash_length=7.0, double thickness=3.0):
     perf_id = Perf.start('draw_drashed_line')
     if color is None:
-        color = Color.black
+        color = Color.black()
     if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
         raise NotImplementedError("lines that aren't straight vertical or " +
             "horizontal aren't implemented yet")
@@ -206,7 +207,7 @@ def _draw_dashed_line_uncached(
     h = round(thickness)
     curr_v = start_v
     while curr_v < end_v:
-        if dash_length != None:
+        if dash_length >= 0:
             next_dash_length = math.floor(
                 min(dash_length, end_v - curr_v))
         else:
@@ -218,17 +219,18 @@ def _draw_dashed_line_uncached(
             x = round(curr_v)
             w = next_dash_length
         draw_rectangle(renderer, x, y, w, h, color=color)
-        if dash_length != None:
+        if dash_length >= 0:
             curr_v += dash_length * 2.0
         else:
             curr_v = end_v + 1.0
     Perf.stop(perf_id)
 
-def draw_line(renderer, x1, y1, x2, y2, color=None, thickness=3.0):
+cpdef draw_line(renderer, int x1, int y1, int x2, int y2,
+        color=None, double thickness=3.0):
     draw_dashed_line(renderer, x1, y1, x2, y2, color=color,
-        dash_length=None, thickness=thickness)
+        dash_length=-1, thickness=thickness)
 
-def draw_font(renderer, text, x, y,
+cpdef draw_font(renderer, text, x, y,
         font_family="Sans Serif",
         px_size=12, bold=False, italic=False,
         color=None):
@@ -238,13 +240,15 @@ def draw_font(renderer, text, x, y,
     if font != None:
         tex = font.\
             get_cached_rendered_texture(renderer, text,
-                color=Color.white)
+                color=Color.white())
         if tex != None:
             sdl.SDL_SetTextureColorMod(tex._texture,
-                round(color.red), round(color.green), round(color.blue))
+                round(color.value_red),
+                round(color.value_green),
+                round(color.value_blue))
             tex.draw(round(x), round(y))
 
-def get_draw_font_size(text,
+cpdef get_draw_font_size(text,
         font_family="Sans Serif",
         px_size=12, bold=False, italic=False,
         color=None):
@@ -252,3 +256,4 @@ def get_draw_font_size(text,
         bold=bold, italic=italic,
         px_size=px_size)
     return font.render_size(text)
+

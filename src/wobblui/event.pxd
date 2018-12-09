@@ -31,4 +31,9 @@ cdef class Event(object):
     cdef public str name
     cdef public int widget_must_get_event
 
+cdef class InternalOnlyDummyEvent(Event):
+    pass
+
+cdef class ForceDisabledDummyEvent(Event):
+    pass
 

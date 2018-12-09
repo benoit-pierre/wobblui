@@ -44,7 +44,7 @@ def mark_textures_invalid(sdl_renderer):
         tex.internal_clean_if_renderer(sdl_renderer)
     all_textures[:] = new_refs
 
-class Texture(object):
+cdef class Texture(object):
     def __init__(self, object renderer, int width, int height,
             int _dontcreate=False):
         if renderer is None:
@@ -80,7 +80,7 @@ class Texture(object):
     def set_color(self, o):
         if isinstance(o, Color):
             sdl.SDL_SetTextureColorMod(
-                self._texture, o.red, o.green, o.blue)
+                self._texture, o.value_red, o.value_green, o.value_blue)
         elif len(o) == 3:
             sdl.SDL_SetTextureColorMod(
                 self._texture, round(o[0]), round(o[1]), round(o[2]))
@@ -163,7 +163,7 @@ class Texture(object):
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
         return tex
 
-class RenderTarget(Texture):
+cdef class RenderTarget(Texture):
     def __init__(self, renderer, width, height):
         global sdl_tex_count
         super().__init__(renderer, width, height, _dontcreate=True)
@@ -188,6 +188,11 @@ class RenderTarget(Texture):
             sdl.SDL_SetRenderTarget(self.renderer, None)
         self.set_as_target = False
         super().__del__()
+
+    def __dealloc__(self):
+        if self.set_as_target:
+            sdl.SDL_SetRenderTarget(self.renderer, None)
+        self.set_as_target = False
 
     def draw(self, x, y, w=None, h=None):
         assert(x != None and y != None)

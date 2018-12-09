@@ -20,22 +20,20 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 import ctypes
 import functools
-from libc.stdlib cimport malloc, free
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import threading
 import time
 
 from wobblui.cache cimport KeyValueCache
-from wobblui.color import Color
+from wobblui.color cimport Color
 import wobblui.font.info
 cimport wobblui.font.sdlfont as sdlfont
 from wobblui.sdlinit import initialize_sdl
-from wobblui.texture import Texture
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.texture cimport Texture
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 DRAW_SCALE_GRANULARITY_FACTOR=1000
 
@@ -48,8 +46,8 @@ _reuse_draw_rect = sdl.SDL_Rect()
 cdef class Font(object):
     cdef public int italic, bold
     cdef public double px_size
-    cdef char* font_family_bytes
-    cdef char* _unique_key
+    cdef public str font_family
+    cdef str _unique_key
     cdef double _avg_letter_width
     cdef int _space_char_width
     cdef object _sdl_font, mutex
@@ -57,31 +55,15 @@ cdef class Font(object):
     def __init__(self, str font_family,
             double pixel_size, int italic=False, int bold=False):
         assert(font_family != None)
-        font_family_bytes = font_family.encode("utf-8", "replace")
-        array = <char *>PyMem_Malloc((len(font_family_bytes) + 1) * sizeof(char))
-        if not array:
-            raise MemoryError()
-        cdef int i = 0
-        while i < len(font_family_bytes):
-            array[i] = font_family_bytes[i]
-            i += 1
-        array[len(font_family_bytes)] = 0
-        self.font_family_bytes = array
+        self.font_family = font_family
         self.px_size = pixel_size
         self.italic = italic
         self.bold = bold
+        self._unique_key = ""
         self._avg_letter_width = -1
         self._space_char_width = -1
         self._sdl_font = None
         self.mutex = threading.Lock()
-
-    def __dealloc__(self):
-        PyMem_Free(self.font_family_bytes)
-        PyMem_Free(self._unique_key)
-
-    @property
-    def font_family(self):
-        return self.font_family_bytes.decode("utf-8", "replace")
 
     @staticmethod
     def clear_global_cache_textures():
@@ -97,18 +79,9 @@ cdef class Font(object):
 
     @property
     def unique_key(self):
-        if self._unique_key != NULL:
+        if len(self._unique_key) > 0:
             return self._unique_key
-        key_bytes = str(self.__repr__()).encode("utf-8", "replace")
-        array = <char *>PyMem_Malloc((len(key_bytes) + 1) * sizeof(char))
-        if not array:
-            raise MemoryError()
-        cdef int i = 0
-        while i < len(key_bytes):
-            array[i] = key_bytes[i]
-            i += 1
-        array[len(key_bytes)] = 0
-        self._unique_key = array
+        self._unique_key = str(self.__repr__())
         return self._unique_key
 
     def render_size(self, str text):
@@ -125,7 +98,7 @@ cdef class Font(object):
         render_size_cache.add(str((unique_key, text_bytes)), result)
         return result
 
-    def draw_at(self, renderer, str text, int x, int y, color=Color.black):
+    def draw_at(self, renderer, str text, int x, int y, color=Color.black()):
         if len(text) == 0:
             return
         global _reuse_draw_rect

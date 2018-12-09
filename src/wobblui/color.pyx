@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -19,57 +20,24 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-class BaseColors(type):
-    @property
-    def white(self):
-        return Color("#fff")
-
-    @property
-    def black(self):
-        return Color("#000")
-
-    @property
-    def red(self):
-        return Color("#f00")
-
-    @property
-    def green(self):
-        return Color("#0f0")
-
-    @property
-    def blue(self):
-        return Color("#00f")
-
-    @property
-    def yellow(self):
-        return Color("#fe0")
-
-    @property
-    def orange(self):
-        return Color("#f70")
-
-    @property
-    def gray(self):
-        return Color("#444")
-
-class Color(object, metaclass=BaseColors):
+cdef class Color:
     def __init__(self, from_value=None):
-        self.red = 255
-        self.green = 255
-        self.blue = 255
+        self.value_red = 255
+        self.value_green = 255
+        self.value_blue = 255
         if isinstance(from_value, str):
             if from_value.startswith("#"):
                 if len(from_value) == 4:
-                    self.red = int(from_value[1:2] +
+                    self.value_red = int(from_value[1:2] +
                         from_value[1:2], 16)
-                    self.green = int(from_value[2:3] +
+                    self.value_green = int(from_value[2:3] +
                         from_value[2:3], 16)
-                    self.blue = int(from_value[3:4] +
+                    self.value_blue = int(from_value[3:4] +
                         from_value[3:4], 16)
                 elif len(from_value) == 7:
-                    self.red = int(from_value[1:3], 16)
-                    self.green = int(from_value[3:5], 16)
-                    self.blue = int(from_value[5:7], 16)
+                    self.value_red = int(from_value[1:3], 16)
+                    self.value_green = int(from_value[3:5], 16)
+                    self.value_blue = int(from_value[5:7], 16)
                 else:
                     raise ValueError("unrecognized color " +
                         "value: " + str(from_value))
@@ -77,26 +45,26 @@ class Color(object, metaclass=BaseColors):
                 raise ValueError("unrecognized color " +
                     "value: " + str(from_value))
         elif isinstance(from_value, tuple) and len(from_value) == 3:
-            self.red = max(0, min(255, round(from_value[0])))
-            self.green = max(0, min(255, round(from_value[1])))
-            self.blue = max(0, min(255, round(from_value[2])))
+            self.value_red = max(0, min(255, round(from_value[0])))
+            self.value_green = max(0, min(255, round(from_value[1])))
+            self.value_blue = max(0, min(255, round(from_value[2])))
         elif isinstance(from_value, Color):
-            self.red = max(0, min(255, round(from_value.red)))
-            self.green = max(0, min(255, round(from_value.green)))
-            self.blue = max(0, min(255, round(from_value.blue)))
+            self.value_red = max(0, min(255, round(from_value.value_red)))
+            self.value_green = max(0, min(255, round(from_value.value_green)))
+            self.value_blue = max(0, min(255, round(from_value.value_blue)))
         else:
             raise ValueError("unrecognized color " +
                 "value: " + str(from_value))
 
     def __repr__(self):
         return "<Color " + str((
-            self.red, self.green, self.blue)) + ">"
+            self.value_red, self.value_green, self.value_blue)) + ">"
 
     @property
     def brightness(self):
-        return max(0.0, min(1.0, (max(0, min(255, self.red)) +
-            max(0, min(255, self.blue)) +
-            max(0, min(255, self.green))) / (255.0 * 3.0)))
+        return max(0.0, min(1.0, (max(0, min(255, self.value_red)) +
+            max(0, min(255, self.value_blue)) +
+            max(0, min(255, self.value_green))) / (255.0 * 3.0)))
 
     @property
     def html(self):
@@ -105,14 +73,46 @@ class Color(object, metaclass=BaseColors):
             while len(t) < 2:
                 t = "0" + t
             return t
-        return "#" + tohex(self.red) +\
-            tohex(self.green) +\
-            tohex(self.blue)
+        return "#" + tohex(self.value_red) +\
+            tohex(self.value_green) +\
+            tohex(self.value_blue)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return other.red == self.red and \
-            other.green == self.green and \
-            other.blue == self.blue 
+        return other.value_red == self.value_red and \
+            other.value_green == self.value_green and \
+            other.value_blue == self.value_blue 
+
+    @staticmethod
+    def white():
+        return Color("#fff")
+
+    @staticmethod
+    def black():
+        return Color("#000")
+
+    @staticmethod
+    def red():
+        return Color("#f00")
+
+    @staticmethod
+    def green():
+        return Color("#0f0")
+
+    @staticmethod
+    def blue():
+        return Color("#00f")
+
+    @staticmethod
+    def yellow():
+        return Color("#fe0")
+
+    @staticmethod
+    def orange(cls):
+        return Color("#f70")
+
+    @staticmethod
+    def gray(cls):
+        return Color("#444")
 

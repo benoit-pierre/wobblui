@@ -24,11 +24,11 @@ import sdl2 as sdl
 import time
 
 from wobblui.button import Button
-from wobblui.color import Color
+from wobblui.color cimport Color
 from wobblui.image import stock_image
 from wobblui.richtext cimport RichText
 from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cdef class Label(ScrollbarDrawingWidget):
     cdef double current_draw_scale, text_scale, known_dpi_scale
@@ -107,7 +107,7 @@ cdef class Label(ScrollbarDrawingWidget):
         if self._user_set_color != None:
             return self._user_set_color
         if self.style is None:
-            return Color.black
+            return Color.black()
         return Color(self.style.get("widget_text"))
 
     def update_window(self):
@@ -324,7 +324,7 @@ class ImageWithLabel(Button):
         super().__init__(with_border=False, clickable=False,
             image_placement="left", text_scale=1.2)
         self.original_image = image_path
-        color = Color.white
+        color = Color.white()
         if color_with_text_color:
             color = Color(self.style.get("widget_text"))
             if self.style.has("saturated_widget_text"):

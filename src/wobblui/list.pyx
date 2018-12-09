@@ -25,53 +25,19 @@ import html
 import math
 import sdl2 as sdl
 
-from wobblui.color import Color
+from wobblui.color cimport Color
 from wobblui.event cimport Event
-from wobblui.gfx import draw_dashed_line, draw_rectangle
+from wobblui.gfx cimport draw_dashed_line, draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.perf cimport CPerf as Perf
 from wobblui.richtext cimport RichText
 from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
-from wobblui.texture import RenderTarget
+from wobblui.texture cimport RenderTarget
 from wobblui.uiconf import config
 from wobblui.widget cimport Widget
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cdef class ListEntry:
-    cdef public int with_visible_bg
-    cdef public int _max_width
-    cdef public object _cached_natural_width
-    cdef public object _cached_render_tex
-    cdef int _width
-    cdef public object _style
-    cdef str _html, _text
-    cdef public object override_dpi_scale
-    cdef public object extra_html_at_right
-    cdef public double extra_html_at_right_scale
-    cdef int extra_html_at_right_x
-    cdef int extra_html_at_right_y
-    cdef int extra_html_at_right_w
-    cdef int extra_html_at_right_h
-    cdef object extra_html_at_right_obj
-    cdef double extra_html_at_right_padding
-    cdef public object extra_html_as_subtitle
-    cdef public double extra_html_as_subtitle_scale
-    cdef int subtitle_x
-    cdef int subtitle_y
-    cdef int subtitle_w
-    cdef int subtitle_h
-    cdef object extra_html_as_subtitle_obj
-    cdef double extra_html_as_subtitle_padding
-    cdef public int disabled
-    cdef public int is_alternating
-    cdef public double px_size_scaler
-    cdef public object text_obj
-    cdef public int need_size_update
-    cdef public int _height
-    cdef public double effective_dpi_scale
-    cdef public object y_offset  # can be None
-    cdef public int text_width, text_height
-
     def __init__(self, html, style,
             px_size_scaler=1.0,
             extra_html_as_subtitle=None,
@@ -446,7 +412,7 @@ cdef class ListEntry:
             self.text_width = 0
             self.text_obj.set_text("")
 
-class ListBase(ScrollbarDrawingWidget):
+cdef class ListBase(ScrollbarDrawingWidget):
     def __init__(self, render_as_menu=False,
             fixed_one_line_entries=False,
             triggered_by_single_click=False):
@@ -682,7 +648,7 @@ class ListBase(ScrollbarDrawingWidget):
                 cy += self.usual_entry_height
 
     def on_redraw(self):
-        perf_id = Perf.start("list_innerdraw")
+        cdef str perf_id = Perf.start("list_innerdraw")
         content_height = 0
         max_scroll_down = 0
 
@@ -713,7 +679,7 @@ class ListBase(ScrollbarDrawingWidget):
         border_size = max(1, round(1.0 * self.dpi_scale))
         if not self.render_as_menu:
             border_size = 0
-        c = Color.black
+        c = Color.black()
         if self.style != None and self.style.has("border"):
             c = Color(self.style.get("border"))
         if border_size > 0:
@@ -721,7 +687,7 @@ class ListBase(ScrollbarDrawingWidget):
                 self.width, self.height, color=c)
                
         # Draw background: 
-        c = Color.white
+        c = Color.white()
         if self.style != None:
             c = Color(self.style.get("inner_widget_bg"))
             if self.render_as_menu and self.style.has("button_bg"):
@@ -851,7 +817,7 @@ class ListBase(ScrollbarDrawingWidget):
             with_visible_bg=(not self.render_as_menu),
             override_dpi_scale=self.dpi_scale))
         
-class List(ListBase):
+cdef class List(ListBase):
     def __init__(self, fixed_one_line_entries=False,
             triggered_by_single_click=False):
         super().__init__(render_as_menu=False,

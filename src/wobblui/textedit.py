@@ -141,7 +141,7 @@ class TextEditBase(Widget):
         if self._user_set_color != None:
             return self._user_set_color
         if self.style is None:
-            return Color.black
+            return Color.black()
         return Color(self.style.get("widget_text"))
 
     def update_window(self):
@@ -394,7 +394,7 @@ class TextEditBase(Widget):
     def do_redraw(self):
         border_size = max(1, round(1.0 * self.dpi_scale))
         # Draw basic bg:
-        c = Color.white
+        c = Color.white()
         if self.style != None:
             c = Color(self.style.get("inner_widget_bg"))
         draw_rectangle(self.renderer,
@@ -440,7 +440,7 @@ class TextEditBase(Widget):
 
         # Redraw padding area (in case text is clipped
         # outside of the widget size)
-        c = Color.white
+        c = Color.white()
         if self.style != None:
             c = Color(self.style.get("inner_widget_bg"))
         draw_rectangle(self.renderer,
@@ -457,7 +457,7 @@ class TextEditBase(Widget):
             max(5, h), color=self.color)
 
         # Draw border:
-        c = Color.black
+        c = Color.black()
         if self.style != None:
             c = Color(self.style.get("border"))
         draw_rectangle(self.renderer,

@@ -20,14 +20,26 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-cdef class Texture:
-    cdef object _texture
-    cdef public object renderer
-    cdef str renderer_key
-    cdef int width, height
-    cdef object __weakref__
+cpdef draw_rectangle(renderer, int x, int y, int w, int h,
+        color=*,
+        int filled=*, unfilled_border_thickness=*)
 
-cdef class RenderTarget(Texture):
-    cdef public int set_as_target, ever_rendered_to
-    cdef object previous_target
+cpdef clear_renderer_gfx(renderer)
+
+cpdef draw_dashed_line(
+        renderer, int x1, int y1, int x2, int y2, color=*,
+        double dash_length=*, double thickness=*)
+
+cpdef draw_line(renderer, int x1, int y1, int x2, int y2,
+    color=*, double thickness=*)
+
+cpdef draw_font(renderer, text, x, y,
+        font_family=*,
+        px_size=*, bold=*, italic=*,
+        color=*)
+
+cpdef get_draw_font_size(text,
+        font_family=*,
+        px_size=*, bold=*, italic=*,
+        color=*)
 

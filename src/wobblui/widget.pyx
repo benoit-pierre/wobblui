@@ -23,7 +23,7 @@ freely, subject to the following restrictions:
 from wobblui.event cimport Event
 from wobblui.style import AppStyleBright
 from wobblui.widget_base cimport WidgetBase
-from wobblui.window import Window
+from wobblui.window cimport Window
 
 cdef class Widget(WidgetBase):
     def __init__(self,

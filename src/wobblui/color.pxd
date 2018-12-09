@@ -20,14 +20,6 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-cdef class Texture:
-    cdef object _texture
-    cdef public object renderer
-    cdef str renderer_key
-    cdef int width, height
-    cdef object __weakref__
-
-cdef class RenderTarget(Texture):
-    cdef public int set_as_target, ever_rendered_to
-    cdef object previous_target
+cdef class Color:
+    cdef public int value_red, value_green, value_blue
 

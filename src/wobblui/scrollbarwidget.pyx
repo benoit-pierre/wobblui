@@ -20,8 +20,8 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.color import Color
-from wobblui.gfx import draw_rectangle
+from wobblui.color cimport Color
+from wobblui.gfx cimport draw_rectangle
 from wobblui.widget cimport Widget
 
 cdef class ScrollbarDrawingWidget(Widget):
@@ -38,14 +38,14 @@ cdef class ScrollbarDrawingWidget(Widget):
             self.scrollbar_height) * scroll_percent)
         self.scrollbar_width = round(8.0 * self.dpi_scale)
         self.scrollbar_x = self.width - self.scrollbar_width
-        c = Color.white
+        c = Color.white()
         if self.style != None:
             c = Color(self.style.get("border"))
         draw_rectangle(self.renderer,
             self.scrollbar_x, self.scrollbar_y,
             self.scrollbar_width, self.scrollbar_height,
             color=c)
-        c = Color.black
+        c = Color.black()
         if self.style != None:
             c = Color(self.style.get("selected_bg"))
             if self.style.has("scrollbar_knob_fg"):

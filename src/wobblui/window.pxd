@@ -20,14 +20,16 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-cdef class Texture:
-    cdef object _texture
-    cdef public object renderer
-    cdef str renderer_key
-    cdef int width, height
-    cdef object __weakref__
+from wobblui.widget_base cimport WidgetBase
 
-cdef class RenderTarget(Texture):
-    cdef public int set_as_target, ever_rendered_to
-    cdef object previous_target
+cdef class Window(WidgetBase):
+    cdef object mouse_position_cache, _sdl_window, _renderer, _style
+    cdef int _hidden
+    cdef public object hiding, shown, closing, destroyed
+    cdef public object modal_filter
+    cdef public int is_closed
+    cdef str _title
+    cdef int next_reopen_width, next_reopen_height
+    cdef object last_known_dpi_scale, schedule_global_dpi_scale_update
+
 

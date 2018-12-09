@@ -30,13 +30,13 @@ import sys
 import threading
 import time
 
-from wobblui.color import Color
+from wobblui.color cimport Color
 import wobblui.cssparse as cssparse
 cimport wobblui.debug as debug
 import nettools.htmlparse as htmlparse
 from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 class TagInfo(object):
     def __init__(self, tag_name, is_block=False):
@@ -225,7 +225,7 @@ cdef class RichTextFragment(RichTextObj):
             fragment_draw_rect = sdl.SDL_Rect()
         perf_id = Perf.start("fragment draw part 1")
         if color is None:
-            color = Color.black
+            color = Color.black()
         if draw_scale is None:
             draw_scale = self._draw_scale
         font = self.get_font(draw_scale=draw_scale)

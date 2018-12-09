@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -23,17 +24,17 @@ import sdl2 as sdl
 import time
 import weakref
 
-from wobblui.color import Color
-from wobblui.event import Event
-from wobblui.gfx import draw_rectangle
+from wobblui.color cimport Color
+from wobblui.event cimport Event
+from wobblui.gfx cimport draw_rectangle
 from wobblui.keyboard import register_global_shortcut,\
     shortcut_to_text
-from wobblui.list import ListBase, ListEntry
+from wobblui.list cimport ListBase, ListEntry
 from wobblui.timer import schedule
-from wobblui.widget import Widget
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.widget cimport Widget
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
-class MenuSeparator(ListEntry):
+cdef class MenuSeparator(ListEntry):
     def __init__(self, style, is_alternating=False):
         assert(is_alternating != None)
         super().__init__("---", style,

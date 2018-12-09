@@ -49,7 +49,7 @@ class Button(Widget):
         self.with_border = (with_border is True)
         self._image_draw_scaledown = 1.0
         self.image_placement = image_placement
-        self._image_color = Color.white
+        self._image_color = Color.white()
         self.override_bg_color = None
         if override_bg_color != None:
             self.override_bg_color = Color(override_bg_color)
@@ -118,7 +118,7 @@ class Button(Widget):
         self.contained_image = RenderImage(self.contained_image_pil)
 
     def set_image_color(self, color):
-        self.image_color = color
+        self.image_color = Color(color)
         self.update()
 
     @html.setter
@@ -162,9 +162,9 @@ class Button(Widget):
 
     @image_color.setter
     def image_color(self, v):
-        if v.red != self._image_color.red or \
-                v.green != self._image_color.green or \
-                v.blue != self._image_color.blue:
+        if v.value_red != self._image_color.value_red or \
+                v.value_green != self._image_color.value_green or \
+                v.value_blue != self._image_color.value_blue:
             self._image_color = v
             self.update_texture_color()
 
@@ -177,7 +177,7 @@ class Button(Widget):
             return
         self.update_texture_color()
         if self.with_border:
-            c = Color.white
+            c = Color.white()
             if self.style != None:
                 c = Color(self.style.get("button_bg"))
             if self.override_bg_color != None:
@@ -222,7 +222,7 @@ class Button(Widget):
                 w=w, h=h)
             offset_x += w + round(self.border_size * 0.7)
         if self.contained_richtext_obj != None:
-            c = Color.white
+            c = Color.white()
             if self.style != None:
                 c = Color(self.style.get("widget_text"))
                 if self.disabled and self.style.has("widget_disabled_text"):
@@ -273,13 +273,14 @@ class ImageButton(Button):
             clickable=clickable)
         self.original_image = image
         self.set_image(image, scale_to_width=scale_to_width)
-        color = Color.black
+        color = Color.black()
         if self.style != None:
             color = self.style.get("widget_text")
             if self.style.has("saturated_widget_text"):
                 color = Color(self.style.get("saturated_widget_text"))
             if self.disabled and style.has("widget_disabled_text"):
                 color = Color(self.style.get("widget_disabled_text"))
+        assert(isinstance(color, Color))
         self.set_image_color(color)
 
     def __repr__(self):
@@ -309,7 +310,7 @@ class CircleImageButton(Button):
         self.image_path = image_path
         self.circle_pil = None
         self.circle_img = None
-        color = Color.white
+        color = Color.white()
         self.set_image(image_path, scale=scale,
             scale_to_width=scale_to_width)
         self.set_image_color(color)

@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -26,20 +27,19 @@ import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 import weakref
 
-from wobblui.color import Color
+from wobblui.color cimport Color
 from wobblui.dragselection import draw_drag_selection_handles
-from wobblui.event import Event
+from wobblui.event cimport Event
 import wobblui.font.manager
-import wobblui.gfx
-from wobblui.gfx import draw_rectangle
+from wobblui.gfx cimport clear_renderer_gfx, draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.sdlinit import initialize_sdl
 from wobblui.style import AppStyleDark
-import wobblui.texture
+cimport wobblui.texture
 from wobblui.uiconf import config
-from wobblui.widget_base import all_widgets, WidgetBase
-from wobblui.widgetman import all_windows
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.widget_base cimport WidgetBase
+from wobblui.widgetman import all_widgets, all_windows
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 def get_focused_window():
     global all_windows
@@ -107,7 +107,7 @@ def trigger_global_style_changed():
     for w in collected_widgets:
         w.stylechanged()
 
-class Window(WidgetBase):
+cdef class Window(WidgetBase):
     def __init__(self, title="Untitled", width=640, height=480,
             style=None):
         self._renderer = None
@@ -240,7 +240,7 @@ class Window(WidgetBase):
                 recursive_renderer_update(child)
         for child in self.children:
             recursive_renderer_update(child)
-        wobblui.gfx.clear_renderer(old_renderer)
+        clear_renderer_gfx(old_renderer)
         self._renderer = old_renderer
         if self.internal_render_target != None:
             if config.get("debug_texture_references"):
@@ -324,7 +324,6 @@ class Window(WidgetBase):
                     sdl.SDL_DestroyWindow(self._sdl_window)
                 self._sdl_window = None
                 self.is_closed = True
-                del(self._children)
                 self._children = []
                 self.destroyed()
             else:
@@ -587,8 +586,9 @@ class Window(WidgetBase):
             c = Color.white
             if self.style != None:
                 c = Color(self.style.get("window_bg"))
-            sdl.SDL_SetRenderDrawColor(self.renderer, c.red,
-                c.blue, c.green, 255)
+            sdl.SDL_SetRenderDrawColor(self.renderer,
+                c.value_red,
+                c.value_blue, c.value_green, 255)
             sdl.SDL_RenderClear(self.renderer)
 
             # Work around potential SDL bug / race condition:
