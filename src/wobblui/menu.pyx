@@ -88,7 +88,9 @@ cdef class MenuSeparator(ListEntry):
             max(1, round(self.line_thickness * dpi_scale))
     
 
-class Menu(ListBase):
+cdef class Menu(ListBase):
+    cdef public object callback_funcs, defocus_on_trigger
+
     def __init__(self, unfocus_on_trigger=True,
             fixed_one_line_entries=False):
         super().__init__(render_as_menu=True,
@@ -160,10 +162,11 @@ class ContainerWithSlidingMenu(Widget):
                 return
             self.unfocus(user_callbacks_only=True)
         self.menu.unfocus.register(menu_unfocused)
-        self.menu.extra_focus_check = lambda: self.extra_focus_check()
+        self.menu.extra_focus_check_callback =\
+            lambda: self.menu_focus_check()
         super().add(self.menu)
 
-    def extra_focus_check(self):
+    def menu_focus_check(self):
         return (self.menu_slid_out_x > 0)
 
     def on_click(self, mouse_id, button, x, y):

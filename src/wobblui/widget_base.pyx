@@ -1551,12 +1551,10 @@ cdef class WidgetBase:
             p = p.parent
         return (p == other_widget)
 
-    def extra_focus_check(self):
-        return True
-
     @property
     def focusable(self):
-        if not self.extra_focus_check():
+        if self.extra_focus_check_callback is not None and \
+                not self.extra_focus_check_callback():
             return False
         return (self._focusable and not self.effectively_inactive)
 

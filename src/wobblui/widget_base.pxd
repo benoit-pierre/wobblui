@@ -42,6 +42,7 @@ cdef class WidgetBase:
     cdef object _parent
     cdef int _disabled, _is_focused, _invisible
     cdef object _cursor
+    cdef public object extra_focus_check_callback
 
     # Event processing internal state:
     cdef public int _in_touch_fake_event_processing
