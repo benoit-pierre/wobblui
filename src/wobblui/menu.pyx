@@ -160,7 +160,11 @@ class ContainerWithSlidingMenu(Widget):
                 return
             self.unfocus(user_callbacks_only=True)
         self.menu.unfocus.register(menu_unfocused)
+        self.menu.extra_focus_check = lambda: self.extra_focus_check()
         super().add(self.menu)
+
+    def extra_focus_check(self):
+        return (self.menu_slid_out_x > 0)
 
     def on_click(self, mouse_id, button, x, y):
         if not self.menu.focused:
@@ -175,7 +179,7 @@ class ContainerWithSlidingMenu(Widget):
         scroll_amount = x * 50.0
         self.slide_animation_target = None
         new_x = self.menu_slid_out_x + scroll_amount
-        if new_x < 0:
+        if new_x <= 0:
             if self.menu.focused:
                 self.menu.unfocus()
             self.menu_slid_out_x = 0
@@ -193,11 +197,15 @@ class ContainerWithSlidingMenu(Widget):
     def get_children_in_strict_mouse_event_order(self):
         return self._children
 
-    def open_menu(self):
+    def open_menu(self, focus=True):
         if self.slide_animation_target == "open":
             return
         self.menu.selected_index = -1
         self.slide_animation_target = "open"
+        self.menu_slid_out_x = max(1,
+            self.menu_slid_out_x)
+        if focus and not self.menu.focused:
+            self.menu.focus()
         self.schedule_animation()
 
     def close_menu(self):

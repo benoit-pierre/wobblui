@@ -1551,8 +1551,13 @@ cdef class WidgetBase:
             p = p.parent
         return (p == other_widget)
 
+    def extra_focus_check(self):
+        return True
+
     @property
     def focusable(self):
+        if not self.extra_focus_check():
+            return False
         return (self._focusable and not self.effectively_inactive)
 
     @property
@@ -1639,33 +1644,37 @@ cdef class WidgetBase:
             y,
             x + 0.5 * focus_border_thickness * self.dpi_scale,
             y + height,
+            color=c,
             dash_length=(7.0 * self.dpi_scale),
-            thickness=(focus_border_thickness * self.dpi_scale),
-            color=c)
+            thickness=(focus_border_thickness * self.dpi_scale)
+            )
         draw_dashed_line(self.renderer,
             x + width - 0.5 * focus_border_thickness * self.dpi_scale,
             y,
             x + width - 0.5 * focus_border_thickness * self.dpi_scale,
             y + height,
+            color=c,
             dash_length=(7.0 * self.dpi_scale),
-            thickness=(focus_border_thickness * self.dpi_scale),
-            color=c)
+            thickness=(focus_border_thickness * self.dpi_scale)
+            )
         draw_dashed_line(self.renderer,
             x,
             y + 0.5 * focus_border_thickness * self.dpi_scale,
             x + width,
             y + 0.5 * focus_border_thickness * self.dpi_scale,
+            color=c,
             dash_length=(7.0 * self.dpi_scale),
             thickness=(focus_border_thickness * self.dpi_scale),
-            color=c)
+            )
         draw_dashed_line(self.renderer,
             x,
             y + height - 0.5 * focus_border_thickness * self.dpi_scale,
             x + width,
             y + height - 0.5 * focus_border_thickness * self.dpi_scale,
+            color=c,
             dash_length=(7.0 * self.dpi_scale),
             thickness=(focus_border_thickness * self.dpi_scale),
-            color=c)
+            )
         Perf.stop(perf_id)
 
     @property

@@ -27,11 +27,17 @@ cpdef draw_rectangle(renderer, int x, int y, int w, int h,
 cpdef clear_renderer_gfx(renderer)
 
 cpdef draw_dashed_line(
-        renderer, int x1, int y1, int x2, int y2, color=*,
-        double dash_length=*, double thickness=*)
+        object renderer,
+        int x1, int y1, int x2, int y2,
+        object color=*,
+        double dash_length=*,
+        double thickness=*)
 
-cpdef draw_line(renderer, int x1, int y1, int x2, int y2,
-    color=*, double thickness=*)
+cpdef draw_line(
+    object renderer,
+    int x1, int y1, int x2, int y2,
+    object color=*,
+    double thickness=*)
 
 cpdef draw_font(renderer, text, x, y,
         font_family=*,

@@ -119,8 +119,11 @@ cpdef clear_renderer_gfx(renderer):
     dashed_texture_store = new_dashed_store
 
 cpdef draw_dashed_line(
-        renderer, int x1, int y1, int x2, int y2, color=None,
-        double dash_length=7.0, double thickness=3.0):
+        object renderer,
+        int x1, int y1, int x2, int y2,
+        object color=None,
+        double dash_length=7.0,
+        double thickness=3.0):
     if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
         raise NotImplementedError("lines that aren't straight vertical or " +
             "horizontal aren't implemented yet")
@@ -180,8 +183,11 @@ cpdef draw_dashed_line(
         offset += tex_target_length
 
 cdef _draw_dashed_line_uncached(
-        renderer, int x1, int y1, int x2, int y2, color=None,
-        double dash_length=7.0, double thickness=3.0):
+        object renderer,
+        int x1, int y1, int x2, int y2,
+        object color=None,
+        double dash_length=7.0,
+        double thickness=3.0):
     perf_id = Perf.start('draw_drashed_line')
     if color is None:
         color = Color.black()
@@ -225,8 +231,10 @@ cdef _draw_dashed_line_uncached(
             curr_v = end_v + 1.0
     Perf.stop(perf_id)
 
-cpdef draw_line(renderer, int x1, int y1, int x2, int y2,
-        color=None, double thickness=3.0):
+cpdef draw_line(object renderer,
+        int x1, int y1, int x2, int y2,
+        object color=None,
+        double thickness=3.0):
     draw_dashed_line(renderer, x1, y1, x2, y2, color=color,
         dash_length=-1, thickness=thickness)
 
