@@ -35,10 +35,15 @@ from wobblui.widget cimport Widget
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cdef class MenuSeparator(ListEntry):
+    cdef double padding_horizontal, padding_vertical
+    cdef double line_thickness
+    cdef public int needs_size_update
+
     def __init__(self, style, is_alternating=False):
         assert(is_alternating != None)
         super().__init__("---", style,
             is_alternating=is_alternating)
+        self.needs_size_update = True
         self.disabled = True
         self.padding_horizontal = 0.0
         self.padding_vertical = 3.0
