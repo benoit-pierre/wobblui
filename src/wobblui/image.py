@@ -97,7 +97,7 @@ class RenderImage(object):
         self.surface = _internal_image_to_sdl_surface(
             pil_image)
         self._texture = None
-        self.color = Color.white
+        self.color = Color.white()
 
     def __del__(self):
         if hasattr(self, "surface") and self.surface is not None:
