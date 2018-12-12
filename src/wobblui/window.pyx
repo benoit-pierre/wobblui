@@ -33,7 +33,7 @@ from wobblui.event cimport Event
 import wobblui.font.manager
 from wobblui.gfx cimport clear_renderer_gfx, draw_rectangle
 from wobblui.osinfo import is_android
-from wobblui.sdlinit import initialize_sdl
+from wobblui.sdlinit cimport initialize_sdl
 from wobblui.style import AppStyleDark
 cimport wobblui.texture
 from wobblui.uiconf import config

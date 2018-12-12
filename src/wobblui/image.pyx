@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -28,10 +29,10 @@ import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
 import time
 
-from wobblui.color import Color
+from wobblui.color cimport Color
 from wobblui.osinfo import is_android
-from wobblui.sdlinit import initialize_sdl
-from wobblui.texture import Texture
+from wobblui.sdlinit cimport initialize_sdl
+from wobblui.texture cimport Texture
 from wobblui.widget import Widget
 
 sdlimage_initialized = False
@@ -79,7 +80,9 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
         if retries > 0:
             retries -= 1
             time.sleep(0.1)
-            return image_to_sdl_surface(pil_image, retries=(retries - 1))
+            return _internal_image_to_sdl_surface(
+                pil_image,
+                retries=(retries - 1))
         err_msg = sdlimage.IMG_GetError()
         try:
             err_msg = err_msg.decode("utf-8", "replace")
@@ -90,12 +93,26 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
             str(err_msg))
     return sdl_image
 
-class RenderImage(object):
-    def __init__(self, pil_image):
+cdef class RenderImage(object):
+    def __init__(self, object pil_image, render_low_res=False):
         initialize_sdl()
-        self.pil_image = pil_image
-        self.surface = _internal_image_to_sdl_surface(
-            pil_image)
+        self.pil_image = pil_image.copy()
+        self.render_size = tuple(self.pil_image.size)
+        self.pil_image_scaled = None
+        if render_low_res:
+            (w, h) = self.pil_image.size
+            scale_f = (512 + 512) / (w + h)
+            new_w = max(1, round(w * scale_f))
+            new_h = max(1, round(h * scale_f))
+            if scale_f < 0.95 and (new_w != w or new_h != h):
+                self.pil_image_scaled = self.pil_image.resize(
+                    (new_w, new_h))
+        if self.pil_image_scaled is None:
+            self.surface = _internal_image_to_sdl_surface(
+                self.pil_image)
+        else:
+            self.surface = _internal_image_to_sdl_surface(
+                self.pil_image_scaled)
         self._texture = None
         self.color = Color.white()
 
@@ -103,6 +120,11 @@ class RenderImage(object):
         if hasattr(self, "surface") and self.surface is not None:
             sdl.SDL_FreeSurface(self.surface)
             self.surface = None
+
+    def __dealloc__(self):
+        if hasattr(self, "surface") and self.surface is not None:
+            sdl.SDL_FreeSurface(self.surface)
+        self.surface = None
 
     def to_texture(self, renderer):
         initialize_sdl()
@@ -122,8 +144,12 @@ class RenderImage(object):
         if self._texture is not None and not self._texture.is_unloaded():
             self._texture.set_color(self.color)
 
-    def draw(self, renderer, x, y, w=None, h=None):
+    def draw(self, renderer, int x, int y, w=None, h=None):
         tex = self.to_texture(renderer)
+        if w is None:
+            w = self.render_size[0]
+        if h is None:
+            h = self.render_size[1]
         tex.draw(x, y, w, h)
 
 def image_as_grayscale(pil_image):
@@ -152,7 +178,7 @@ def remove_image_alpha(pil_image):
         return pil_image.copy()
     else:
         raise RuntimeError("unsupported mode: " +
-            pil_Image.mode)
+            pil_image.mode)
 
 class ImageWidget(Widget):
     def __init__(self, pil_image,

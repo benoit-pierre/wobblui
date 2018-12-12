@@ -31,7 +31,7 @@ from wobblui.cache cimport KeyValueCache
 from wobblui.color cimport Color
 import wobblui.font.info
 cimport wobblui.font.sdlfont as sdlfont
-from wobblui.sdlinit import initialize_sdl
+from wobblui.sdlinit cimport initialize_sdl
 from wobblui.texture cimport Texture
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 

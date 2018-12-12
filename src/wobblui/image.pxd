@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -19,26 +20,11 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-import sdl2 as sdl
-import sdl2.sdlttf as sdlttf
+from wobblui.color cimport Color
 
-sdl_init_done = False
-def initialize_sdl():
-    global sdl_init_done
-    if sdl_init_done:
-        return
-    sdl_init_done = True
-
-    sdl.SDL_SetHintWithPriority(b"SDL_HINT_ORIENTATIONS",
-        b"LandscapeLeft LandscapeRight Portrait PortraitUpsideDown",
-        sdl.SDL_HINT_OVERRIDE)
-    sdl.SDL_SetHintWithPriority(b"SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH", b"1",
-        sdl.SDL_HINT_OVERRIDE)
-    sdl.SDL_SetHintWithPriority(
-        b"SDL_HINT_RENDER_SCALE_QUALITY", b"2",
-        sdl.SDL_HINT_OVERRIDE)
-    subsystems = sdl.SDL_WasInit(sdl.SDL_INIT_EVERYTHING)
-    if not (subsystems & sdl.SDL_INIT_VIDEO):
-        sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER)
-
+cdef class RenderImage(object):
+    cdef object pil_image, pil_image_scaled
+    cdef public Color color
+    cdef tuple render_size
+    cdef object _texture, surface
 
