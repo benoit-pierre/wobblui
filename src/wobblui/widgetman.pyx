@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -35,6 +36,7 @@ all_widgets = list()
 all_windows = list()
 
 def reduce_memory():
+    global all_widgets
     remove_refs = []
     for wref in all_widgets:
         w = wref()

@@ -23,7 +23,8 @@ freely, subject to the following restrictions:
 from wobblui.widget_base cimport WidgetBase
 
 cdef class Window(WidgetBase):
-    cdef object mouse_position_cache, _sdl_window, _renderer, _style
+    cdef object mouse_position_cache, _renderer, _style
+    cdef public object _sdl_window  # accessed by multitouch code
     cdef int _hidden
     cdef public object hiding, shown, closing, destroyed
     cdef public object modal_filter
@@ -31,5 +32,11 @@ cdef class Window(WidgetBase):
     cdef str _title
     cdef int next_reopen_width, next_reopen_height
     cdef object last_known_dpi_scale, schedule_global_dpi_scale_update
+
+cpdef get_focused_window()
+
+cpdef change_dpi_scale_on_all_windows(new_dpi_scale)
+
+cpdef get_window_by_sdl_id(sdl_id)
 
 

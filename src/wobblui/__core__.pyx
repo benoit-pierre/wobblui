@@ -43,8 +43,8 @@ cimport wobblui.font.sdlfont as sdlfont
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
-from wobblui.widgetman import all_widgets
-from wobblui.window import all_windows, get_focused_window,\
+from wobblui.widgetman import all_widgets, all_windows
+from wobblui.window cimport get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
@@ -54,7 +54,8 @@ if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
 
 cdef int MULTITOUCH_DEBUG = 0
 
-def redraw_windows(int layout_only=False):
+cdef redraw_windows(int layout_only=False):
+    cdef int i
     for w_ref in all_windows:
         w = w_ref()
         if w is None or w.hidden:
@@ -654,6 +655,9 @@ def update_multitouch():
             main_finger_x = fx
             main_finger_y = fy
         i += 1
+    if last_single_finger_sdl_windowid is None:
+        # Couldn't trace any finger to any window. Abort.
+        return
     if MULTITOUCH_DEBUG:
         logdebug("MAIN FINGER ID: " + str(main_finger_id) +
             ", FINGER POSITIONS: " + str(finger_positions) +

@@ -41,7 +41,7 @@ from wobblui.widget_base cimport WidgetBase
 from wobblui.widgetman import all_widgets, all_windows
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
-def get_focused_window():
+cpdef get_focused_window():
     global all_windows
     for w_ref in all_windows:
         w = w_ref()
@@ -50,7 +50,7 @@ def get_focused_window():
         return w
     return None
 
-def change_dpi_scale_on_all_windows(new_dpi_scale):
+cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
     logdebug("manual DPI change triggered on all windows by " +
         "app. new scale is: " + str(new_dpi_scale) + ". " +
         "firing stylechanged() on all widgets...")
@@ -70,7 +70,7 @@ def change_dpi_scale_on_all_windows(new_dpi_scale):
     all_windows[:] = new_w_refs
     trigger_global_style_changed()
 
-def get_window_by_sdl_id(sdl_id):
+cpdef get_window_by_sdl_id(sdl_id):
     global all_windows
     result = None
     seen = set()
@@ -94,7 +94,7 @@ def get_window_by_sdl_id(sdl_id):
     all_windows = new_refs
     return result
 
-def trigger_global_style_changed():
+cpdef trigger_global_style_changed():
     new_refs = []
     collected_widgets = []
     for w_ref in all_widgets:
