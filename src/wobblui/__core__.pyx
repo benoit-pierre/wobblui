@@ -557,31 +557,16 @@ active_touch_device = None
 
 def finger_coordinates_to_window_coordinates(
         touch_device_id, finger_x, finger_y):
-    # THIS ASSIGNMENT IS WRONG.
-    # Due to an apparent SDL API design fault, there seems to be no
-    # way to get this. Once there is one, this code will be updated.
-    screen_for_touch_device = 0
-    screen_mode = sdl.SDL_DisplayMode()
-    result = sdl.SDL_GetCurrentDisplayMode(screen_for_touch_device,
-        ctypes.byref(screen_mode))
-    if result != 0:
-        raise RuntimeError("unexpected failure to get current display mode")
-    screen_touch_x = round(float(finger_x) * float(screen_mode.w))
-    screen_touch_y = round(float(finger_y) * float(screen_mode.h))
     for w_ref in all_windows:
         w = w_ref()
         if w is None or not hasattr(w, "_sdl_window") or \
                 w._sdl_window is None:
             continue
-        if w.screen_index != screen_for_touch_device:
-            continue
-        (win_x, win_y) = w.get_screen_offset()
-        if screen_touch_x >= win_x and \
-                screen_touch_x < win_x + w.width and \
-                screen_touch_y >= win_y and \
-                screen_touch_y < win_y + w.height:
-            return (w, round(screen_touch_x - win_x),
-                round(screen_touch_y - win_y))
+        # WE WOULD NEED TO CHECK THE EVENT BELONGS TO THE WINDOW HERE.
+        # WE CAN'T, BECAUSE THE SDL API HAS A DESIGN MISTAKE.
+        # (so we just take the first one. nonsense of course)
+        return (w, round(float(finger_x) * w.width),
+            round(float(finger_y) * w.height))
     return (None, -1, -1)
 
 def update_multitouch():
@@ -649,6 +634,9 @@ def update_multitouch():
         if last_single_finger_sdl_windowid != None and \
                 last_single_finger_sdl_windowid != win.sdl_window_id and \
                 main_finger_id >= 0:
+            i += 1
+            continue
+        if win is None:
             i += 1
             continue
         last_single_finger_sdl_windowid = win.sdl_window_id
