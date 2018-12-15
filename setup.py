@@ -186,7 +186,9 @@ if __name__ == "__main__":
         package_dir={'':'src'},
         package_data={
             "wobblui": ["font/packaged-fonts/*.ttf",
+                "font/packaged-fonts/*.otf",
                 "font/packaged-fonts/*.md",
+                "font/packaged-fonts/*.txt",
                 "img/*.png",
                 "*.pxd",
                 "font/*.pxd"]

@@ -1,5 +1,6 @@
 .pytest_cache/
 build/
+otf2ttf.sh
 *.egg-info/
 dist/
 *.so

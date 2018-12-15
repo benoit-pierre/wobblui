@@ -33,24 +33,32 @@ DEBUG_FONTINFO=False
 
 def extract_name_ending(font_filename):
     extracted_letters = 0
-    if font_filename.lower().endswith(".ttf"):
+    if font_filename.lower().endswith(".ttf") or \
+            font_filename.lower().endswith(".otf"):
         extracted_letters += len(".ttf")
         font_filename = font_filename[:-len(".ttf")]
     variants = ["BoldItalic",
-        "ItalicBold", "Regular", "Bold", "Italic"]
+        "ItalicBold", "Regular", "Bold", "Italic",
+        "Oblique", "ObliqueBold", "BoldOblique"]
     for variant in variants:
         if font_filename.endswith("-" + variant.lower()) or \
                 font_filename.endswith("-" + variant) or \
                 font_filename.endswith(" " + variant):
             extracted_letters += len("-" + variant)
-            if variant == "ItalicBold":
+            if variant in ("ItalicBold", "ObliqueBold",
+                    "BoldOblique"):
                 return ("BoldItalic", extracted_letters)
+            if variant == "Oblique":
+                return ("Italic", extracted_letters)
             return (variant, extracted_letters)
         if font_filename.endswith(variant) or \
                 font_filename.endswith(variant.lower()):
             extracted_letters += len(variant)
-            if variant == "ItalicBold":
+            if variant in ("ItalicBold", "ObliqueBold",
+                    "BoldOblique"):
                 return ("BoldItalic", extracted_letters)
+            if variant == "Oblique":
+                return ("Italic", extracted_letters)
             return (variant, extracted_letters)
     return ("Regular", 0)
 
@@ -127,14 +135,18 @@ def _uncached_get_font_paths_by_name(name):
         return []
     from wobblui.font.query import get_font_name
     candidates = []
-    unspecific_variants = ["italic", "bold", "condensed"]
+    unspecific_variants = ["italic", "bold", "condensed",
+        "oblique", "bolditalic", "italicbold",
+        "boldoblique", "obliquebold"]
     if DEBUG_FONTINFO:
         logdebug("get_font_paths_by_name: " +
             "got no candidates for " + str(name) +
             ", searching system-wide...", flush=True)
     def is_not_regular(font_name):
         for unspecific_variant in unspecific_variants:
-            if font_name.lower().endswith(unspecific_variant):
+            if font_name.lower().replace("-", "").replace(" ", "").\
+                    replace("_", "").\
+                    endswith(unspecific_variant):
                 return True
         return False
     for fpath in fontconfig.query():
