@@ -21,5 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 
-cpdef initialize_sdl()
+cpdef void initialize_sdl()
+
+cpdef tuple sdl_version()
 

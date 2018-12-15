@@ -20,11 +20,12 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+import ctypes
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 
 sdl_init_done = False
-cpdef initialize_sdl():
+cpdef void initialize_sdl():
     global sdl_init_done
     if sdl_init_done:
         return
@@ -42,4 +43,7 @@ cpdef initialize_sdl():
     if not (subsystems & sdl.SDL_INIT_VIDEO):
         sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER)
 
-
+cpdef tuple sdl_version():
+    v = sdl.SDL_version()
+    sdl.SDL_GetVersion(ctypes.byref(v))
+    return (int(v.major), int(v.minor), int(v.patch))

@@ -29,6 +29,7 @@ import threading
 import time
 import traceback
 
+cimport wobblui.font.sdlfont as sdlfont
 from wobblui.keyboard import internal_update_text_events,\
     get_active_text_widget, get_modifiers, \
     internal_update_keystate_keydown, \
@@ -39,7 +40,7 @@ from wobblui.mouse import cursors_seen_during_mousemove,\
     reset_cursors_seen_during_mousemove, set_cursor
 from wobblui.osinfo import is_android
 from wobblui.perf cimport CPerf as Perf
-cimport wobblui.font.sdlfont as sdlfont
+from wobblui.sdlinit import sdl_version
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
@@ -727,12 +728,12 @@ def update_multitouch():
     if MULTITOUCH_DEBUG:
         logdebug("MULTITOUCH handling over.")
 
-annoying_sdl_hack_spacebar_outstanding = False
+_HACK_oldsdl_spacebar_event_outstanding = False
 touch_pressed = False
 mouse_ids_button_ids_pressed = set()
 def _handle_event(event):
     global mouse_ids_button_ids_pressed, touch_pressed,\
-        annoying_sdl_hack_spacebar_outstanding
+        _HACK_oldsdl_spacebar_event_outstanding
     global last_single_finger_xpos,\
         last_single_finger_ypos, multitouch_gesture_active,\
         last_single_finger_sdl_windowid
@@ -825,28 +826,35 @@ def _handle_event(event):
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
         widget = get_active_text_widget()
+
+        # Helper code for workaround:
         if text.find(" ") >= 0:
-            annoying_sdl_hack_spacebar_outstanding = False
-        elif annoying_sdl_hack_spacebar_outstanding and \
+            _HACK_oldsdl_spacebar_event_outstanding = False
+        elif _HACK_oldsdl_spacebar_event_outstanding and \
                 widget != None:
-            annoying_sdl_hack_spacebar_outstanding = False
+            _HACK_oldsdl_spacebar_event_outstanding = False
             widget.textinput(" ", get_modifiers())
         if widget != None and text != "\n" and text != "\r\n":
             widget.textinput(text, get_modifiers())
     elif event.type == sdl.SDL_KEYDOWN or \
             event.type == sdl.SDL_KEYUP:
-        if event.type == sdl.SDL_KEYDOWN and is_android():
-            # SDL has a stupid bug, so work around it:
+        # WORKAROUND for old SDL's missing space textinput bug:
+        if event.type == sdl.SDL_KEYDOWN and is_android() and \
+                sdl_version()[0] == 2 and sdl_version()[1] == 0 and \
+                sdl_version()[2] < 9:
             if sdl_vkey_map(event.key.keysym.sym) == "space" and \
                     get_active_text_widget() != None:
-                annoying_sdl_hack_spacebar_outstanding = True
-        elif event.type == sdl.SDL_KEYUP and is_android():
-            if annoying_sdl_hack_spacebar_outstanding and \
+                _HACK_oldsdl_spacebar_event_outstanding = True
+        elif event.type == sdl.SDL_KEYUP and is_android() and \
+                sdl_version()[0] == 2 and sdl_version()[1] == 0 and \
+                sdl_version()[2] < 9:
+            if _HACK_oldsdl_spacebar_event_outstanding and \
                     sdl_vkey_map(event.key.keysym.sym) == "space":
-                annoying_sdl_hack_spacebar_outstanding = False
+                _HACK_oldsdl_spacebar_event_outstanding = False
                 widget = get_active_text_widget()
                 if widget != None:
                     widget.textinput(" ", get_modifiers())
+        # END OF workaround
         _process_key_event(event, trigger_shortcuts=True)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \

@@ -266,7 +266,8 @@ cdef class Window(WidgetBase):
             if is_android():
                 # SDL is broken, sigh.
                 # see https://bugzilla.libsdl.org/show_bug.cgi?id=4424
-                sdl.SDL_SetWindowFullscreen(affected_window, SDL_WINDOW_FULLSCREEN)
+                sdl.SDL_SetWindowFullscreen(self._sdl_window,
+                    sdl.SDL_WINDOW_FULLSCREEN)
                 sdl.SDL_SetWindowFullscreen(self._sdl_window, 0)
             unhide = True
             if self._renderer != None:
