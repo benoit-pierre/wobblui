@@ -298,6 +298,15 @@ cdef class Window(WidgetBase):
             self.set_hidden(False)
         self.redraw_if_necessary()
 
+    def close(self):
+        if self._sdl_window is None:
+            return
+        self.is_closed = True
+        try:
+            sdl.SDL_DestroyWindow(self._sdl_window)
+        finally:
+            self._sdl_window = None
+
     def handle_sdlw_close(self):
         self.next_reopen_width = self._width
         self.next_reopen_height = self._height
