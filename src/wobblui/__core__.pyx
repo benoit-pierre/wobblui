@@ -532,7 +532,7 @@ def _process_key_event(event,
         if widget_is_aware:
             w.keyup(virtual_key, physical_key, modifiers)
     if trigger_shortcuts and \
-            (virtual_key == "escape" or virtual_key == "exit") and\
+            (virtual_key == "escape" or virtual_key == "back") and\
             event.type == sdl.SDL_KEYDOWN:
         trigger_exit_callback()
 
