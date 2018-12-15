@@ -149,7 +149,7 @@ def sdl_key_map(int key):
         return "backspace"
     if key == sdl.SDL_SCANCODE_SPACE:
         return "space"
-    return str("scancode-" + str(key))
+    return str("keycode-" + str(key))
 
 stuck_thread = None
 last_alive_time = None
