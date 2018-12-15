@@ -469,9 +469,17 @@ cdef class Window(WidgetBase):
         sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
             ctypes.byref(h))
         if self._renderer != None:
+            w2 = ctypes.c_int32()
+            h2 = ctypes.c_int32()
             if sdl.SDL_GetRendererOutputSize(self._renderer,
-                    ctypes.byref(w), ctypes.byref(h)) != 0:
-                raise RuntimeError("failed to get renderer size")
+                    ctypes.byref(w2), ctypes.byref(h2)) != 0:
+                # If we can't get the renderer size, we're probably
+                # in the background. This can happen on Android when
+                # tabbing out of the app right as it tries to launch
+                pass
+            else:
+                w = w2
+                h = h2
         if self._width != w.value or self._height != h.value:
             self._width = w.value
             self._height = h.value
