@@ -539,7 +539,8 @@ def _process_key_event(event,
 
 def loading_screen_fix():
     if sdl.SDL_GetPlatform().decode(
-            "utf-8", "replace").lower() == "android":
+            "utf-8", "replace").lower() == "android" and False:
+        logdebug("Making sure loading screen will be hidden.")
         # Hide python-for-android loading screen:
         try:
             from jnius import autoclass
