@@ -317,6 +317,7 @@ def do_event_processing(int ui_active=True):
             events.append(ev)
             continue
         break
+    loading_screen_fix()
     update_multitouch()
     if len(events) == 0:
         internal_trigger_check(idle=True)
