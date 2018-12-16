@@ -394,7 +394,7 @@ class Box(ScrollbarDrawingWidget):
             item.height = item.get_natural_height(given_width=self.width)
 
     def add_spacer(self):
-        self.add(BoxSpacer(), expand=True)
+        self.add(BoxSpacer(), expand=True, shrink=True)
         assert(len(self._children) > 0)
 
 class VBox(Box):
