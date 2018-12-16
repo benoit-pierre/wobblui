@@ -305,7 +305,8 @@ class HamburgerButton(ImageButton):
 
 class CircleImageButton(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,
-            inner_image_scale=1.0):
+            inner_image_scale=1.0,
+            circle_color=None):
         super().__init__(with_border=False, clickable=True)
         self.image_path = image_path
         self.circle_pil = None
@@ -317,6 +318,8 @@ class CircleImageButton(Button):
         self._image_draw_scaledown = inner_image_scale
         self.internal_set_extra_image_render(self.render_circle)
         self.circle_color = Color((0, 150, 250))
+        if circle_color is not None:
+            self.circle_color = Color(circle_color)
 
     def __del__(self):
         self.dump_textures()
