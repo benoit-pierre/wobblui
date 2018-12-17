@@ -541,13 +541,8 @@ def loading_screen_fix():
     if sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android" and False:
         logdebug("Making sure loading screen will be hidden.")
-        # Hide python-for-android loading screen:
-        try:
-            from jnius import autoclass
-        except ImportError:
-            return
-        autoclass('org.kivy.android.PythonActivity').\
-            mActivity.removeLoadingScreen()
+        from android.loadingscreen import remove_loading_screen
+        remove_loading_screen()
 
 
 # Used to identify the "main" finger in multitouch used to continue sending
