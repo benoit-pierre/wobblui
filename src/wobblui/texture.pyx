@@ -47,8 +47,9 @@ def mark_textures_invalid(sdl_renderer):
 cdef class Texture(object):
     def __init__(self, object renderer, int width, int height,
             int _dontcreate=False):
-        if renderer is None:
-            raise ValueError("not a valid renderer, is None")
+        if not renderer or renderer is None:
+            raise ValueError("not a valid renderer, is None or " +
+                "null pointer")
         global all_textures, sdl_tex_count
         self._texture = None
         self.renderer = renderer

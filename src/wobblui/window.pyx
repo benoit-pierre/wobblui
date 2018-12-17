@@ -250,6 +250,34 @@ cdef class Window(WidgetBase):
             self.internal_render_target = None
         logdebug("Renderer loss processed.")
 
+    def ensure_renderer(self):
+        if self._sdl_window is None or not self._sdl_window:
+            return
+        if self._renderer is None:
+            if config.get("software_renderer") or \
+                    not is_android():
+                # Sadly, I've observed render errors on Windows, and bad
+                # GPU memory leaks leading to crashes on Linux. The software
+                # backend has been fine in all of these cases.
+                # In summary, it appears SDL's GPU backend (or the drivers)
+                # is too buggy to be worth the risk if not REALLY needed.
+                self._renderer = \
+                    sdl.SDL_CreateRenderer(self._sdl_window, -1,
+                        sdl.SDL_RENDERER_SOFTWARE)
+            else:
+                # On Android, enable GPU backend since it's vital for perf:
+                self._renderer = \
+                    sdl.SDL_CreateRenderer(self._sdl_window, -1,
+                        sdl.SDL_RENDERER_ACCELERATED)
+            if self._renderer != None and not self._renderer:
+                # Renderer is a null pointer. Void it again.
+                self._renderer = None
+                # We need to wait until we get focused and get another
+                # chance to set a proper renderer.
+                return False
+            self.needs_redraw = True
+        return (self._renderer is not None)
+
     def internal_app_reopen(self):
         if self.is_closed:
             return
@@ -274,23 +302,10 @@ cdef class Window(WidgetBase):
                 self.on_renderer_to_be_destroyed()
                 sdl.SDL_DestroyRenderer(self._renderer)
                 self._renderer = None
-        if self._renderer is None:
-            if config.get("software_renderer") or \
-                    not is_android():
-                # Sadly, I've observed render errors on Windows, and bad
-                # GPU memory leaks leading to crashes on Linux. The software
-                # backend has been fine in all of these cases.
-                # In summary, it appears SDL's GPU backend (or the drivers)
-                # is too buggy to be worth the risk if not REALLY needed.
-                self._renderer = \
-                    sdl.SDL_CreateRenderer(self._sdl_window, -1,
-                        sdl.SDL_RENDERER_SOFTWARE)
-            else:
-                # On Android, enable GPU backend since it's vital for perf:
-                self._renderer = \
-                    sdl.SDL_CreateRenderer(self._sdl_window, -1,
-                        sdl.SDL_RENDERER_ACCELERATED)
-            self.needs_redraw = True
+        if not self.ensure_renderer():
+            # Ooops. well, nothing we can do.
+            # (Can happen e.g. when on android and in background)
+            return
         self.update_to_real_sdlw_size()
         for child in self.children:
             child.renderer_update()
@@ -468,7 +483,7 @@ cdef class Window(WidgetBase):
         h = ctypes.c_int32()
         sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
             ctypes.byref(h))
-        if self._renderer != None:
+        if self._renderer is not None:
             w2 = ctypes.c_int32()
             h2 = ctypes.c_int32()
             if sdl.SDL_GetRendererOutputSize(self._renderer,
@@ -534,7 +549,7 @@ cdef class Window(WidgetBase):
         return return_value
 
     def do_redraw(self):
-        if self._sdl_window is None or self.renderer is None:
+        if not self.ensure_renderer():
             return
 
         # Work around potential SDL bug / race condition
