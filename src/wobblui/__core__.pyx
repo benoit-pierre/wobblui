@@ -541,8 +541,8 @@ def loading_screen_fix():
     if sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android":
         logdebug("Making sure loading screen will be hidden.")
-        from android.loadingscreen import remove_loading_screen
-        remove_loading_screen()
+        from android.loadingscreen import hide_loading_screen
+        hide_loading_screen()
 
 
 # Used to identify the "main" finger in multitouch used to continue sending
