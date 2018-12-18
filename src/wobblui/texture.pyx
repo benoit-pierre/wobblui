@@ -116,14 +116,15 @@ cdef class Texture(object):
 
     def _force_unload(self):
         global sdl_tex_count
-        if self._texture != None:
+        if self._texture is not None:
             try:
                 if config.get("debug_texture_references"):
                     logdebug("Texture._force_unload: " +
                         "definite dump of texture " + str(self) +
                         ", total still loaded: " + str(sdl_tex_count))
             finally:
-                sdl_tex_count -= 1
+                if sdl_tex_count is not None:
+                    sdl_tex_count -= 1
                 try:
                     sdl.SDL_DestroyTexture(self._texture)
                 except TypeError:
