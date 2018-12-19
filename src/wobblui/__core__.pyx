@@ -540,7 +540,6 @@ def _process_key_event(event,
 def loading_screen_fix():
     if sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android":
-        logdebug("Making sure loading screen will be hidden.")
         from android.loadingscreen import hide_loading_screen
         hide_loading_screen()
 
