@@ -291,12 +291,6 @@ cdef class Window(WidgetBase):
                 self.next_reopen_width,
                 self.next_reopen_height, sdl.SDL_WINDOW_SHOWN |
                 sdl.SDL_WINDOW_RESIZABLE)
-            if is_android():
-                # SDL is broken, sigh.
-                # see https://bugzilla.libsdl.org/show_bug.cgi?id=4424
-                sdl.SDL_SetWindowFullscreen(self._sdl_window,
-                    sdl.SDL_WINDOW_FULLSCREEN)
-                sdl.SDL_SetWindowFullscreen(self._sdl_window, 0)
             unhide = True
             if self._renderer != None:
                 self.on_renderer_to_be_destroyed()
