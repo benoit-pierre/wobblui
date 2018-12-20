@@ -40,6 +40,8 @@ class Conf(object):
             return False
         if value == "perf_debug":
             return False
+        if value == "debug_core_event_loop":
+            return False
         if value == "debug_events":
             return False
         if value == "debug_source_events":

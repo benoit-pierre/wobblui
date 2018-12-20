@@ -40,14 +40,14 @@ from wobblui.mouse import cursors_seen_during_mousemove,\
     reset_cursors_seen_during_mousemove, set_cursor
 from wobblui.osinfo import is_android
 from wobblui.perf cimport CPerf as Perf
-from wobblui.sdlinit import sdl_version
+from wobblui.sdlinit cimport sdl_version
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
 from wobblui.widgetman import all_widgets, all_windows
 from wobblui.window cimport get_focused_window,\
     get_window_by_sdl_id
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cdef long long sdl_touch_mouseid = 4294967295
 if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
@@ -181,6 +181,7 @@ def event_loop(app_cleanup_callback=None):
     try:
         font_no_sleep_counter = 0
         while True:
+            # Sleeping an appropriate amount of time:
             last_alive_time = time.monotonic()
             max_sleep = maximum_sleep_time()
             sleep_amount = event_loop_ms * 0.001
@@ -196,7 +197,12 @@ def event_loop(app_cleanup_callback=None):
                 font_no_sleep_counter -= 1
                 sleep_amount = 0
             if sleep_amount > 0.0005:
+                if sleep_amount > 1:
+                    logwarning("Bogus sleep value: " + str(sleep_amount) +
+                        " - too large??")
                 time.sleep(sleep_amount)
+
+            # Process events:
             result = do_event_processing(ui_active=True)
             if result == "appquit":
                 if app_cleanup_callback != None:
@@ -309,6 +315,10 @@ def do_event_processing(int ui_active=True):
         _last_clean_shortcuts_ts = time.monotonic()
     if _last_clean_shortcuts_ts + 1.0 < time.monotonic():
         clean_global_shortcuts()
+
+    if config.get("debug_core_event_loop") is True:
+        logdebug("do_event_processing(): fetching SDL " +
+            "events at " + str(time.monotonic()))
     events = []
     while True:
         ev = sdl.SDL_Event()
@@ -317,6 +327,9 @@ def do_event_processing(int ui_active=True):
             events.append(ev)
             continue
         break
+    if config.get("debug_core_event_loop") is True:
+        logdebug("do_event_processing(): done fetching SDL " +
+            "events at " + str(time.monotonic()))
     loading_screen_fix()
     update_multitouch()
     if len(events) == 0:
@@ -378,11 +391,18 @@ def do_event_processing(int ui_active=True):
         except Exception as e:
             logerror("*** ERROR IN EVENT HANDLER ***")
             logerror(str(traceback.format_exc()))
+    if config.get("debug_core_event_loop") is True:
+        logdebug("do_event_processing(): post event handling " +
+            "(window redraw, font job queue, ...) " +
+            "starting at " + str(time.monotonic()))
     redraw_windows(layout_only=True)
     internal_trigger_check(idle=False)
     internal_update_text_events()
     redraw_windows()
     sdlfont.process_jobs()
+    if config.get("debug_core_event_loop") is True:
+        logdebug("do_event_processing(): finished processing " +
+            "at " + str(time.monotonic()))
     return True
 
 def _process_mouse_click_event(event,
