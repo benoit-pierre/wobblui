@@ -127,9 +127,8 @@ cdef class Texture(object):
                     sdl_tex_count -= 1
                 try:
                     sdl.SDL_DestroyTexture(self._texture)
-                except TypeError:
-                    # We're shutting down and the SDL module is already
-                    # unloaded.
+                except (TypeError, AttributeError):
+                    # Most likely, we're shutting down -> SDL already gone
                     pass
                 self._texture = None
 
