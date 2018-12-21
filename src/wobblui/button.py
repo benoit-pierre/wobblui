@@ -60,6 +60,7 @@ class Button(Widget):
         self.contained_image_scale = 1.0
         self.contained_richtext_obj = None
         self.contained_image_pil = None
+        self.known_font_family = None
         self.text_layout_width = None
         self.text_scale = text_scale
         self._html = ""
@@ -69,6 +70,13 @@ class Button(Widget):
             self.border = 15.0
         if len(text) > 0:
             self.set_text(text)
+
+    @property
+    def font_family(self):
+        ff = self.style.get("widget_font_family")
+        if ff is None or len(ff.strip()) == 0:
+            return "TeX Gyre Heros"
+        return ff
 
     @property
     def html(self):
@@ -137,14 +145,16 @@ class Button(Widget):
         self.update_font_object()
 
     def update_font_object(self):
-        font_family = self.style.get("widget_font_family")
+        font_family = self.font_family
         px_size = round(self.style.get("widget_text_size") *
             self.text_scale)
-        if self.contained_richtext_obj is None:
+        if self.contained_richtext_obj is None or \
+                self.known_font_family != font_family:
             self.contained_richtext_obj = RichText(
                 font_family=font_family,
                 px_size=px_size,
                 draw_scale=self.dpi_scale)
+            self.known_font_family = font_family
         else:
             self.contained_richtext_obj.px_size = px_size
             self.contained_richtext_obj.draw_scale = self.dpi_scale
@@ -152,6 +162,7 @@ class Button(Widget):
         (self.text_layout_width,
             self.text_layout_height) = \
             self.contained_richtext_obj.layout()
+        self.needs_relayout = True
 
     def set_text(self, text):
         self.set_html(html.escape(text))
