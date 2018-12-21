@@ -121,12 +121,12 @@ cdef class RichTextObj:
             " y: " + str(self.y) + ">"
         return t
 
-fragment_draw_rect = None
 cdef class RichTextFragment(RichTextObj):
     cdef public object forced_text_color, surrounding_tags, align
     cdef object _cached_parts, _width_cache
     cdef int _cached_height
     cdef str _text
+    cdef str _known_font_family
 
     def __init__(self, text, font_family, int bold, int italic,
             int px_size, surrounding_tags=[],
@@ -146,10 +146,12 @@ cdef class RichTextFragment(RichTextObj):
         self._draw_scale = 1.0
         self._width_cache = dict()
         self._cached_height = -1
+        self._known_font_family = font_family
 
     def update_to_draw_scale(self, v):
         if abs(v - self._draw_scale) > 0.001:
             self._cached_height = -1
+            self._known_font_family = self.font_family
             self._width_cache = dict()
 
     @property
@@ -160,6 +162,7 @@ cdef class RichTextFragment(RichTextObj):
     def text(self, str v):
         self._cached_parts = None
         self._cached_height = -1
+        self._known_font_family = self.font_family
         self._width_cache = dict()
         self._text = str(v)
 
@@ -218,11 +221,8 @@ cdef class RichTextFragment(RichTextObj):
         return t
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
-        global fragment_draw_rect
         if len(self.text.strip()) == 0:
             return
-        if fragment_draw_rect is None:
-            fragment_draw_rect = sdl.SDL_Rect()
         perf_id = Perf.start("fragment draw part 1")
         if color is None:
             color = Color.black()
@@ -249,6 +249,7 @@ cdef class RichTextFragment(RichTextObj):
         return i
 
     def get_width_up_to_length(self, int index):
+        self.update_cache()
         index = max(0, min(index, len(self.text)))
         if index in self._width_cache:
             return self._width_cache[index]
@@ -262,7 +263,14 @@ cdef class RichTextFragment(RichTextObj):
         self._width_cache[index] = w
         return w
 
+    def update_cache(self):
+        if self._known_font_family != self.font_family:
+            self._cached_height = -1
+            self._width_cache = dict()
+            self._known_font_family = self.font_family
+
     def compute_height(self):
+        self.update_cache()
         if self._cached_height >= 0:
             return self._cached_height
         font = font_manager().get_font(self.font_family,
@@ -742,6 +750,7 @@ cdef class RichText:
                 Perf.stop(perf_10)
                 continue
             next_element.draw_scale = self.draw_scale
+            next_element.font_family = self.default_font_family
 
             # Skip empty fragments:
             part_amount = len(next_element.parts)

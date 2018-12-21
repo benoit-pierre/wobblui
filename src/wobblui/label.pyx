@@ -183,6 +183,7 @@ cdef class Label(ScrollbarDrawingWidget):
             self._layout_width = -1
             self._layout_height = -1
             self._layouted_for_width = -1
+            self.needs_relayout = True
 
     def on_relayout(self):
         self.font_size_refresh()
