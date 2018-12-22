@@ -322,8 +322,11 @@ cdef class Label(ScrollbarDrawingWidget):
 class ImageWithLabel(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,
             color_with_text_color=False):
-        super().__init__(with_border=False, clickable=False,
-            image_placement="left", text_scale=1.2)
+        super().__init__(
+            with_surrounding_frame=False,
+            clickable=False,
+            image_placement="left",
+            text_scale=1.2)
         self.original_image = image_path
         color = Color.white()
         if color_with_text_color:

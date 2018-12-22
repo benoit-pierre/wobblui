@@ -36,9 +36,15 @@ from wobblui.widget import Widget
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class Button(Widget):
-    def __init__(self, text="", with_border=True, clickable=True,
-            image_placement="left", text_scale=1.0,
-            override_bg_color=None, override_text_color=None):
+    def __init__(self,
+            text="",
+            with_surrounding_frame=True,
+            clickable=True,
+            image_placement="left",
+            text_scale=1.0,
+            override_bg_color=None,
+            override_text_color=None
+            ):
         super().__init__(is_container=False,
             can_get_focus=clickable)
         if clickable:
@@ -46,7 +52,7 @@ class Button(Widget):
         else:
             self.triggered = ForceDisabledDummyEvent(
                 "triggered", owner=self)
-        self.with_border = (with_border is True)
+        self.with_surrounding_frame = (with_surrounding_frame is True)
         self._image_draw_scaledown = 1.0
         self.image_placement = image_placement
         self._image_color = Color.white()
@@ -66,7 +72,7 @@ class Button(Widget):
         self._html = ""
         self.extra_image_render_func = None
         self.border = 5.0
-        if with_border:
+        if with_surrounding_frame:
             self.border = 15.0
         if len(text) > 0:
             self.set_text(text)
@@ -187,9 +193,9 @@ class Button(Widget):
         if self.renderer is None:
             return
         self.update_texture_color()
-        if self.with_border:
+        if self.with_surrounding_frame:
             c = Color.white()
-            if self.style != None:
+            if self.style is not None:
                 c = Color(self.style.get("button_bg"))
             if self.override_bg_color != None:
                 c = self.override_bg_color
@@ -198,6 +204,21 @@ class Button(Widget):
                 self.width - fill_border * 2,
                 self.height - fill_border * 2,
                 color=c)
+            border_color = None
+            if self.style is not None and \
+                    self.style.has("button_border"):
+                border_color = Color(self.style.get("button_border"))
+            if border_color is not None:
+                draw_rectangle(self.renderer,
+                    fill_border, self.height - max(1, fill_border) * 2,
+                    self.width - fill_border * 2,
+                    max(1, fill_border),
+                    color=border_color)
+                draw_rectangle(self.renderer,
+                    self.width - max(1, fill_border), fill_border,
+                    max(1, fill_border),
+                    self.height - fill_border * 2,
+                    color=border_color)
         offset_x = round(self.border_size)
         full_available_size = round(self.width - (offset_x * 2))
         if full_available_size < 0:
@@ -280,7 +301,7 @@ class Button(Widget):
 class ImageButton(Button):
     def __init__(self, image, scale_to_width=33,
             clickable=True):
-        super().__init__(with_border=False,
+        super().__init__(with_surrounding_frame=False,
             clickable=clickable)
         self.original_image = image
         self.set_image(image, scale_to_width=scale_to_width)
@@ -318,7 +339,7 @@ class CircleImageButton(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,
             inner_image_scale=1.0,
             circle_color=None):
-        super().__init__(with_border=False, clickable=True)
+        super().__init__(with_surrounding_frame=False, clickable=True)
         self.image_path = image_path
         self.circle_pil = None
         self.circle_img = None
