@@ -34,7 +34,7 @@ import wobblui.font.manager
 from wobblui.gfx cimport clear_renderer_gfx, draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.sdlinit cimport initialize_sdl
-from wobblui.style import AppStyleDark
+from wobblui.style import AppStyle, AppStyleDark
 cimport wobblui.texture
 from wobblui.uiconf import config
 from wobblui.widget_base cimport WidgetBase
@@ -49,6 +49,18 @@ cpdef get_focused_window():
             continue
         return w
     return None
+
+cpdef apply_style_to_all_windows(object style):
+    style = style.copy()
+    new_w_refs = []
+    for w_ref in all_windows:
+        w = w_ref()
+        if w is None:
+            continue
+        new_w_refs.append(w_ref)
+        w.style = style
+    all_windows[:] = new_w_refs
+    trigger_global_style_changed()
 
 cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
     logdebug("manual DPI change triggered on all windows by " +
@@ -639,4 +651,3 @@ cdef class Window(WidgetBase):
         if not isinstance(other_obj, Window):
             return False
         return True
-

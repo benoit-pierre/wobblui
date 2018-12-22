@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 from wobblui.widget_base cimport WidgetBase
+from wobblui.style import AppStyle
 
 cdef class Window(WidgetBase):
     cdef object mouse_position_cache, _renderer, _style
@@ -32,6 +33,8 @@ cdef class Window(WidgetBase):
     cdef str _title
     cdef int next_reopen_width, next_reopen_height
     cdef object last_known_dpi_scale, schedule_global_dpi_scale_update
+
+cpdef apply_style_to_all_windows(object style)
 
 cpdef get_focused_window()
 

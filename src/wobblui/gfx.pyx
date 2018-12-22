@@ -247,14 +247,20 @@ cpdef draw_font(renderer, text, x, y,
         px_size=px_size)
     if font != None:
         tex = font.\
-            get_cached_rendered_texture(renderer, text,
-                color=Color.white())
-        if tex != None:
-            sdl.SDL_SetTextureColorMod(tex._texture,
-                round(color.value_red),
-                round(color.value_green),
-                round(color.value_blue))
-            tex.draw(round(x), round(y))
+            get_cached_rendered_texture(renderer, text)
+        if color is None:
+            color = Color.white()
+        tex.set_color(color)
+        tex.draw(round(x), round(y))
+
+cpdef is_font_available(font_family, bold=False, italic=False):
+    try:
+        f = font_manager().get_font(font_family, bold=bold, italic=italic)
+        # intentionally unused, will cause error if no such font:
+        sdlf = f.get_sdl_font()
+    except ValueError:
+        return False
+    return True
 
 cpdef get_draw_font_size(text,
         font_family="Sans Serif",

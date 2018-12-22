@@ -44,6 +44,12 @@ cpdef draw_font(renderer, text, x, y,
         px_size=*, bold=*, italic=*,
         color=*)
 
+cpdef is_font_available(
+    font_family,
+    bold=*,
+    italic=*
+    )
+
 cpdef get_draw_font_size(text,
         font_family=*,
         px_size=*, bold=*, italic=*,
