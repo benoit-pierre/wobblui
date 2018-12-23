@@ -910,6 +910,8 @@ cdef class WidgetBase:
                     (x, y) = self.get_mouse_pos(event_args[0])
                 else:
                     (x, y) = self.parent_window.get_mouse_pos(event_args[0])
+                x -= self.abs_x  # will be shifted back again later
+                y -= self.abs_y  # will be shifted back again later
         elif event_name.startswith("touch"):
             mouse_id = -1
             x = event_args[0]
@@ -1141,8 +1143,12 @@ cdef class WidgetBase:
         cdef int force_no_more_matches = False
         cdef int rel_x = x - self.abs_x
         cdef int rel_y = y - self.abs_y
-        cdef int hit_check_rx = hit_check_x - self.abs_x
-        cdef int hit_check_ry = hit_check_y - self.abs_y
+        # Get relative hitcheck (with mouse event shift child will also
+        # apply itself later):
+        cdef int hit_check_rx = hit_check_x - self.abs_x +\
+            self._child_mouse_event_shift_x
+        cdef int hit_check_ry = hit_check_y - self.abs_y +\
+            self._child_mouse_event_shift_y
         Perf.chain(chain_id, "propagate_start")
         for child in child_list:
             if child.parent != self or (child.type != "window" and
