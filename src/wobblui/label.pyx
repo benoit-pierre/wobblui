@@ -88,6 +88,9 @@ cdef class Label(ScrollbarDrawingWidget):
                 self.text_scale)
         return px_size
 
+    def get_text(self):
+        return self.text
+
     def set_text(self, v):
         self.text = v
 
