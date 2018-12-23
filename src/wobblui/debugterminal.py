@@ -69,7 +69,12 @@ class DebugTerminal(VBox):
                     self.interactive_console = code.InteractiveConsole()
                 try:
                     bytesobj = io.BytesIO()
-                    f = io.TextIOWrapper(bytesobj, sys.stdout.encoding) 
+                    enc = "utf-8"
+                    try:
+                        enc = sys.stdout.encoding
+                    except AttributeError:
+                        pass
+                    f = io.TextIOWrapper(bytesobj, enc)
                     with contextlib.redirect_stdout(f):
                         with contextlib.redirect_stderr(f):
                             if not handle_special_command(text):
