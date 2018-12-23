@@ -149,8 +149,8 @@ cdef class Window(WidgetBase):
         # Now that SDL window is open, we can access screen geometry:
         if self._sdl_window != None:
             scale = self.screen_based_scale()
-            # Correct our initial size:
-            if scale > 1.0:
+            # Correct our initial size if not on android:
+            if scale > 1.0 and not is_android():
                 self._width = round(width * scale)
                 self._height = round(height * scale)
                 sdl.SDL_SetWindowSize(self._sdl_window,
