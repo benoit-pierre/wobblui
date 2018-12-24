@@ -523,7 +523,7 @@ cdef class Window(WidgetBase):
         return self._style
 
     def set_style(self, style):
-        self._style = style
+        self._style = style.copy()
         self.needs_relayout = True
         self.recursive_needs_redraw()
         self.redraw()

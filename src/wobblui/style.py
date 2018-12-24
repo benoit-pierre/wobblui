@@ -31,6 +31,9 @@ class AppStyle(object):
         #    self._dpi_scale_base = 1.2
         self.values = dict()
 
+    def __repr__(self):
+        return "AppStyle<" + str(self.values) + ">"
+
     def copy(self):
         copied_style = AppStyle()
         copied_style._dpi_scale = self._dpi_scale

@@ -1339,9 +1339,10 @@ cdef class WidgetBase:
 
     @style.setter
     def style(self, v):
-        if not hasattr(self, "style"):
+        if not hasattr(self, "set_style"):
             raise RuntimeError("this item doesn't support " +
                 "setting a style")
+        self.set_style(v)
 
     def get_style(self):
         return None
