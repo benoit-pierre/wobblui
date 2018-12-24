@@ -150,7 +150,8 @@ cdef class Window(WidgetBase):
         if self._sdl_window != None:
             scale = self.screen_based_scale()
             # Correct our initial size if not on android:
-            if scale > 1.0 and not is_android():
+            if abs(scale - 1.0) > 0.1 and not is_android():
+                logdebug("DPI-scaling new window by " + str(scale) + "x")
                 self._width = round(width * scale)
                 self._height = round(height * scale)
                 sdl.SDL_SetWindowSize(self._sdl_window,
