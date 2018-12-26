@@ -90,66 +90,74 @@ cdef redraw_windows(int layout_only=False):
 def sdl_vkey_map(int key):
     if key >= sdl.SDLK_0 and key <= sdl.SDLK_9:
         return chr(ord("0") + (key - sdl.SDLK_0))
-    if key >= sdl.SDLK_a and key <= sdl.SDLK_z:
+    elif key >= sdl.SDLK_a and key <= sdl.SDLK_z:
         return chr(ord("a") + (key - sdl.SDLK_a))
-    if key == sdl.SDLK_KP_TAB or key == sdl.SDLK_TAB:
+    elif key == sdl.SDLK_KP_TAB or key == sdl.SDLK_TAB:
         return "tab"
-    if key == sdl.SDLK_LALT:
+    elif key == sdl.SDLK_LALT:
         return "lalt"
-    if key == sdl.SDLK_RALT:
+    elif key == sdl.SDLK_RALT:
         return "ralt"
-    if key == sdl.SDLK_LCTRL:
+    elif key == sdl.SDLK_LCTRL:
         return "lctrl"
-    if key == sdl.SDLK_RCTRL:
+    elif key == sdl.SDLK_RCTRL:
         return "rctrl"
-    if key == sdl.SDLK_DOWN:
+    elif key == sdl.SDLK_DOWN:
         return "down"
-    if key == sdl.SDLK_UP:
+    elif key == sdl.SDLK_UP:
         return "up"
-    if key == sdl.SDLK_LEFT:
+    elif key == sdl.SDLK_LEFT:
         return "left"
-    if key == sdl.SDLK_RIGHT:
+    elif key == sdl.SDLK_RIGHT:
         return "right"
-    if key == sdl.SDLK_ESCAPE:
+    elif key == sdl.SDLK_ESCAPE:
         return "escape"
-    if key == sdl.SDLK_RETURN or \
+    elif key == sdl.SDLK_RETURN or \
             key == sdl.SDLK_RETURN2:
         return "return"
-    if key == sdl.SDLK_BACKSPACE:
+    elif key == sdl.SDLK_BACKSPACE:
         return "backspace"
-    if key == sdl.SDLK_SPACE:
+    elif key == sdl.SDLK_SPACE:
         return "space"
-    if key == sdl.SDLK_AC_BACK:
+    elif key == sdl.SDLK_AC_BACK:
         return "back"
-    return str("scancode-" + str(key))
+    elif key == sdl.SDLK_PAGEDOWN:
+        return "pagedown"
+    elif key == sdl.SDLK_PAGEUP:
+        return "pageup"
+    return str("keycode-" + str(key))
 
 def sdl_key_map(int key):
     if key >= sdl.SDL_SCANCODE_0 and key <= sdl.SDL_SCANCODE_9:
         return chr(ord("0") + (key - sdl.SDL_SCANCODE_0))
-    if key >= sdl.SDL_SCANCODE_A and key <= sdl.SDL_SCANCODE_Z:
+    elif key >= sdl.SDL_SCANCODE_A and key <= sdl.SDL_SCANCODE_Z:
         return chr(ord("a") + (key - sdl.SDL_SCANCODE_A))
-    if key == sdl.SDL_SCANCODE_KP_TAB or key == sdl.SDL_SCANCODE_TAB:
+    elif key == sdl.SDL_SCANCODE_KP_TAB or key == sdl.SDL_SCANCODE_TAB:
         return "tab"
-    if key == sdl.SDL_SCANCODE_AC_BACK:
+    elif key == sdl.SDL_SCANCODE_AC_BACK:
         return "back"
-    if key == sdl.SDL_SCANCODE_DOWN:
+    elif key == sdl.SDL_SCANCODE_DOWN:
         return "down"
-    if key == sdl.SDL_SCANCODE_UP:
+    elif key == sdl.SDL_SCANCODE_UP:
         return "up"
-    if key == sdl.SDL_SCANCODE_LEFT:
+    elif key == sdl.SDL_SCANCODE_LEFT:
         return "left"
-    if key == sdl.SDL_SCANCODE_RIGHT:
+    elif key == sdl.SDL_SCANCODE_RIGHT:
         return "right"
-    if key == sdl.SDL_SCANCODE_ESCAPE:
+    elif key == sdl.SDL_SCANCODE_ESCAPE:
         return "escape"
-    if key == sdl.SDL_SCANCODE_RETURN or \
+    elif key == sdl.SDL_SCANCODE_RETURN or \
             key == sdl.SDL_SCANCODE_RETURN2:
         return "return"
-    if key == sdl.SDL_SCANCODE_BACKSPACE:
+    elif key == sdl.SDL_SCANCODE_BACKSPACE:
         return "backspace"
-    if key == sdl.SDL_SCANCODE_SPACE:
+    elif key == sdl.SDL_SCANCODE_SPACE:
         return "space"
-    return str("keycode-" + str(key))
+    elif key == sdl.SDL_SCANCODE_PAGEDOWN:
+        return "pagedown"
+    elif key == sdl.SDL_SCANCODE_PAGEUP:
+        return "pageup"
+    return str("scancode-" + str(key))
 
 stuck_thread = None
 last_alive_time = None
