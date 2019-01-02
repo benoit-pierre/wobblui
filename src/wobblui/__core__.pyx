@@ -269,6 +269,8 @@ def sdl_event_name(event):
             return "windowfocusgained"
         elif event.window.event == sdl.SDL_WINDOWEVENT_RESIZED:
             return "windowresized"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_SIZE_CHANGED:
+            return "windowsizechanged"
         elif event.window.event == sdl.SDL_WINDOWEVENT_CLOSE:
             return "windowclose"
         elif event.window.event == sdl.SDL_WINDOWEVENT_HIDDEN:
