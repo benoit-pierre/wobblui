@@ -24,6 +24,8 @@ import ctypes
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
 
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+
 sdl_init_done = False
 cpdef void initialize_sdl():
     global sdl_init_done
@@ -31,6 +33,7 @@ cpdef void initialize_sdl():
         return
     sdl_init_done = True
 
+    loginfo("Setting SDL2 settings")
     sdl.SDL_SetHintWithPriority(b"SDL_HINT_ORIENTATIONS",
         b"LandscapeLeft LandscapeRight Portrait PortraitUpsideDown",
         sdl.SDL_HINT_OVERRIDE)
@@ -47,7 +50,10 @@ cpdef void initialize_sdl():
         sdl.SDL_HINT_OVERRIDE)
     subsystems = sdl.SDL_WasInit(sdl.SDL_INIT_EVERYTHING)
     if not (subsystems & sdl.SDL_INIT_VIDEO):
+        loginfo("Calling SDL_Init")
         sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER)
+    else:
+        loginfo("NOT calling SDL_Init, already initialized")
 
 cpdef tuple sdl_version():
     v = sdl.SDL_version()

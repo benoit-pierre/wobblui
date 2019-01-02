@@ -24,6 +24,7 @@ import sdl2 as sdl
 import weakref
 
 from wobblui.widgetman import all_windows
+from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 exit_callbacks = list()
 registered_shortcuts = list()
@@ -293,10 +294,12 @@ def internal_update_text_events():
     # Update SDL text input state accordingly to available active widgets:
     if len(current_text_events_active_widgets) > 0 and \
             text_input_suspended:
+        logdebug("Focus went to text widget, starting text input...")
         sdl.SDL_StartTextInput()
         text_input_suspended = False
     elif len(current_text_events_active_widgets) == 0 and \
             not text_input_suspended:
+        logdebug("Focus left text widget, ending text input...")
         sdl.SDL_StopTextInput()
         text_input_suspended = True
 
