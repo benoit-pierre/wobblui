@@ -303,7 +303,8 @@ cdef class Window(WidgetBase):
                 sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
                 self.next_reopen_width,
                 self.next_reopen_height, sdl.SDL_WINDOW_SHOWN |
-                sdl.SDL_WINDOW_RESIZABLE)
+                sdl.SDL_WINDOW_RESIZABLE |
+                sdl.SDL_WINDOW_ALLOW_HIGHDPI)
             unhide = True
             if self._renderer != None:
                 self.on_renderer_to_be_destroyed()
