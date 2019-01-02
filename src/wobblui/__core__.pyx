@@ -359,6 +359,8 @@ def do_event_processing(int ui_active=True):
                         sdl.SDL_WINDOWEVENT_FOCUS_LOST and
                         event.window.event !=
                         sdl.SDL_WINDOWEVENT_RESIZED and
+                        event.widnow.event !=
+                        sdl.SDL_WINDOWEVENT_SIZE_CHANGED and
                         event.window.event !=
                         sdl.SDL_WINDOWEVENT_CLOSE and
                         event.window.event !=
@@ -890,7 +892,9 @@ def _handle_event(event):
                 w.redraw()
                 internal_update_text_events()
         elif event.window.event == \
-                sdl.SDL_WINDOWEVENT_RESIZED:
+                sdl.SDL_WINDOWEVENT_RESIZED or \
+                event.window.event == \
+                sdl.SDL_WINDOWEVENT_SIZE_CHANGED:
             w = get_window_by_sdl_id(event.window.windowID)
             if w != None and not w.is_closed:
                 w.update_to_real_sdlw_size()
