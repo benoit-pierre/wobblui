@@ -361,7 +361,7 @@ def do_event_processing(int ui_active=True):
                         sdl.SDL_WINDOWEVENT_FOCUS_LOST and
                         event.window.event !=
                         sdl.SDL_WINDOWEVENT_RESIZED and
-                        event.widnow.event !=
+                        event.window.event !=
                         sdl.SDL_WINDOWEVENT_SIZE_CHANGED and
                         event.window.event !=
                         sdl.SDL_WINDOWEVENT_CLOSE and
