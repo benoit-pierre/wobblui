@@ -10,11 +10,11 @@ cross-platform!
 **Features**:
 
 - *Cross-platform:* Works on Windows, Linux, and [Android](https://github.com/kivy/python-for-android)
-- *Consistent:* looks the same on all supported platforms
-- *Self-contained:* no dependency on other libraries outside of `PySDL2` and `PIL`, and all code is pure python
+- *Versatile:* multi-window and HTML richtext support
 - *Efficient:* uses lazy redraw and lazy relayouting to avoid battery drain during idle
-- *Customizable:* easy support for custom widgets and simple styling
-- *Versatile:* proper richtext support with HTML parser to set formatting
+- *Consistent:* looks & works the same on all supported platforms
+- *Self-contained:* has few dependencies, and all code is Python or Cython
+- *Customizable:* allows custom widgets and styling
 
 Installation
 ------------
