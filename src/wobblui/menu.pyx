@@ -235,7 +235,7 @@ class ContainerWithSlidingMenu(Widget):
                 self_value.animation_callback_scheduled = False
                 self_value.animate(max(0.01, time.monotonic() -
                     start_ts))
-            schedule(anim_do, 0.05)
+            schedule(anim_do, 0.01)
 
     def animate(self, passed_time):
         if self.slide_animation_target is None:
