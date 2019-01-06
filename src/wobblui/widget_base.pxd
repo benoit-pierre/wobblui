@@ -32,7 +32,7 @@ cdef class WidgetBase:
     cdef public int continue_infinite_scroll_when_unfocused
     cdef public int fake_mouse_even_with_native_touch_support
     cdef public int has_native_touch_support, takes_text_input
-    cdef int _prevent_mouse_event_propagate
+    cdef public int _prevent_mouse_event_propagate
     cdef public int needs_relayout
     cdef public int generate_double_click_for_touches 
     cdef public int _x, _y, _width, _height, _max_width, _max_height
@@ -59,7 +59,7 @@ cdef class WidgetBase:
     cdef public int last_seen_infinitescroll_touch_x,\
         last_seen_infinitescroll_touch_y, touch_in_progress,\
         have_scheduled_scroll_checker
-    cdef public double last_infinite_ts  # for drag-fast-and-let-go scrolling
+    cdef public double last_infinite_ts  # (for drag-and-let-go scrolling)
     cdef public object touch_start_x, touch_start_y  # nullable
     cdef public double touch_max_ever_distance
     cdef public double touch_start_time

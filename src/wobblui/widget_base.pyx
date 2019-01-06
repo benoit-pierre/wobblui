@@ -623,15 +623,16 @@ cdef class WidgetBase:
             faked_event = True
             if self.last_infinite_ts == 0:
                 self.last_infinite_ts = max(0.1, now)
-            duration = min(1.0, now - self.last_infinite_ts)
-            i = 0
-            while i < 5:
-                self.touch_vel_x *= min(0.999, 1.0 - duration * 0.1)
-                self.touch_vel_y *= min(0.999, 1.0 - duration * 0.1)
-                i += 1
-            self.last_infinite_ts = now
-            effective_vel_x = self.touch_vel_x * duration
-            effective_vel_y = self.touch_vel_y * duration
+
+            effective_vel_x = 0
+            effective_vel_y = 0
+            duration = 0.01
+            while self.last_infinite_ts < now:
+                self.last_infinite_ts += duration
+                self.touch_vel_x *= 0.98
+                self.touch_vel_y *= 0.98
+                effective_vel_x += self.touch_vel_x * duration
+                effective_vel_y += self.touch_vel_y * duration
             self.last_seen_infinitescroll_touch_x += effective_vel_x
             self.last_seen_infinitescroll_touch_y += effective_vel_y
             scalar = 0.3
@@ -639,12 +640,14 @@ cdef class WidgetBase:
             old_value = self._in_touch_fake_event_processing
             try:
                 self._in_touch_fake_event_processing = True
-                self.mousewheel(0,
-                    effective_vel_x * scalar,
-                    effective_vel_y * scalar,
-                    internal_data=[
-                    self.last_seen_infinitescroll_touch_x + self.abs_x,
-                    self.last_seen_infinitescroll_touch_y + self.abs_y])
+                if (abs(effective_vel_x * scalar) +
+                        abs(effective_vel_y * scalar)) > 0.001:
+                    self.mousewheel(0,
+                        effective_vel_x * scalar,
+                        effective_vel_y * scalar,
+                        internal_data=[
+                        self.last_seen_infinitescroll_touch_x + self.abs_x,
+                        self.last_seen_infinitescroll_touch_y + self.abs_y])
             finally:
                 self._in_touch_fake_event_processing = old_value
                 self._prevent_mouse_event_propagate = False
