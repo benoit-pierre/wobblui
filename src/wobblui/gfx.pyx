@@ -271,3 +271,90 @@ cpdef get_draw_font_size(text,
         px_size=px_size)
     return font.render_size(text)
 
+cdef int clipping_is_enabled(object renderer):
+    try:
+        return (sdl.SDL_RenderIsClipEnabled() == 1)
+    except AttributeError:
+        # Old PySDL2 versions
+        r = sdl.SDL_Rect()
+        sdl.SDL_RenderGetClipRect(
+            renderer,
+            ctypes.byref(r))
+        if r.w <=0 and r.h <= 0:
+            return False
+        return True
+
+previous_clip_stacks_by_renderer = dict()
+cpdef push_render_clip(renderer, _x, _y, _w, _h):
+    global previous_clip_stacks_by_renderer
+    cdef int x, y, w, h
+    x = round(_x)
+    y = round(_y)
+    w = round(_w)
+    h = round(_h)
+
+    renderer_key = str(ctypes.addressof(renderer.contents))
+    if renderer_key not in previous_clip_stacks_by_renderer:
+        previous_clip_stacks_by_renderer[renderer_key] =\
+            list()
+    cdef list previous_clip_stack = \
+        previous_clip_stacks_by_renderer[renderer_key]
+
+    if clipping_is_enabled(renderer):
+        previous_clip_r = sdl.SDL_Rect()
+        sdl.SDL_RenderGetClipRect(
+            renderer,
+            ctypes.byref(previous_clip_r))
+        previous_clip_stack.append((
+            previous_clip_r.x, previous_clip_r.y,
+            previous_clip_r.w, previous_clip_r.h
+        ))
+        del(previous_clip_r)
+    if len(previous_clip_stack) > 0:
+        for previous_clip in previous_clip_stack:
+            if x < previous_clip[0]:
+                move_amount = max(previous_clip[0], x) - x
+                x += move_amount
+                w = max(0, w - move_amount)
+            if y < previous_clip[1]:
+                move_amount = max(previous_clip[1], y) - y
+                y += move_amount
+                h = max(1, h - move_amount)
+            w = min(
+                max(0, previous_clip[2] - max(0, x - previous_clip[0])),
+                w
+                )
+            h = min(
+                max(0, previous_clip[3] - max(0, y - previous_clip[1])),
+                h
+                )
+    _apply_clip_rect(renderer, x, y, w, h)
+
+cdef _apply_clip_rect(object renderer, int x, int y, int w, int h):
+    new_clip = sdl.SDL_Rect()
+    new_clip.x = x
+    new_clip.y = y
+    new_clip.w = max(0, w)
+    new_clip.h = max(0, h)
+    if sdl.SDL_RenderSetClipRect(renderer, new_clip) != 0:
+        raise RuntimeError("failed to apply clip rect")
+
+cpdef pop_render_clip(renderer):
+    global previous_clip_stacks_by_renderer
+    renderer_key = str(ctypes.addressof(renderer.contents))
+    if renderer_key not in previous_clip_stacks_by_renderer:
+        previous_clip_stacks_by_renderer[renderer_key] =\
+            list()
+    cdef list previous_clip_stack = \
+        previous_clip_stacks_by_renderer[renderer_key]
+
+    if len(previous_clip_stack) > 0:
+        _apply_clip_rect(renderer,
+            previous_clip_stack[-1][0],
+            previous_clip_stack[-1][1],
+            previous_clip_stack[-1][2],
+            previous_clip_stack[-1][3])
+        previous_clip_stack = previous_clip_stack[:-1]
+    else:
+        sdl.SDL_RenderSetClipRect(renderer, None)
+

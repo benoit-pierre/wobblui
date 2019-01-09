@@ -55,3 +55,7 @@ cpdef get_draw_font_size(text,
         px_size=*, bold=*, italic=*,
         color=*)
 
+cpdef push_render_clip(renderer, _x, _y, _w, _h)
+
+cpdef pop_render_clip(renderer)
+

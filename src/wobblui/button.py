@@ -27,7 +27,7 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.event import ForceDisabledDummyEvent, Event
-from wobblui.gfx import draw_rectangle
+from wobblui.gfx import draw_rectangle, pop_render_clip, push_render_clip
 from wobblui.image import RenderImage, stock_image
 from wobblui.richtext import RichText
 from wobblui.texture import Texture
@@ -215,7 +215,8 @@ class Button(Widget):
                     max(1, fill_border),
                     color=border_color)
                 draw_rectangle(self.renderer,
-                    self.width - max(1, fill_border), fill_border,
+                    self.width - max(1, fill_border) * 2,
+                    fill_border,
                     max(1, fill_border),
                     self.height - fill_border * 2,
                     color=border_color)
@@ -224,14 +225,14 @@ class Button(Widget):
         if full_available_size < 0:
             return
         used_up_size = (self.text_layout_width or 0)
-        if self.contained_image_pil != None:
+        if self.contained_image_pil is not None:
             used_up_size += math.ceil(
                 self.contained_image_pil.size[0] *
                 self.contained_image_scale * self.dpi_scale) +\
                 round(self.border_size * 0.7)
         extra_size = max(0, full_available_size - used_up_size)
         offset_x += max(0, math.floor(extra_size / 2.0))
-        if self.contained_image != None:
+        if self.contained_image is not None:
             x = offset_x
             y = round(self.border_size)
             w_full_float = (self.contained_image_pil.size[0] *
@@ -262,10 +263,19 @@ class Button(Widget):
             if self.override_text_color != None:
                 c = self.override_text_color
             sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
-            self.contained_richtext_obj.draw(
-                self.renderer, offset_x,
-                round(self.height / 2.0 - self.text_layout_height / 2.0),
-                color=c, draw_scale=self.dpi_scale)
+            if self.with_surrounding_frame:
+                push_render_clip(self.renderer,
+                    fill_border, fill_border,
+                    self.width - fill_border * 2,
+                    self.height - fill_border * 2)
+            try:
+                self.contained_richtext_obj.draw(
+                    self.renderer, offset_x,
+                    round(self.height / 2.0 - self.text_layout_height / 2.0),
+                    color=c, draw_scale=self.dpi_scale)
+            finally:
+                if self.with_surrounding_frame:
+                    pop_render_clip(self.renderer)
         if self.focused:
             focus_padding = round(2.0 * self.dpi_scale)
             self.draw_keyboard_focus(
