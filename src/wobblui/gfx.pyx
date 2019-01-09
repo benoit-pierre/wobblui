@@ -356,5 +356,9 @@ cpdef pop_render_clip(renderer):
             previous_clip_stack[-1][3])
         previous_clip_stack = previous_clip_stack[:-1]
     else:
+        if not clipping_is_enabled(renderer):
+            raise RuntimeError("no clipping active")
         sdl.SDL_RenderSetClipRect(renderer, None)
-
+        if clipping_is_enabled(renderer):
+            raise RuntimeError("internal error: " +
+                "unexpectedly failed to clear clip")
