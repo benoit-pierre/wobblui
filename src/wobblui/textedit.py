@@ -356,10 +356,32 @@ class TextEditBase(Widget):
             self.selection_length = 0
             self.needs_redraw = True
 
+    def on_mousedown(self, mouse_id, button, mx, my):
+        if button == 2:
+            self.update()
+            self.move_cursor_to_mouse(mx, my)
+            if not self.is_mouse_event_actually_touch():
+                # Regular desktop mode right-click:
+                raise RuntimeError("not implemented")
+            else:
+                # This is actually a touch long press:
+                self.select_full_word_at_cursor()
+            return
+        elif button == 1:
+            self.move_cursor_to_mouse(mx, my)
+            self.selection_length = 0
+            self.update()
+
     def on_doubleclick(self, mouse_id, button, x, y):
+        self.move_cursor_to_mouse(x, y)
+        self.select_full_word_at_cursor()
+
+    def move_cursor_to_mouse(self, mx, my):
         self.cursor_offset = max(0, min(len(self.text) - 1,
             self.mouse_offset_to_cursor_offset(
-                x, y)))
+                mx, my)))
+
+    def select_full_word_at_cursor(self):
         word_start = max(0, self.cursor_offset)
         word_end = max(0, self.cursor_offset)
         word_seps = set([" ", "\n", "\t", ",", ":",
