@@ -209,8 +209,8 @@ class TextEditBase(Widget):
         if not hasattr(self, "_mouse_dragging") or \
                 not self._mouse_dragging:
             self._mouse_dragging = True
-            self._mouse_drag_start = x
-            self._mouse_drag_end = y
+            self._mouse_drag_x = x
+            self._mouse_drag_y = y
             self._known_mouse_pos = -1
         self.process_mouse_drag(x, y)
 
@@ -219,7 +219,7 @@ class TextEditBase(Widget):
                 not self._mouse_dragging:
             return
         start_pos = self.mouse_offset_to_cursor_offset(
-            self._mouse_drag_start, self._mouse_drag_end)
+            self._mouse_drag_x, self._mouse_drag_y)
         end_pos = self.mouse_offset_to_cursor_offset(
             x, y)
         if self._known_mouse_pos == end_pos:
@@ -374,22 +374,42 @@ class TextEditBase(Widget):
         self.selection_length = (word_end - word_start)
         self.update()
 
-    def draw_touch_selection_handles_if_any(self, overall_w, overall_h):
+    def move_touch_selection_handle(self,
+            first_one, target_x, target_y, target_h):
+        if self.selection_length <= 0:
+            return None
+        if first_one:
+            new_pos = self.mouse_offset_to_cursor_offset(
+                x, y)
+            if new_pos >= 0:
+                move_diff = (new_pos - self.cursor_offset)
+                self.cursor_offset += move_diff
+                self.selection_length =\
+                    self.selection_length - move_diff
+        else:
+            new_pos = self.mouse_offset_to_cursor_offset(
+                x, y)
+            if new_pos >= 0:
+                move_diff = (new_pos - (self.cursor_offset
+                    + self.selection_length))
+                self.selection_length += move_diff
         if self.selection_length == 0:
-            return
+            self.selection_length = 1
 
-        sx = round(self.abs_x)
-        sy = round(self.abs_y)
+    def get_touch_selection_positions(self):
+        if self.selection_length <= 0:
+            return None
         (x1, y1, h1) = self.text_obj.character_index_to_offset(
             max(0, self.cursor_offset or 0))
         (x2, y2, h2) = self.text_obj.character_index_to_offset(
             max(0, self.cursor_offset or 0) +
             self.selection_length)
-        self.draw_selection_drag_and_copy_ui(
-            sx + self.padding + x1,
-            sy + self.padding + y1, h1,
-            sx + self.padding + x2,
-            sy + self.padding + y2, h2)
+        return (
+            self.padding + x1,
+            self.padding + y1, h1,
+            self.padding + x2,
+            self.padding + y2, h2
+            )
 
     def do_redraw(self):
         border_size = max(1, round(1.0 * self.dpi_scale))

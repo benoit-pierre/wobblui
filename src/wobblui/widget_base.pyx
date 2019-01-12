@@ -288,10 +288,26 @@ cdef class WidgetBase:
             self._cursor = self.get_default_cursor() or "normal"
         return self._cursor
 
-    def draw_touch_selection_handles_if_any(self,
-            window_width, window_height):
-        """ Needs to be implemented by concrete widgets."""
+    def draw_touch_selection_handles_if_any(self, overall_w, overall_h):
+        positions = self.get_touch_selection_positions()
+        if positions is None:
+            return
+        sx = round(self.abs_x)
+        sy = round(self.abs_y)
+        self.draw_selection_drag_and_copy_ui(
+            max(2, positions[0] + sx),
+            max(2, positions[1] + sy), max(2, positions[2]),
+            max(2, positions[3] + sx),
+            max(2, positions[4] + sy), max(2, positions[5]))
+
+    def move_touch_selection_handle(self,
+            left_one, target_x, target_y, target_h):
+        """ Needs to be implemented by concrete widgets. """
         pass
+
+    def get_touch_selection_positions(self):
+        """ Needs to be implemented by concrete widgets. """
+        return None
 
     def mouse_event_param_adjustment(self, event_name, owner,
             *args, internal_data=None):
