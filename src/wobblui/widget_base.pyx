@@ -292,6 +292,7 @@ cdef class WidgetBase:
         positions = self.get_touch_selection_positions()
         if positions is None:
             return
+        assert(len(positions) >= 6 and positions[0] is not None)
         sx = round(self.abs_x)
         sy = round(self.abs_y)
         self.draw_selection_drag_and_copy_ui(
