@@ -739,12 +739,10 @@ cdef class WidgetBase:
         if selection_1_x < 1:
             selection_1_x = 1
         if overall_h is not None and \
-                selection_1_y > overall_h +\
-                (selection_1_height - round(max(
-                round(selection_1_height * 0.5), square_size * 2))):
-            selection_1_y = overall_h +\
-                (selection_1_height - round(max(
-                round(selection_1_height * 0.5), square_size * 2)))
+                selection_1_y > overall_h - max(
+                round(selection_1_height * 0.5), square_size * 1):
+            selection_1_y = overall_h - max(
+                round(selection_1_height * 0.5), square_size * 1)
         if overall_w is not None and selection_1_x > overall_w - 2:
             selection_1_x = overall_w - 2
         if selection_2_y < -round(max(selection_2_height * 0.5,
@@ -754,12 +752,10 @@ cdef class WidgetBase:
         if selection_2_x < 1:
             selection_2_x = 1
         if overall_h is not None and \
-                selection_2_y > overall_h +\
-                (selection_2_height - round(max(
-                round(selection_2_height * 0.5), square_size * 2))):
-            selection_2_y = overall_h +\
-                (selection_2_height - round(max(
-                round(selection_2_height * 0.5), square_size * 2)))
+                selection_2_y > overall_h - max(
+                round(selection_2_height * 0.5), square_size * 1):
+            selection_2_y = overall_h - max(
+                round(selection_2_height * 0.5), square_size * 1)
         if overall_w is not None and selection_2_x > overall_w - 2:
             selection_2_x = overall_w - 2
 
