@@ -39,5 +39,5 @@ def draw_drag_selection_handles(window):
         if w.parent_window != window:
             continue
         w.draw_touch_selection_handles_if_any(
-            w.width, w.height)
+            w.parent_window.width, w.parent_window.height)
 

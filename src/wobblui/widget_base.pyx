@@ -296,10 +296,11 @@ cdef class WidgetBase:
         sx = round(self.abs_x)
         sy = round(self.abs_y)
         self.draw_selection_drag_and_copy_ui(
-            max(2, positions[0] + sx),
-            max(2, positions[1] + sy), max(2, positions[2]),
-            max(2, positions[3] + sx),
-            max(2, positions[4] + sy), max(2, positions[5]))
+            positions[0] + sx,
+            positions[1] + sy, positions[2],
+            positions[3] + sx,
+            positions[4] + sy, positions[5],
+            overall_w=overall_w, overall_h=overall_h)
 
     def move_touch_selection_handle(self,
             left_one, target_x, target_y, target_h):
@@ -693,10 +694,12 @@ cdef class WidgetBase:
             double selection_1_height,
             double selection_2_x,
             double selection_2_y,
-            double selection_2_height):
-        position_info = self.selection_drag_handle_positions(
+            double selection_2_height,
+            overall_w=None, overall_h=None):
+        position_info = self._final_selection_drag_handle_positions(
             selection_1_x, selection_1_y, selection_1_height,
-            selection_2_x, selection_2_y, selection_2_height)
+            selection_2_x, selection_2_y, selection_2_height,
+            overall_w=overall_w, overall_h=overall_h)
         self.draw_single_selection_drag_handle(
             position_info["handle_1"]["x"],
             position_info["handle_1"]["y"],
@@ -712,20 +715,53 @@ cdef class WidgetBase:
             square_shift_x=position_info["handle_2"]["square_shift_x"],
             square_shift_y=position_info["handle_2"]["square_shift_y"])
 
-    def selection_drag_handle_positions(self,
+    def _final_selection_drag_handle_positions(self,
             double selection_1_x,
             double selection_1_y,
             double selection_1_height,
             double selection_2_x,
             double selection_2_y,
-            double selection_2_height):
-        square_size = max(3, 15.0 * self.dpi_scale)
+            double selection_2_height,
+            overall_w=None, overall_h=None):
+        square_size = max(3, 20.0 * self.dpi_scale)
         flip_selection_1_handle = False
-        if selection_1_y < square_size * 1.2:
+        if selection_1_y - selection_1_height < square_size * 2.0:
             flip_selection_1_handle = True
         flip_selection_2_handle = False
-        if selection_2_y < square_size * 1.2:
+        if selection_2_y - selection_2_height < square_size * 2.0:
             flip_selection_2_handle = True
+
+        # Limit overall handle to stay somewhat in screen range:
+        if selection_1_y < -round(max(selection_1_height * 0.5,
+                square_size * 1.0)):
+            selection_1_y = -round(max(selection_1_height * 0.5,
+                square_size * 1.0))
+        if selection_1_x < 1:
+            selection_1_x = 1
+        if overall_h is not None and \
+                selection_1_y > overall_h +\
+                (selection_1_height - round(max(
+                round(selection_1_height * 0.5), square_size * 2))):
+            selection_1_y = overall_h +\
+                (selection_1_height - round(max(
+                round(selection_1_height * 0.5), square_size * 2)))
+        if overall_w is not None and selection_1_x > overall_w - 2:
+            selection_1_x = overall_w - 2
+        if selection_2_y < -round(max(selection_2_height * 0.5,
+                square_size * 1.0)):
+            selection_2_y = -round(max(selection_2_height * 0.5,
+                square_size * 1.0))
+        if selection_2_x < 1:
+            selection_2_x = 1
+        if overall_h is not None and \
+                selection_2_y > overall_h +\
+                (selection_2_height - round(max(
+                round(selection_2_height * 0.5), square_size * 2))):
+            selection_2_y = overall_h +\
+                (selection_2_height - round(max(
+                round(selection_2_height * 0.5), square_size * 2)))
+        if overall_w is not None and selection_2_x > overall_w - 2:
+            selection_2_x = overall_w - 2
 
         square_1_extra_offset_x = 0
         square_2_extra_offset_x = 0
@@ -736,9 +772,9 @@ cdef class WidgetBase:
                 not flip_selection_1_handle and
                 not flip_selection_2_handle):
             # If too close together, move them to the side:
-            if abs(selection_1_x - selection_2_x) < square_size * 1.3:
-                square_1_extra_offset_x -= round(square_size / 2)
-                square_2_extra_offset_x += round(square_size / 2)
+            if abs(selection_1_x - selection_2_x) < square_size * 1.5:
+                square_1_extra_offset_x -= round(square_size * 0.52)
+                square_2_extra_offset_x += round(square_size * 0.52)
         return {
             "handle_1": {
                 "x": selection_1_x,
