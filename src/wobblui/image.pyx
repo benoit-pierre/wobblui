@@ -24,6 +24,7 @@ import ctypes
 import io
 import os
 import PIL.Image
+import PIL.ImageDraw
 import platform
 import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
@@ -98,8 +99,22 @@ cdef class RenderImage(object):
         initialize_sdl()
         self.pil_image = pil_image.copy()
         self.render_size = tuple(self.pil_image.size)
+        self.render_low_res = render_low_res
+        self._color = Color.white()
+        self.force_update_image()
+
+    @classmethod
+    def new_from_size(self, width, height):
+        pil_image = PIL.Image.new('RGBA', (max(1,round(width)),
+            max(1, round(height)), (0, 0, 0, 0)))
+        return RenderImage(pil_image, render_low_res=False)
+
+    def force_update_image(self):
+        if hasattr(self, "surface") and self.surface is not None:
+            sdl.SDL_FreeSurface(self.surface)
+            self.surface = None
         self.pil_image_scaled = None
-        if render_low_res:
+        if self.render_low_res:
             (w, h) = self.pil_image.size
             scale_f = (512 + 512) / (w + h)
             new_w = max(1, round(w * scale_f))
@@ -114,7 +129,22 @@ cdef class RenderImage(object):
             self.surface = _internal_image_to_sdl_surface(
                 self.pil_image_scaled)
         self._texture = None
-        self.color = Color.white()
+
+    def draw_filled_rectangle_onto_image(self,
+            x, y, w, h, color=Color.black(),
+            alpha=255):
+        draw = PIL.ImageDraw.Draw(self.pil_image)
+        draw.rectangle((round(x), round(y),
+            round(x + max(0, w)), round(y + max(0, h))),
+            fill=(
+            color.value_red, color.value_green, color.value_blue,
+            255))
+        self.force_update_image()
+
+    def as_png(self):
+        byteobj = io.BytesIO()
+        self.pil_image.save(byteobj, format="PNG")
+        return byteobj.getvalue()
 
     def __del__(self):
         if hasattr(self, "surface") and self.surface is not None:
@@ -136,13 +166,21 @@ cdef class RenderImage(object):
             self._apply_color()
         return self._texture
 
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, v):
+        self.set_color(v)
+
     def set_color(self, c):
-        self.color = Color(c)
+        self._color = Color(c)
         self._apply_color()
 
     def _apply_color(self):
         if self._texture is not None and not self._texture.is_unloaded():
-            self._texture.set_color(self.color)
+            self._texture.set_color(self._color)
 
     def draw(self, renderer, int x, int y, w=None, h=None):
         tex = self.to_texture(renderer)

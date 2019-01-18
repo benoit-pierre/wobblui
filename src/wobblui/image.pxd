@@ -24,7 +24,6 @@ from wobblui.color cimport Color
 
 cdef class RenderImage(object):
     cdef object pil_image, pil_image_scaled
-    cdef public Color color
     cdef tuple render_size
-    cdef object _texture, surface
+    cdef object _color, _texture, surface
 
