@@ -109,7 +109,7 @@ cdef class RenderImage(object):
             raise RuntimeError("invalid image size: " +
                 str((width, height)))
         pil_image = PIL.Image.new('RGBA', (max(1,round(width)),
-            max(1, round(height)), (0, 0, 0, 0)))
+            max(1, round(height))), (0, 0, 0, 0))
         return RenderImage(pil_image, render_low_res=False)
 
     def force_update_image(self):
