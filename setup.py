@@ -2,7 +2,6 @@
 from setuptools import setup, Extension, Command
 from distutils.command.build_ext import build_ext
 from setuptools.command.install import install
-from Cython.Build import cythonize
 import os
 import setuptools
 
@@ -35,6 +34,7 @@ class force_build_ext_install_hook(install):
 
 class cythonize_build_ext_hook(build_ext):
     def run(self):
+        from Cython.Build import cythonize
         for root, dirs, files in os.walk(os.path.abspath(
                 os.path.join(
                 os.path.dirname(__file__), "src"))):
