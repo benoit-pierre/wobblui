@@ -138,7 +138,7 @@ cdef class RenderImage(object):
             alpha=255):
         draw = PIL.ImageDraw.Draw(self.pil_image)
         draw.rectangle((round(x), round(y),
-            round(x + max(0, w)), round(y + max(0, h))),
+            max(0, round(w)), max(0, round(h))),
             fill=(
             color.value_red, color.value_green, color.value_blue,
             255))
