@@ -105,6 +105,9 @@ cdef class RenderImage(object):
 
     @classmethod
     def new_from_size(self, width, height):
+        if round(width) <= 0 or round(height) <= 0:
+            raise RuntimeError("invalid image size: " +
+                str((width, height)))
         pil_image = PIL.Image.new('RGBA', (max(1,round(width)),
             max(1, round(height)), (0, 0, 0, 0)))
         return RenderImage(pil_image, render_low_res=False)
@@ -144,6 +147,7 @@ cdef class RenderImage(object):
     def as_png(self):
         byteobj = io.BytesIO()
         self.pil_image.save(byteobj, format="PNG")
+        byteobj.flush()
         return byteobj.getvalue()
 
     def __del__(self):
