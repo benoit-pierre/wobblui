@@ -26,4 +26,5 @@ cdef class RenderImage(object):
     cdef object pil_image, pil_image_scaled
     cdef tuple render_size
     cdef object _color, _texture, surface
+    cdef int render_low_res
 

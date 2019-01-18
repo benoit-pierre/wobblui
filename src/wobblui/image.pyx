@@ -99,7 +99,7 @@ cdef class RenderImage(object):
         initialize_sdl()
         self.pil_image = pil_image.copy()
         self.render_size = tuple(self.pil_image.size)
-        self.render_low_res = render_low_res
+        self.render_low_res = (render_low_res is True)
         self._color = Color.white()
         self.force_update_image()
 
