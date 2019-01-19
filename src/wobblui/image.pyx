@@ -97,6 +97,7 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
 cdef class RenderImage(object):
     def __init__(self, object pil_image, render_low_res=False):
         initialize_sdl()
+        print("__init__ RenderImage")
         self.surface = None
         self.pil_image = pil_image.copy()
         self.render_size = tuple(self.pil_image.size)
@@ -115,6 +116,7 @@ cdef class RenderImage(object):
 
     def force_update_image(self):
         if self.surface is not None:
+            print("SDL_FreeSurface() RenderImage.surface")
             sdl.SDL_FreeSurface(self.surface)
             self.surface = None
         self.pil_image_scaled = None
@@ -127,9 +129,11 @@ cdef class RenderImage(object):
                 self.pil_image_scaled = self.pil_image.resize(
                     (new_w, new_h))
         if self.pil_image_scaled is None:
+            print("SDL_CreateSurface RenderImage.surface")
             self.surface = _internal_image_to_sdl_surface(
                 self.pil_image)
         else:
+            print("SDL_CreateSurface RenderImage.surface")
             self.surface = _internal_image_to_sdl_surface(
                 self.pil_image_scaled)
         self._texture = None
@@ -151,13 +155,10 @@ cdef class RenderImage(object):
         byteobj.flush()
         return byteobj.getvalue()
 
-    def __del__(self):
-        if self.surface is not None:
-            sdl.SDL_FreeSurface(self.surface)
-            self.surface = None
-
     def __dealloc__(self):
+        print("__dealloc__ RenderImage")
         if self.surface is not None:
+            print("SDL_FreeSurface() RenderImage.surface")
             sdl.SDL_FreeSurface(self.surface)
         self.surface = None
 
