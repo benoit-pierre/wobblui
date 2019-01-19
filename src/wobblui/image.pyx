@@ -52,6 +52,7 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
     global sdlimage_initialized
     initialize_sdl()
     if not sdlimage_initialized:
+        sdlimage_initialized = True
         if not platform.system().lower() == "windows":
             flags = sdlimage.IMG_INIT_JPG|sdlimage.IMG_INIT_PNG
         else:
@@ -65,7 +66,9 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
         pil_image.save(bytes_obj, format="PNG")
     else:
         pil_image.save(bytes_obj, format="TIFF")
+    bytes_obj.flush()
     bytes_value = bytearray(bytes_obj.getvalue())
+    del(bytes_obj)
     if len(bytes_value) == 0:
         raise RuntimeError("saved image unexpectedly empty")
     ctypes_bytes = (ctypes.c_uint8 * len(bytes_value)).\
@@ -74,7 +77,9 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
     # Create SDL RW Ops and load with SDL_Image from that:
     rwops = sdl.SDL_RWFromMem(ctypes.byref(ctypes_bytes),
         len(bytes_value))
-    sdl_image = sdlimage.IMG_Load_RW(rwops, 1)
+    sdl_image = sdlimage.IMG_Load_RW(rwops, 0)
+    sdl.SDL_FreeRW(rwops)
+    del(rwops)
 
     # Handle error:
     if sdl_image is None or not sdl_image:  # ptr will evaluate False if NULL
@@ -97,7 +102,7 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
 cdef class RenderImage(object):
     def __init__(self, object pil_image, render_low_res=False):
         initialize_sdl()
-        print("__init__ RenderImage")
+        print("__init__ RenderImage " + str(self))
         self.surface = None
         self.pil_image = pil_image.copy()
         self.render_size = tuple(self.pil_image.size)
@@ -116,7 +121,8 @@ cdef class RenderImage(object):
 
     def force_update_image(self):
         if self.surface is not None:
-            print("SDL_FreeSurface() RenderImage.surface")
+            print("SDL_FreeSurface() RenderImage.surface: " +
+                str(self.surface))
             sdl.SDL_FreeSurface(self.surface)
             self.surface = None
         self.pil_image_scaled = None
@@ -129,13 +135,14 @@ cdef class RenderImage(object):
                 self.pil_image_scaled = self.pil_image.resize(
                     (new_w, new_h))
         if self.pil_image_scaled is None:
-            print("SDL_CreateSurface RenderImage.surface")
             self.surface = _internal_image_to_sdl_surface(
                 self.pil_image)
+            
         else:
-            print("SDL_CreateSurface RenderImage.surface")
             self.surface = _internal_image_to_sdl_surface(
                 self.pil_image_scaled)
+        print("SDL_CreateSurface RenderImage.surface: " +
+            str(self.surface))
         self._texture = None
 
     def draw_filled_rectangle_onto_image(self,
@@ -156,9 +163,10 @@ cdef class RenderImage(object):
         return byteobj.getvalue()
 
     def __dealloc__(self):
-        print("__dealloc__ RenderImage")
+        print("__dealloc__ RenderImage " + str(self))
         if self.surface is not None:
-            print("SDL_FreeSurface() RenderImage.surface")
+            print("SDL_FreeSurface() RenderImage.surface: " +
+                str(self.surface))
             sdl.SDL_FreeSurface(self.surface)
         self.surface = None
 
