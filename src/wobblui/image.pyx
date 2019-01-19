@@ -143,7 +143,7 @@ cdef class RenderImage(object):
     def draw_filled_rectangle_onto_image(self,
             x, y, w, h, color=Color.black(),
             alpha=1.0):
-        draw = PIL.ImageDraw.Draw(self.pil_image)
+        draw = PIL.ImageDraw.Draw(self.pil_image, 'RGBA')
         draw.rectangle(
             (round(x), round(y),
                 max(0, round(w)), max(0, round(h))),
