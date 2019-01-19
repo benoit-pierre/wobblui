@@ -48,6 +48,11 @@ class cythonize_build_ext_hook(build_ext):
                 cythonize(full_path,
                     include_path=[os.path.join(os.path.dirname(
                     os.path.abspath(__file__)), "src")],
+                    compiler_directives={
+                        'always_allow_keywords': True,
+                        'boundscheck': True,
+                        'language_level': 2,
+                    }
                 )
         super().run()
 
