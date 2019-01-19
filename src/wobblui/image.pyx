@@ -144,10 +144,12 @@ cdef class RenderImage(object):
             x, y, w, h, color=Color.black(),
             alpha=1.0):
         draw = PIL.ImageDraw.Draw(self.pil_image, 'RGBA')
+        rect_values = (round(x), round(y),
+            round(x) + max(0, round(w) - 1),
+            round(y) + max(0, round(h) - 1))
+        print("rect: " + str(rect_values)
         draw.rectangle(
-            (round(x), round(y),
-                round(x) + max(0, round(w)),
-                round(y) + max(0, round(h))),
+            rect_values,
             fill=(
                 color.value_red, color.value_green, color.value_blue,
                 max(0, min(255, round(alpha * 255.0)))
