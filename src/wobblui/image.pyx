@@ -120,7 +120,6 @@ cdef class RenderImage(object):
 
     def force_update_image(self):
         if self.surface is not None:
-                str(self.surface))
             sdl.SDL_FreeSurface(self.surface)
             self.surface = None
         self.pil_image_scaled = None
