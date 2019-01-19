@@ -142,13 +142,15 @@ cdef class RenderImage(object):
 
     def draw_filled_rectangle_onto_image(self,
             x, y, w, h, color=Color.black(),
-            alpha=255):
+            alpha=1.0):
         draw = PIL.ImageDraw.Draw(self.pil_image)
-        draw.rectangle((round(x), round(y),
-            max(0, round(w)), max(0, round(h))),
+        draw.rectangle(
+            (round(x), round(y),
+                max(0, round(w)), max(0, round(h))),
             fill=(
-            color.value_red, color.value_green, color.value_blue,
-            255))
+                color.value_red, color.value_green, color.value_blue,
+                max(0, min(255, round(alpha * 255.0)))
+            ))
         self.force_update_image()
 
     def as_png(self):
