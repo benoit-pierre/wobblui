@@ -102,7 +102,6 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
 cdef class RenderImage(object):
     def __init__(self, object pil_image, render_low_res=False):
         initialize_sdl()
-        print("__init__ RenderImage " + str(self))
         self.surface = None
         self.pil_image = pil_image.copy()
         self.render_size = tuple(self.pil_image.size)
@@ -121,7 +120,6 @@ cdef class RenderImage(object):
 
     def force_update_image(self):
         if self.surface is not None:
-            print("SDL_FreeSurface() RenderImage.surface: " +
                 str(self.surface))
             sdl.SDL_FreeSurface(self.surface)
             self.surface = None
@@ -141,8 +139,6 @@ cdef class RenderImage(object):
         else:
             self.surface = _internal_image_to_sdl_surface(
                 self.pil_image_scaled)
-        print("SDL_CreateSurface RenderImage.surface: " +
-            str(self.surface))
         self._texture = None
 
     def draw_filled_rectangle_onto_image(self,
@@ -163,10 +159,7 @@ cdef class RenderImage(object):
         return byteobj.getvalue()
 
     def __dealloc__(self):
-        print("__dealloc__ RenderImage " + str(self))
         if self.surface is not None:
-            print("SDL_FreeSurface() RenderImage.surface: " +
-                str(self.surface))
             sdl.SDL_FreeSurface(self.surface)
         self.surface = None
 
