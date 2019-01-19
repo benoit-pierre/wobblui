@@ -147,7 +147,6 @@ cdef class RenderImage(object):
         rect_values = (round(x), round(y),
             round(x) + max(0, round(w) - 1),
             round(y) + max(0, round(h) - 1))
-        print("rect: " + str(rect_values))
         draw.rectangle(
             rect_values,
             fill=(
