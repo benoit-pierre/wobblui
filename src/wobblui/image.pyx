@@ -146,7 +146,8 @@ cdef class RenderImage(object):
         draw = PIL.ImageDraw.Draw(self.pil_image, 'RGBA')
         draw.rectangle(
             (round(x), round(y),
-                max(0, round(w)), max(0, round(h))),
+                round(x) + max(0, round(w)),
+                round(y) + max(0, round(h))),
             fill=(
                 color.value_red, color.value_green, color.value_blue,
                 max(0, min(255, round(alpha * 255.0)))
