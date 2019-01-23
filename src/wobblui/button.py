@@ -221,16 +221,17 @@ class Button(Widget):
                     self.height - fill_border * 2,
                     color=border_color)
         offset_x = round(self.border_size)
-        full_available_size = round(self.width - (offset_x * 2))
-        if full_available_size < 0:
+        full_available_size_x = round(self.width - (self.border_size * 2))
+        full_available_size_y = round(self.height - (self.border_size * 2))
+        if full_available_size_x <= 0 or full_available_size_y <= 0:
             return
-        used_up_size = (self.text_layout_width or 0)
+        used_up_size_x = (self.text_layout_width or 0)
         if self.contained_image_pil is not None:
-            used_up_size += math.ceil(
+            used_up_size_x += math.ceil(
                 self.contained_image_pil.size[0] *
                 self.contained_image_scale * self.dpi_scale) +\
                 round(self.border_size * 0.7)
-        extra_size = max(0, full_available_size - used_up_size)
+        extra_size = max(0, full_available_size_x - used_up_size_x)
         offset_x += max(0, math.floor(extra_size / 2.0))
         if self.contained_image is not None:
             x = offset_x
@@ -249,6 +250,7 @@ class Button(Widget):
                 self.extra_image_render_func(x, y, w_full, h_full)
             x += round((w_full - w) * 0.5)
             y += round((h_full - h) * 0.5)
+            y += round(max(0, full_available_size_y - h) * 0.5)
             self.contained_image.draw(
                 self.renderer,
                 x, y,
@@ -342,8 +344,12 @@ class ImageButton(Button):
         super().do_redraw()
 
 class HamburgerButton(ImageButton):
-    def __init__(self, override_color=None):
-        super().__init__(stock_image("sandwich"))
+    def __init__(self, scale_to_width=None):
+        if scale_to_width is not None:
+            super().__init__(stock_image("sandwich"),
+                scale_to_width=scale_to_width)
+        else:
+            super().__init__(stock_image("sandwich"))
 
 class CircleImageButton(Button):
     def __init__(self, image_path, scale=None, scale_to_width=None,
