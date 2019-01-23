@@ -25,11 +25,17 @@ import sdl2 as sdl
 from wobblui.box import HBox
 from wobblui.color import Color
 from wobblui.gfx import draw_rectangle
+from wobblui.label import Label
 from wobblui.widget import Widget
 
 class Topbar(Widget):
-    def __init__(self, padding=None):
+    def __init__(self,
+            padding=None,
+            default_to_not_vertically_stretch_labels=True
+            ):
         super().__init__(is_container=True)
+        self.default_to_not_vertically_stretch_labels =\
+            default_to_not_vertically_stretch_labels
         self.type = "topbar"
         self.padding = 14
         self.padding_vertical = 7
@@ -40,7 +46,7 @@ class Topbar(Widget):
         if self.padding <= 0:
             self.child_padding = 0
         self.topbar_height = 0
-        self.topbar_box = HBox()
+        self.topbar_box = HBox(default_expand_on_secondary_axis=True)
         self.topbar_box.internal_override_parent(self)
 
     def widget_is_in_upper_half(self, widget):
@@ -63,7 +69,15 @@ class Topbar(Widget):
                 error_if_not_present=error_if_not_present)
 
     def add_to_top(self, child, expand=True, shrink=False):
-        self.topbar_box.add(child, expand=expand, shrink=shrink)
+        expand_vertically = None
+        if expand and type(child) == Label and \
+                self.default_to_not_vertically_stretch_labels:
+            expand_vertically=False
+        self.topbar_box.add(
+            child,
+            expand=expand,
+            shrink=shrink,
+            expand_vertically=expand_vertically)
         self.topbar_box.height = self.topbar_box.get_natural_height()
         self.needs_relayout = True
         self.needs_redraw = True

@@ -39,10 +39,10 @@ class BoxSpacer(Widget):
 
 class Box(ScrollbarDrawingWidget):
     def __init__(self, horizontal, box_surrounding_padding=0,
-            stretch_children_on_secondary_axis=True):
+            default_expand_on_secondary_axis=True):
         super().__init__(is_container=True)
-        self.stretch_children_on_secondary_axis =\
-            stretch_children_on_secondary_axis
+        self.default_expand_on_secondary_axis =\
+            default_expand_on_secondary_axis
         self.horizontal = (horizontal is True)
         self.expand_info = dict()
         self.shrink_info = dict()
@@ -90,7 +90,7 @@ class Box(ScrollbarDrawingWidget):
         self._child_mouse_event_shift_y = round(self.scroll_offset_y)
         self.needs_redraw = True
 
-    def got_exactly_one_flexible_child(self):
+    def got_exactly_one_flexible_child(self, horizontal):
         """ Check if there is exactly one child that is both shrinkable
             and expandable, and all other children are fixed (not shrinkable,
             and not expandable).
@@ -103,7 +103,8 @@ class Box(ScrollbarDrawingWidget):
         for item in self._children:
             child_id += 1
             if child_id in self.expand_info and \
-                    self.expand_info[child_id]:
+                    ((horizontal and self.expand_info[child_id][0]) or
+                    (not horizontal and self.expand_info[child_id][1])):
                 if not child_id in self.shrink_info or \
                         not self.shrink_info[child_id]:
                     return False
@@ -120,12 +121,14 @@ class Box(ScrollbarDrawingWidget):
         layout_width = 0
 
         # Adjust items on the non-box axis:
+        child_id = -1
         for item in self._children:
+            child_id += 1
             if self.horizontal:
                 iheight = self.height -\
                     round(self.box_surrounding_padding *
                     2 * self.dpi_scale)
-                if not self.stretch_children_on_secondary_axis:
+                if not self.expand_info[child_id][1]:
                     iheight = min(iheight,
                         item.get_natural_height(item.width))
                 item.height = iheight
@@ -133,7 +136,7 @@ class Box(ScrollbarDrawingWidget):
                 iwidth = self.width -\
                     round(self.box_surrounding_padding *
                     2 * self.dpi_scale)
-                if not self.stretch_children_on_secondary_axis:
+                if not self.expand_info[child_id][0]:
                     iwidth = min(iwidth,
                         item.get_natural_width(item.width))
                 item.width = iwidth
@@ -152,14 +155,15 @@ class Box(ScrollbarDrawingWidget):
             item_padding = round(self.item_padding * self.dpi_scale)
             if not self.got_visible_child_after_index(child_id):
                 item_padding = 0
-            if self.expand_info[child_id]:
+            if self.expand_info[child_id][0 if self.horizontal else 1]:
                 expand_widget_count += 1
             if self.shrink_info[child_id]:
                 shrink_widget_count += 1
 
             # Set child's dimensions along main box axis:
-            if not self.got_exactly_one_flexible_child() or \
-                    not self.expand_info[child_id]:
+            if (not self.got_exactly_one_flexible_child(self.horizontal) or
+                    not self.expand_info[child_id][0 if self.horizontal else 1]
+                    ):
                 # Regular case: add up all children as usual
                 if self.horizontal:
                     child.width = child.get_natural_width()
@@ -208,13 +212,16 @@ class Box(ScrollbarDrawingWidget):
                 continue
             assigned_w = max(1, math.ceil(child.width))
             assigned_h = max(1, math.ceil(child.height))
-            if expanding and self.expand_info[child_id] and self.horizontal:
+            if (expanding and
+                    self.expand_info[child_id][0 if self.horizontal else 1]
+                    and self.horizontal):
                 assigned_w += space_per_item
             elif not expanding and self.shrink_info[child_id] and \
                     self.horizontal:
                 assigned_w = max(1, assigned_w + space_per_item)
-            elif expanding and self.expand_info[child_id] and \
-                    not self.horizontal:
+            elif (expanding and
+                    self.expand_info[child_id][0 if self.horizontal else 1]
+                    and not self.horizontal):
                 assigned_h += space_per_item
             elif not expanding and self.shrink_info[child_id] and \
                     not self.horizontal:
@@ -248,8 +255,12 @@ class Box(ScrollbarDrawingWidget):
         # Adjust items again on the non-box axis for horizontal layouts if
         # they are naturally scaled (not stretched), since their new width
         # can change their natural height:
-        if self.horizontal and not self.stretch_children_on_secondary_axis:
+        if self.horizontal:
+            i = -1
             for item in self._children:
+                i += 1
+                if self.expand_info[i][1 if self.horizontal else 0]:
+                    continue
                 iheight = self.height -\
                     round(self.box_surrounding_padding *
                     2 * self.dpi_scale)
@@ -258,22 +269,25 @@ class Box(ScrollbarDrawingWidget):
                 item.height = iheight
 
         # Update placement if not fully stretched on secondary axis:
-        if not self.stretch_children_on_secondary_axis:
-            for child in self.children:
-                if child.invisible:
-                    continue
-                if self.horizontal and child.height < (self.height -
-                        round(self.box_surrounding_padding *
-                            self.dpi_scale * 2)):
-                    child.y += math.floor((self.height - child.height -
-                        round(self.box_surrounding_padding *
-                            self.dpi_scale * 2)) / 2.0)
-                elif not self.horizontal and child.width < (self.width -
-                        round(self.box_surrounding_padding *
-                            self.dpi_scale * 2)):
-                    child.x += math.floor((self.width - child.width -
-                        round(self.box_surrounding_padding *
-                            self.dpi_scale * 2)) / 2.0)
+        i = -1
+        for child in self.children:
+            i += 1
+            if child.invisible:
+                continue
+            if self.expand_info[i][1 if self.horizontal else 0]:
+                continue
+            if self.horizontal and child.height < (self.height -
+                    round(self.box_surrounding_padding *
+                        self.dpi_scale * 2)):
+                child.y += math.floor((self.height - child.height -
+                    round(self.box_surrounding_padding *
+                        self.dpi_scale * 2)) / 2.0)
+            elif not self.horizontal and child.width < (self.width -
+                    round(self.box_surrounding_padding *
+                        self.dpi_scale * 2)):
+                child.x += math.floor((self.width - child.width -
+                    round(self.box_surrounding_padding *
+                        self.dpi_scale * 2)) / 2.0)
 
         # Compute layout dimensions:
         for child in self.children:
@@ -382,9 +396,53 @@ class Box(ScrollbarDrawingWidget):
                     self.dpi_scale * 2)
             return max_h
 
-    def add(self, item, expand=True, shrink=False):
+    def add(self,
+            item,
+            expand=True,
+            shrink=False,
+            expand_horizontally=None,
+            expand_vertically=None
+            ):
         super().add(item, trigger_resize=False)
-        self.expand_info[len(self._children) - 1] = expand
+        if not expand:
+            if expand_horizontally is True or \
+                    expand_vertically is True:
+                raise ValueError("cannot specify expand=False " +
+                    "but also expand_horizontally=True or " +
+                    "expand_vertically=True. Please specify " +
+                    "only either the expand option, or the " +
+                    "expand_horizontally + expand_vertically options!")
+            if self.horizontal or \
+                    not self.default_expand_on_secondary_axis:
+                expand_horizontally = False
+            else:
+                expand_horizontally = True
+            if not self.horizontal or \
+                    not self.default_expand_on_secondary_axis:
+                expand_vertically = False
+            else:
+                expand_vertically = True
+        else:
+            if expand_horizontally is False and \
+                    expand_vertically is False:
+                raise ValueError("cannot specify expand=True " +
+                    "but also both expand_horizontally/expand_vertically " +
+                    "set to False. Please specify " +
+                    "only either the expand option, or the " +
+                    "expand_horizontally + expand_vertically options!")
+            if self.horizontal and not self.default_expand_on_secondary_axis:
+                expand_horizontally = False
+            elif not self.horizontal and \
+                    not self.default_expand_on_secondary_axis:
+                expand_vertically = False
+            if expand_horizontally is not False:
+                expand_horizontally = True
+            if expand_vertically is not False:
+                expand_vertically = True
+        self.expand_info[len(self._children) - 1] = (
+            expand_horizontally,
+            expand_vertically
+        )
         self.shrink_info[len(self._children) - 1] = shrink
         if self.horizontal:
             item.width = item.get_natural_width()
@@ -399,19 +457,19 @@ class Box(ScrollbarDrawingWidget):
 
 class VBox(Box):
     def __init__(self, box_surrounding_padding=0,
-            stretch_children_on_secondary_axis=True):
+            default_expand_on_secondary_axis=True):
         super().__init__(False,
             box_surrounding_padding=box_surrounding_padding,
-            stretch_children_on_secondary_axis=\
-                stretch_children_on_secondary_axis)
+            default_expand_on_secondary_axis=\
+                default_expand_on_secondary_axis)
 
 class HBox(Box):
     def __init__(self, box_surrounding_padding=0,
-            stretch_children_on_secondary_axis=True):
+            default_expand_on_secondary_axis=True):
         super().__init__(True,
             box_surrounding_padding=box_surrounding_padding,
-            stretch_children_on_secondary_axis=\
-                stretch_children_on_secondary_axis)
+            default_expand_on_secondary_axis=\
+                default_expand_on_secondary_axis)
 
 class CenterBox(Widget):
     def __init__(self, padding=0,

@@ -36,10 +36,10 @@ class DebugTerminal(VBox):
         super().__init__()
         self.on_exit_callback = exit_callback
         self.output_label = Label()
-        self.output_label.set_text("> Debug Shell")
+        self.output_label.set_text("> Debug Terminal")
         super().add(self.output_label, expand=True, shrink=True)
         self.bar = HBox(box_surrounding_padding=3,
-            stretch_children_on_secondary_axis=False)
+            default_expand_on_secondary_axis=False)
         self.console_entry = TextEntry("")
         def console_keypress(vkey, pkey, modifiers):
             if "ctrl" not in modifiers and vkey == "return":
