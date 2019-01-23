@@ -45,6 +45,27 @@ from wobblui.widgetman import add_widget, all_widgets, \
     get_widget_id, get_add_id, tab_sort
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
+# Helper function to move coordinates outside of widget:
+cdef tuple outside_of_widget_coords(widget, int x, int y):
+    if x < widget.x or y < widget.y or \
+            x >= widget.x + widget.width or \
+            y >= widget.y + widget.height:
+        return (x, y)
+    cdef int move_x = 0
+    cdef int move_y = 0
+    if x < widget.x + widget.width * 0.5:
+        move_x = (widget.x - 1) - x
+    else:
+        move_x = (widget.x + widget.width + 1) - x
+    if y < widget.y + widget.height * 0.5:
+        move_y = (widget.y - 1) - y
+    else:
+        move_y = (widget.y + widget.height + 1) - y
+    if abs(move_x) < abs(move_y):
+        return (x + move_x, y)
+    else:
+        return (x, y + move_y)
+
 cdef class WidgetBase:
     # MEMBERS SEE WidgetBase.pxd FILE !!!
 
@@ -1331,33 +1352,55 @@ cdef class WidgetBase:
                     finally:
                         child._in_touch_fake_event_processing = False
             else:
+                # If child loses event access, simulate ending touch event:
+                # (happens e.g. when widget above "steals" events first)
                 if event_name.startswith("touch") and \
                         child.last_touch_was_inside:
+                    # Yup, this widget still thinks a finger touches it
+                    # --> virtually unpress finger:
                     child.last_touch_was_inside = False
                     if child.last_touch_was_pressed:
-                        if force_no_more_matches:
-                            child.touchmove(-5, -5)
-                        else:
-                            child.touchmove(
-                                rel_x - child.x, rel_y - child.y,
-                                internal_data=internal_data)
+                        child.touchend(
+                            rel_x - child.x, rel_y - child.y,
+                            internal_data=internal_data)
+                        child.last_touch_was_pressed = False
+
+                # Similar to above, simulate ending mouse click, but also
+                # virtually move mouse outside afterwards (to end hover
+                # effects):
                 if event_name.startswith("mouse") and \
                         child.last_mouse_move_was_inside:
+                    # Unpress mouse if pressed:
+                    if (event_args[0], event_args[1]) in \
+                            child.last_mouse_down_presses:
+                        # Unpress mouse
+                        child.last_mouse_down_presses.discard(
+                            (event_args[0], event_args[1]))
+                        try:
+                            child._in_touch_fake_event_processing =\
+                                child.last_mouse_move_was_fake_touch
+                            child.mouseup(mouse_id, event_args[1],
+                                rel_x - child.x, rel_y - child.y,
+                                internal_data=internal_data)
+                        finally:
+                            child._in_touch_fake_event_processing = False
+                    # Virtually move mouse out (to disable hover behavior
+                    # for widgets that have that):
                     child.last_mouse_move_was_inside = False
                     try:
                         child._in_touch_fake_event_processing =\
                             child.last_mouse_move_was_fake_touch
-                        if force_no_more_matches:
-                            # Need to use true outside fake coordinates
-                            # to remove focus etc
-                            child.mousemove(mouse_id, -5, -5)
-                        else:
-                            child.mousemove(mouse_id,
-                                rel_x - child.x, rel_y - child.y,
-                                internal_data=internal_data)
+                        (outside_x, outside_y) =\
+                            outside_of_widget_coords(
+                                child,
+                                rel_x - child.x,
+                                rel_y - child.y
+                            )
+                        child.mousemove(mouse_id, outside_x, outside_y)
                     finally:
                         child.last_mouse_move_was_fake_touch = False
                         child._in_touch_fake_event_processing = False
+                # Process regular
                 if event_name == "mouseup" and \
                         (event_args[0], event_args[1]) in \
                         child.last_mouse_down_presses:
