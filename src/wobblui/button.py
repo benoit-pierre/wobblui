@@ -250,7 +250,7 @@ class Button(Widget):
                 self.extra_image_render_func(x, y, w_full, h_full)
             x += round((w_full - w) * 0.5)
             y += round((h_full - h) * 0.5)
-            y += round(max(0, full_available_size_y - h) * 0.5)
+            y += round(max(0, full_available_size_y - h_full) * 0.5)
             self.contained_image.draw(
                 self.renderer,
                 x, y,
