@@ -405,11 +405,11 @@ class Box(ScrollbarDrawingWidget):
             ):
         super().add(item, trigger_resize=False)
         if not expand:
-            if expand_horizontally is True or \
-                    expand_vertically is True:
+            if expand_horizontally is not None or \
+                    expand_vertically is not None:
                 raise ValueError("cannot specify expand=False " +
-                    "but also expand_horizontally=True or " +
-                    "expand_vertically=True. Please specify " +
+                    "but also expand_horizontally or " +
+                    "expand_vertically. Please specify " +
                     "only either the expand option, or the " +
                     "expand_horizontally + expand_vertically options!")
             if self.horizontal or \

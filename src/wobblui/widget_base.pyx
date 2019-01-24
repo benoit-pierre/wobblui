@@ -88,6 +88,7 @@ cdef class WidgetBase:
             fake_mouse_even_with_native_touch_support
         self._in_touch_fake_event_processing = False
         self.needs_relayout = True
+        self.mouse_reported_as_entered = False
         self.last_mouse_move_was_inside = False
         self.last_mouse_down_presses = set()
         self.last_mouse_click_with_time = dict()  # for double clicks
@@ -237,6 +238,11 @@ cdef class WidgetBase:
                     self.mouse_event_param_adjustment)
             self.has_native_touch_support = False
         def mousemove_pre(int mouse_id, int x, int y, internal_data=None):
+            if not self.mouse_reported_as_entered and \
+                    x >= 0 and y >= 0 and \
+                    x < self._width and y < self._height:
+                self.mouse_reported_as_entered = True
+                self.mouseenter()
             self._pre_mouse_event_handling("mousemove",
                 [mouse_id, x, y], internal_data=internal_data)
         self.mousemove = Event("mousemove", owner=self,
@@ -258,6 +264,8 @@ cdef class WidgetBase:
             special_pre_event_func=mousewheel_pre,
             parameter_transform_func=\
                 self.mouse_event_param_adjustment)
+        self.mouseenter = Event("mouseenter", owner=self)
+        self.mouseleave = Event("mouseleave", owner=self)
         self.stylechanged = Event("stylechanged", owner=self)
         self.keyup = Event("keyup", owner=self)
         self.keydown = Event("keydown", owner=self)
@@ -287,6 +295,21 @@ cdef class WidgetBase:
         else:
             self.unfocus = ForceDisabledDummyEvent("unfocus", owner=self)
         add_widget(self)
+
+    def force_redraw_and_blocking_show(self):
+        self.needs_redraw = True
+        w = self.parent_window
+        if w is None:
+            return
+        w.do_scheduled_dpi_scale_update()
+        i = 0
+        while i < 20:
+            if not w.relayout_if_necessary():
+                break
+            i += 1
+        w.needs_redraw = True
+        w.redraw_if_necessary()
+        time.sleep(0.1)
 
     @property
     def mouse_event_shift_x(self):
@@ -426,6 +449,9 @@ cdef class WidgetBase:
                         else:
                             child.update()
             update_children(self)
+            if not v and self.mouse_reported_as_entered:
+                self.mouse_reported_as_entered = False
+                self.mouseleave()
 
     @property
     def disabled(self):
@@ -1352,6 +1378,11 @@ cdef class WidgetBase:
                     finally:
                         child._in_touch_fake_event_processing = False
             else:
+                # Mouse leave event if necessary:
+                if child.mouse_reported_as_entered:
+                    child.mouse_reported_as_entered = False
+                    child.mouseleave()
+
                 # If child loses event access, simulate ending touch event:
                 # (happens e.g. when widget above "steals" events first)
                 if event_name.startswith("touch") and \
@@ -1400,7 +1431,7 @@ cdef class WidgetBase:
                     finally:
                         child.last_mouse_move_was_fake_touch = False
                         child._in_touch_fake_event_processing = False
-                # Process regular
+                # Process regularly:
                 if event_name == "mouseup" and \
                         (event_args[0], event_args[1]) in \
                         child.last_mouse_down_presses:
@@ -1828,6 +1859,9 @@ cdef class WidgetBase:
         old_parent = self._parent
         self._parent = parent
         self.needs_redraw = True
+        if self.mouse_reported_as_entered:
+            self.mouse_reported_as_entered = False
+            self.mouseleave()
         self.parentchanged()
         if prev_style != self.get_style() or \
                 abs(prev_dpi - self.dpi_scale) > 0.01:

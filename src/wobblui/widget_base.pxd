@@ -68,6 +68,7 @@ cdef class WidgetBase:
     cdef public int prevent_touch_long_click_due_to_gesture
     cdef public int multitouch_gesture_reported_in_progress
     cdef public double multitouch_two_finger_distance
+    cdef public int mouse_reported_as_entered
 
     # Drawing technical details:
     cdef public object internal_render_target
@@ -79,7 +80,8 @@ cdef class WidgetBase:
         multitouchmove, multitouchend, touchstart, touchmove, touchend,\
         mousemove, mousedown, mouseup, mousewheel, stylechanged,\
         keyup, keydown, click, doubleclick, relayout, moved, resized,\
-        focus, unfocus, redraw, post_redraw, multitouchzoom
+        focus, unfocus, redraw, post_redraw, multitouchzoom, \
+        mouseenter, mouseleave
 
     # Allow weakrefs to this type:
     cdef object __weakref__

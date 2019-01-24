@@ -57,8 +57,10 @@ cdef class MenuSeparator(ListEntry):
         li.needs_size_update = True
         return li
 
-    def draw(self, renderer, x, y, draw_selected=False,
+    def draw(self, renderer, x, y,
+            draw_selected=False,
             draw_hover=False,
+            draw_soft_hover=False,
             draw_keyboard_focus=False,
             draw_no_bg=False):
         dpi_scale = 1.0

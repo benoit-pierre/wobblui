@@ -148,15 +148,19 @@ cdef class ListEntry:
                     "DUMPED self._cached_render_tex") 
             self._cached_render_tex = None
 
-    def draw(self, renderer, x, y, draw_selected=False,
+    def draw(self,
+            renderer, x, y,
+            draw_selected=False,
             draw_hover=False,
+            draw_soft_hover=False,
             draw_keyboard_focus=False):
         self.update_size()
         if draw_selected or draw_hover or \
-                draw_keyboard_focus:
+                draw_keyboard_focus or draw_soft_hover:
             self.do_actual_draw(renderer, x, y,
                 draw_selected=draw_selected,
                 draw_hover=draw_hover,
+                draw_soft_hover=draw_soft_hover,
                 draw_keyboard_focus=draw_keyboard_focus)
             return
 
@@ -169,26 +173,39 @@ cdef class ListEntry:
             self.do_actual_draw(renderer, 0, 0,
                 draw_selected=draw_selected,
                 draw_hover=draw_hover,
+                draw_soft_hover=draw_soft_hover,
                 draw_keyboard_focus=draw_keyboard_focus)
             sdl.SDL_RenderPresent(renderer)
             self._cached_render_tex.unset_as_rendertarget()
             tex = self._cached_render_tex
         tex.draw(x, y, w=round(self.width), h=round(self.height))
 
-    def do_actual_draw(self, renderer, x, y, draw_selected=False,
+    def do_actual_draw(self, renderer, x, y,
+            draw_selected=False,
             draw_hover=False,
+            draw_soft_hover=False,
             draw_keyboard_focus=False):
         no_bg = (not self.with_visible_bg)
         c = Color((200, 200, 200))
         if self.style != None:
             if not draw_hover and not draw_selected:
-                if not self.is_alternating:
-                    c = Color(self.style.get("inner_widget_bg") or
+                if not self.is_alternating or \
                         not self.style.has(
-                            "inner_widget_alternating_bg"))
+                            "inner_widget_alternating_bg"):
+                    c = Color(self.style.get("inner_widget_bg"))
+                    if draw_soft_hover and self.style.has(
+                            "inner_widget_bg_hover"
+                            ):
+                        c = Color(self.style.get("inner_widget_bg_hover"))
                 else:
                     c = Color(self.style.get(
                         "inner_widget_alternating_bg"))
+                    if draw_soft_hover and self.style.has(
+                            "inner_widget_alternating_bg_hover"
+                            ):
+                        c = Color(self.style.get(
+                            "inner_widget_alternating_bg_hover")
+                        )
             if draw_hover:
                 no_bg = False
                 c = Color(self.style.get("hover_bg"))
@@ -580,7 +597,10 @@ cdef class ListBase(ScrollbarDrawingWidget):
         self.set_selection_by_mouse_pos(x, y)
         if not self.triggered_by_single_click and \
                 self._hover_index >= 0:
+            prev_selected_index = self._selected_index
             self._selected_index = self._hover_index
+            if self._selected_index != prev_selected_index:
+                self.force_redraw_and_blocking_show()
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
@@ -592,7 +612,10 @@ cdef class ListBase(ScrollbarDrawingWidget):
         self.set_selection_by_mouse_pos(x, y)
         if self.triggered_by_single_click and \
                 self._hover_index >= 0 and button == 1:
+            prev_selected_index = self._selected_index
             self._selected_index = self._hover_index
+            if self._selected_index != prev_selected_index:
+                self.force_redraw_and_blocking_show()
             self.triggered()
 
     def on_mousedown(self, mouse_id, button, x, y):
@@ -716,7 +739,9 @@ cdef class ListBase(ScrollbarDrawingWidget):
                 (entry_id != self._hover_index or
                 not self.render_as_menu)),
                 draw_hover=(self.render_as_menu and
-                entry_id == self._hover_index))
+                entry_id == self._hover_index),
+                draw_soft_hover=(not self.render_as_menu and
+                entry_id == self.hover_index))
             if self.fixed_one_line_entries and \
                     entry.y_offset > self.height +\
                     self.scroll_y_offset:

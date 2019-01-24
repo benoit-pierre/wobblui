@@ -54,8 +54,10 @@ class Button(Widget):
                 "triggered", owner=self)
         self.with_surrounding_frame = (with_surrounding_frame is True)
         self._image_draw_scaledown = 1.0
+        self.hovered = False
         self.image_placement = image_placement
         self._image_color = Color.white()
+        self._image_color_hover = None
         self.override_bg_color = None
         if override_bg_color != None:
             self.override_bg_color = Color(override_bg_color)
@@ -106,17 +108,30 @@ class Button(Widget):
 
     def on_keydown(self, key, physical_key, modifiers):
         if key == "return" or key == "space":
+            if not self.hovered:
+                self.hovered = True
+                self.force_redraw_and_blocking_show()
+                self.hovered = False
+                self.needs_redraw = True
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
+        if not self.hovered:
+            self.hovered = True
+            self.force_redraw_and_blocking_show()
+            self.hovered = False
+            self.needs_redraw = True
         self.triggered()
 
     @property
     def border_size(self):
         return round(self.border * self.dpi_scale)
 
-    def set_image(self, pil_image_or_path, scale=None,
-            scale_to_width=None):
+    def set_image(self,
+            pil_image_or_path,
+            scale=None,
+            scale_to_width=None
+            ):
         if scale != None and scale_to_width != None:
             raise ValueError("cannot specify both scale factor " +
                 "and scale to width measure")
@@ -133,7 +148,9 @@ class Button(Widget):
 
     def set_image_color(self, color):
         self.image_color = Color(color)
-        self.update()
+
+    def set_image_color_hover(self, color):
+        self.image_color_hover = Color(color)
 
     @html.setter
     def html(self, v):
@@ -174,6 +191,21 @@ class Button(Widget):
         self.set_html(html.escape(text))
 
     @property
+    def image_color_hover(self):
+        return self._image_color_hover
+
+    @image_color_hover.setter
+    def image_color_hover(self, v):
+        if (self._image_color_hover is None and v is not None) or \
+                (v.value_red != self._image_color_hover.value_red or
+                 v.value_green != self._image_color_hover.value_green or
+                 v.value_blue != self._image_color_hover.value_blue
+                ):
+            self._image_color_hover = v
+            self.update_texture_color()
+            self.update()
+
+    @property
     def image_color(self):
         return self._image_color
 
@@ -184,10 +216,22 @@ class Button(Widget):
                 v.value_blue != self._image_color.value_blue:
             self._image_color = v
             self.update_texture_color()
+            self.update()
 
     def update_texture_color(self):
         if self.contained_image is not None:
-            self.contained_image.set_color(self.image_color)
+            if self.hovered and self.image_color_hover is not None:
+                self.contained_image.set_color(self.image_color_hover)
+            else:
+                self.contained_image.set_color(self.image_color)
+
+    def on_mouseenter(self):
+        self.hovered = True
+        self.needs_redraw = True
+
+    def on_mouseleave(self):
+        self.hovered = False
+        self.needs_redraw = True
 
     def do_redraw(self):
         if self.renderer is None:
@@ -197,6 +241,9 @@ class Button(Widget):
             c = Color.white()
             if self.style is not None:
                 c = Color(self.style.get("button_bg"))
+                if self.style.has("button_bg_hover") and \
+                        self.hovered:
+                    c = Color(self.style.get("button_bg_hover"))
             if self.override_bg_color != None:
                 c = self.override_bg_color
             fill_border = round(self.border_size * 0.3)
@@ -262,6 +309,8 @@ class Button(Widget):
                 c = Color(self.style.get("widget_text"))
                 if self.disabled and self.style.has("widget_disabled_text"):
                     c = Color(self.style.get("widget_disabled_text"))
+                elif self.hovered and self.style.has("widget_text_hover"):
+                    c = Color(self.style.get("widget_text_hover"))
             if self.override_text_color != None:
                 c = self.override_text_color
             sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
@@ -311,8 +360,11 @@ class Button(Widget):
         return my_w
 
 class ImageButton(Button):
-    def __init__(self, image, scale_to_width=33,
-            clickable=True):
+    def __init__(self,
+            image,
+            scale_to_width=33,
+            clickable=True
+            ):
         super().__init__(with_surrounding_frame=False,
             clickable=clickable)
         self.original_image = image
@@ -320,12 +372,15 @@ class ImageButton(Button):
         color = Color.black()
         if self.style != None:
             color = self.style.get("widget_text")
-            if self.style.has("saturated_widget_text"):
-                color = Color(self.style.get("saturated_widget_text"))
+            if self.style.has("widget_text_saturated"):
+                color = Color(self.style.get("widget_text_saturated"))
             if self.disabled and style.has("widget_disabled_text"):
                 color = Color(self.style.get("widget_disabled_text"))
         assert(isinstance(color, Color))
         self.set_image_color(color)
+        if self.style != None and self.style.has("widget_text_hover"):
+            color = Color(self.style.get("widget_text_hover"))
+            self.set_image_color_hover(color)
 
     def __repr__(self):
         orig_img = "none"
@@ -341,6 +396,9 @@ class ImageButton(Button):
         if self.disabled and self.style.has("widget_disabled_text"):
             color = Color(self.style.get("widget_disabled_text"))
         self.image_color = color
+        if self.style != None and self.style.has("widget_text_hover"):
+            color = Color(self.style.get("widget_text_hover"))
+            self.image_color_hover = color
         super().do_redraw()
 
 class HamburgerButton(ImageButton):

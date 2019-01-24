@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -117,13 +118,17 @@ class AppStyleBright(AppStyle):
         super().__init__()
         self.set("window_bg", "#efeeed")
         self.set("button_bg", "#e3e2e2")
+        self.set("button_bg_hover", "#dad9d9")
         self.set("button_border", "#e3c2c2")
         self.set("topbar_bg", "#e6e0f0")
         self.set("widget_disabled_bg", "#aaa")
         self.set("inner_widget_bg", "#f0f0f0")
         self.set("inner_widget_alternating_bg", "#e6e6ef")
+        self.set("inner_widget_bg_hover", "#e0e0e0")
+        self.set("inner_widget_alternating_bg_hover", "#c6c6cf")
         self.set("widget_text", "#222121")
-        self.set("saturated_widget_text", "#000")
+        self.set("widget_text_hover", "#424141")
+        self.set("widget_text_saturated", "#000")
         self.set("widget_disabled_text", "#777")
         self.set("border", "#222")
         self.set("selected_bg", "#7ae")
@@ -134,20 +139,22 @@ class AppStyleBright(AppStyle):
         self.set("touch_selection_drag_handles", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
-        self.set("topbar_text_size", 22)
+        self.set("topbar_text_size", 23)
  
 class AppStyleDark(AppStyle):
     def __init__(self):
         super().__init__()
         self.set("window_bg", "#222")
         self.set("button_bg", "#444")
+        self.set("button_bg_hover", "#404040")
         self.set("button_border", "#555")
         self.set("topbar_bg", "#333333")
         self.set("widget_disabled_bg", "#333")
         self.set("inner_widget_bg", "#111")
         self.set("inner_widget_alternating_bg", "#1f1e1e")
         self.set("widget_text", "#e0e0e0")
-        self.set("saturated_widget_text", "#fff")
+        self.set("widget_text_hover", "#c0c0c0")
+        self.set("widget_text_saturated", "#fff")
         self.set("widget_disabled_text", "#665")
         self.set("border", "#000")
         self.set("selected_bg", "#7ae")
@@ -158,5 +165,4 @@ class AppStyleDark(AppStyle):
         self.set("touch_selection_drag_handles", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
-        self.set("topbar_text_size", 25)
-
+        self.set("topbar_text_size", 23)
