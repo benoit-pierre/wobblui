@@ -590,8 +590,7 @@ cdef class ListBase(ScrollbarDrawingWidget):
                     self._entries[click_index].disabled:
                 return  # it's a disabled entry, ignore
             self._hover_index = click_index
-            if self.render_as_menu:
-                self.needs_redraw = True
+            self.needs_redraw = True
 
     def on_doubleclick(self, mouse_id, button, x, y):
         self.set_selection_by_mouse_pos(x, y)
