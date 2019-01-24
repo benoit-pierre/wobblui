@@ -155,7 +155,7 @@ class AppStyleDark(AppStyle):
         self.set("inner_widget_bg_hover", "#222020")
         self.set("inner_widget_alternating_bg_hover", "#2f2e2e")
         self.set("widget_text", "#e0e0e0")
-        self.set("widget_text_hover", "#c0c0c0")
+        self.set("widget_text_hover", "#b0b0b0")
         self.set("widget_text_saturated", "#fff")
         self.set("widget_disabled_text", "#665")
         self.set("border", "#000")
