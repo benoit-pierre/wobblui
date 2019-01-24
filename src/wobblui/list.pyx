@@ -593,12 +593,14 @@ cdef class ListBase(ScrollbarDrawingWidget):
             self.needs_redraw = True
 
     def on_doubleclick(self, mouse_id, button, x, y):
+        old_hover_index = self._hover_index
         self.set_selection_by_mouse_pos(x, y)
         if not self.triggered_by_single_click and \
                 self._hover_index >= 0:
             prev_selected_index = self._selected_index
             self._selected_index = self._hover_index
-            if self._selected_index != prev_selected_index:
+            if self._selected_index != prev_selected_index or \
+                    old_hover_index != self._hover_index:
                 self.force_redraw_and_blocking_show()
             self.triggered()
 
@@ -608,12 +610,14 @@ cdef class ListBase(ScrollbarDrawingWidget):
             # Since this click doesn't do anything for that,
             # also ignore it for selection:
             return
+        old_hover_index = self._hover_index
         self.set_selection_by_mouse_pos(x, y)
         if self.triggered_by_single_click and \
                 self._hover_index >= 0 and button == 1:
             prev_selected_index = self._selected_index
             self._selected_index = self._hover_index
-            if self._selected_index != prev_selected_index:
+            if self._selected_index != prev_selected_index or \
+                    old_hover_index != self._hover_index:
                 self.force_redraw_and_blocking_show()
             self.triggered()
 
