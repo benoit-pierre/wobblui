@@ -220,7 +220,8 @@ class Button(Widget):
 
     def update_texture_color(self):
         if self.contained_image is not None:
-            if self.hovered and self.image_color_hover is not None:
+            if self.hovered and self.image_color_hover is not None and \
+                    not self.disabled:
                 self.contained_image.set_color(self.image_color_hover)
             else:
                 self.contained_image.set_color(self.image_color)
@@ -242,7 +243,7 @@ class Button(Widget):
             if self.style is not None:
                 c = Color(self.style.get("button_bg"))
                 if self.style.has("button_bg_hover") and \
-                        self.hovered:
+                        self.hovered and not self.disabled:
                     c = Color(self.style.get("button_bg_hover"))
             if self.override_bg_color != None:
                 c = self.override_bg_color
@@ -309,7 +310,9 @@ class Button(Widget):
                 c = Color(self.style.get("widget_text"))
                 if self.disabled and self.style.has("widget_disabled_text"):
                     c = Color(self.style.get("widget_disabled_text"))
-                elif self.hovered and self.style.has("widget_text_hover"):
+                elif self.hovered and \
+                        self.style.has("widget_text_hover") and \
+                        not self.disabled:
                     c = Color(self.style.get("widget_text_hover"))
             if self.override_text_color != None:
                 c = self.override_text_color
