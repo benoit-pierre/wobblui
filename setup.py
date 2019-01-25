@@ -202,7 +202,7 @@ if __name__ == "__main__":
         dependency_links=get_requirements_and_dep_links()[1],
         long_description=long_description,
         long_description_content_type="text/markdown",
-        url="https://github.com/JonasT/wobblui",
+        url="https://github.com/wobblui/wobblui",
         classifiers=[
             "Programming Language :: Python :: 3",
             "Operating System :: OS Independent",
