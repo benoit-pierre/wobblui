@@ -33,7 +33,7 @@ Font files
 Some packaged font files are under different licenses,
 the `SIL Open Font License` and `GUST Font License`.
 See the license `.md` files in folder [src/wobblui/font/packaged-fonts/](
-src/wobblui/packaged-fonts/) for details.
+src/wobblui/font/packaged-fonts/) for details.
 
 font tools license
 ------------------
