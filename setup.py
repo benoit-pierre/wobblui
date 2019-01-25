@@ -1,4 +1,8 @@
 
+import sys
+if int(sys.version.split(".")[0]) < 3:
+    raise RuntimeError("python2 is not supported")
+
 from setuptools import setup, Extension, Command
 from distutils.command.build_ext import build_ext
 from setuptools.command.install import install
