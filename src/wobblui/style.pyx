@@ -146,7 +146,7 @@ class AppStyleDark(AppStyle):
         super().__init__()
         self.set("window_bg", "#222")
         self.set("button_bg", "#444")
-        self.set("button_bg_hover", "#404040")
+        self.set("button_bg_hover", "#353535")
         self.set("button_border", "#555")
         self.set("topbar_bg", "#333333")
         self.set("widget_disabled_bg", "#333")
