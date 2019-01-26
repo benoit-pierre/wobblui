@@ -9,6 +9,6 @@ while also providing mobile support for Android.
 
 This is a [test](custom_widget.md)
 
-* [Custom Widgets](./custom_widgets.md)
+* [Custom Widgets](custom_widgets.md)
 
 
