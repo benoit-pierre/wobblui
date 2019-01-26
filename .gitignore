@@ -1,3 +1,4 @@
+docs/build/
 .pytest_cache/
 build/
 otf2ttf.sh
