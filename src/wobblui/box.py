@@ -24,6 +24,7 @@ import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.gfx import draw_rectangle
+from wobblui.image import RenderImage
 from wobblui.scrollbarwidget import ScrollbarDrawingWidget
 from wobblui.widget import Widget
 
@@ -38,8 +39,11 @@ class BoxSpacer(Widget):
         return 0
 
 class Box(ScrollbarDrawingWidget):
-    def __init__(self, horizontal, box_surrounding_padding=0,
-            default_expand_on_secondary_axis=True):
+    def __init__(self,
+            horizontal,
+            box_surrounding_padding=0,
+            default_expand_on_secondary_axis=True
+            ):
         super().__init__(is_container=True)
         self.default_expand_on_secondary_axis =\
             default_expand_on_secondary_axis
@@ -53,17 +57,44 @@ class Box(ScrollbarDrawingWidget):
         self.actual_layout_height = None
         self.actual_layout_width = None
         self.scroll_offset_y = 0
+        self._background_image = None
+        self._background_image_keep_aspect = False
+
+    def set_background_image(self, img, keep_aspect_ratio=True):
+        if not isinstance(img, RenderImage):
+            img = RenderImage(img)
+        self._background_image = img
+        self._background_image_keep_aspect = (keep_aspect_ratio is True)
+        self.bg_color = None
 
     def set_background_color(self, c):
         if c is None:
             self.bg_color = None
             return
+        self._background_image = None
         self.bg_color = Color(c)
 
     def do_redraw(self):
         if self.bg_color != None:
             draw_rectangle(self.renderer, 0, 0,
                 self.width, self.height, color=self.bg_color)
+        elif self._background_image is not None:
+            if not self._background_image_keep_aspect:
+                self._background_image.draw(self.renderer,
+                    0, 0, self.width, self.height)
+            else:
+                size = self._background_image.render_size
+                scale_up_x = (self.width / max(1, size[0]))
+                scale_up_y = (self.height / max(1, size[1]))
+                scale_up = max(scale_up_x, scale_up_y)
+                render_w = (size[0] * scale_up)
+                render_offset_x = (self.width - render_w) * 0.5
+                render_h = (size[1] * scale_up)
+                render_offset_y = (self.height - render_h) * 0.5
+                self._background_image.draw(self.renderer,
+                    round(render_offset_x), round(render_offset_y),
+                    round(render_w), round(render_h))
+
         max_scroll = (self.actual_layout_height - self.height)
         self.scroll_offset_y = max(0, min(self.scroll_offset_y, max_scroll))
         self._child_mouse_event_shift_y = round(self.scroll_offset_y)
@@ -475,30 +506,56 @@ class CenterBox(Widget):
     def __init__(self, padding=0,
             child_minimum_width=0,
             child_fixed_width=-1,
+            child_fixed_height=-1,
             expand_vertically=False,
             expand_horizontally=False):
         super().__init__(is_container=True)
         self.padding = padding
         self.child_minimum_width = child_minimum_width
         self.child_fixed_width = child_fixed_width
+        self.child_fixed_height = child_fixed_height
         self.expand_vertically = expand_vertically
         self.expand_horizontally = expand_horizontally
+        self.bg_color = None
+
+    def set_background_color(self, c):
+        if c is None:
+            self.bg_color = None
+            return
+        self.bg_color = Color(c)
 
     def do_redraw(self):
+        if self.bg_color != None:
+            x = self.padding
+            y = self.padding
+            w = self.width - self.padding * 2
+            h = self.height - self.padding * 2
+            if self.child_fixed_width >= 0:
+                w = self.child_fixed_width
+                x = round(max(0, self.width - self.child_fixed_width) * 0.5)
+            if self.child_fixed_height >= 0:
+                h = self.child_fixed_height
+                y = round(max(0, self.height - self.child_fixed_height) * 0.5)
+            draw_rectangle(self.renderer,
+                x, y, w, h,
+                color=self.bg_color)
         self.draw_children()
 
     def get_natural_width(self):
-        if len(self._children) == 0:
-            return 0
         if self.child_fixed_width > 0:
             return (self.padding * 2 * self.dpi_scale) + \
                 self.child_fixed_width * self.dpi_scale
+        if len(self._children) == 0:
+            return 0
         min_width = round(self.dpi_scale * self.child_minimum_width) 
         return max(min_width,
             self._children[0].get_natural_width()) +\
             (self.padding * 2 * self.dpi_scale)
 
     def get_natural_height(self, given_width=None):
+        if self.child_fixed_height > 0:
+            return (self.padding * 2 * self.dpi_scale) + \
+                self.child_fixed_height * self.dpi_scale
         if len(self._children) == 0:
             return 0
         v = given_width
@@ -529,13 +586,17 @@ class CenterBox(Widget):
             else:
                 child.width = max(1, round(self.width -
                     outer_padding * 2))
-        if not self.expand_vertically:
-            child.height = min(round(self.height -
-                outer_padding * 2), child.get_natural_height(
-                given_width=child.width))
+        if self.child_fixed_height > 0:
+            child.height = min(self.dpi_scale * self.child_fixed_height,
+                max(1, round(self.height - outer_padding * 2)))
         else:
-            child.height = max(1, self.height -
-                self.padding * 2 * self.dpi_scale)
+            if not self.expand_vertically:
+                child.height = min(round(self.height -
+                    outer_padding * 2), child.get_natural_height(
+                    given_width=child.width))
+            else:
+                child.height = max(1, self.height -
+                    self.padding * 2 * self.dpi_scale)
         child.x = math.floor((self.width - child.width) / 2)
         child.y = math.floor((self.height - child.height) / 2)
         child.relayout_if_necessary()

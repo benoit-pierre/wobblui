@@ -1850,6 +1850,11 @@ cdef class WidgetBase:
         if trigger_resize:
             self.resized()
 
+    def clear(self):
+        l = list(self._children)
+        for child in l:
+            self.remove(child)
+
     def internal_override_parent(self, parent):
         old_renderer = self.get_renderer()
         if self._parent == parent:

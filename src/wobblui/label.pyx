@@ -33,19 +33,32 @@ from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 cdef class Label(ScrollbarDrawingWidget):
     cdef double current_draw_scale, text_scale, known_dpi_scale
     cdef str known_font_family, _current_align, _cached_text
+    cdef str font_family_override
+    cdef double font_px_size_override
     cdef int px_size, _layout_height, _layout_width, _layouted_for_width
     cdef object natural_size_cache, text_obj, _user_set_color
 
     cdef public int scroll_y_offset
 
-    def __init__(self, text="", color=None,
-            text_scale=1.0):
+    def __init__(self,
+            text="",
+            color=None,
+            text_scale=1.0,
+            font=None):
         super().__init__()
         self.no_mouse_events = True
         self.type = "label"
         self.current_draw_scale = self.dpi_scale
         self.text_scale = text_scale
         font_family = self.style.get("widget_font_family")
+        self.font_px_size_override = (
+            font.px_size if font is not None else -1
+        )
+        self.font_family_override = (
+            font.font_family if font is not None else ""
+        )
+        if self.font_family_override != "":
+            font_family = self.font_family_override
         self.px_size = self.get_intended_text_size()
         self.known_font_family = font_family
         self._layout_height = -1
@@ -54,7 +67,8 @@ cdef class Label(ScrollbarDrawingWidget):
         self.scroll_y_offset = 0
         self.natural_size_cache = dict()
         self.known_dpi_scale = self.dpi_scale
-        self.text_obj = RichText(font_family=font_family,
+        self.text_obj = RichText(
+            font_family=font_family,
             px_size=self.px_size,
             draw_scale=self.dpi_scale)
         self._current_align = "left"
@@ -78,6 +92,9 @@ cdef class Label(ScrollbarDrawingWidget):
         self.font_size_refresh()
 
     def get_intended_text_size(self):
+        if self.font_px_size_override > 0:
+            return round(self.font_px_size_override *
+                self.dpi_scale * self.text_scale)
         if self.style == None:
             return 12
         px_size = round(self.style.get("widget_text_size") *\
@@ -171,6 +188,8 @@ cdef class Label(ScrollbarDrawingWidget):
     def font_size_refresh(self):
         new_px_size = self.get_intended_text_size()
         new_font_family = self.style.get("widget_font_family")
+        if self.font_family_override != "":
+            new_font_family = self.font_family_override
         if new_px_size != self.px_size or \
                 abs(self.dpi_scale - self.current_draw_scale) > 0.001 or \
                 new_font_family != self.known_font_family:

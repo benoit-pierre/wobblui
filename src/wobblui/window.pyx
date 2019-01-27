@@ -34,7 +34,7 @@ import wobblui.font.manager
 from wobblui.gfx cimport clear_renderer_gfx, draw_rectangle
 from wobblui.osinfo import is_android
 from wobblui.sdlinit cimport initialize_sdl
-from wobblui.style import AppStyle, AppStyleDark
+from wobblui.style import AppStyle, AppStyleBright, AppStyleDark
 cimport wobblui.texture
 from wobblui.uiconf import config
 from wobblui.widget_base cimport WidgetBase
@@ -126,7 +126,7 @@ cdef class Window(WidgetBase):
         self.type = "window"
         initialize_sdl()
         if style is None:
-            style = AppStyleDark()
+            style = AppStyleBright()
         self.mouse_position_cache = dict()
         self._sdl_window = None
         self._style = style

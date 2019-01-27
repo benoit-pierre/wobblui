@@ -158,6 +158,10 @@ cdef class Font(object):
             variant = "BoldItalic"
         font_paths = wobblui.font.info.get_font_paths_by_name(
             self.font_family + " " + variant, cached=True)
+        if len(font_paths) == 0 and (
+                self.font_family.lower() in ["sans", "sans serif"]):
+            font_paths = wobblui.font.info.get_font_paths_by_name(
+                "Tex Gyre Adventor " + variant, cached=True)
         for (variant_name, font_path) in font_paths:
             if font_path.endswith(".ttf"):
                 return font_path

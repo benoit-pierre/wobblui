@@ -28,9 +28,14 @@ import PIL.ImageDraw
 import platform
 import sdl2 as sdl
 import sdl2.sdlimage as sdlimage
+import sdl2.sdlttf as sdlttf
+import subprocess
+import sys
+import tempfile
 import time
 
 from wobblui.color cimport Color
+from wobblui.font.manager cimport c_font_manager
 from wobblui.osinfo import is_android
 from wobblui.sdlinit cimport initialize_sdl
 from wobblui.texture cimport Texture
@@ -48,7 +53,27 @@ def stock_image(name):
             return (p + ".jpg")
     return p
 
-def _internal_image_to_sdl_surface(pil_image, retries=5):
+def _internal_sdl_surface_to_pil_image(sdl_surface):
+    (fd, fpath) = tempfile.mkstemp(
+        prefix="wobblui-srf-to-pil-", suffix=".bmp"
+    )
+    try:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        result = sdl.SDL_SaveBMP(
+            sdl_surface,
+            fpath.encode('utf-8', 'replace')
+        )
+        if result != 0:
+            raise RuntimeError("SDL_SaveBMP returned error")
+        pil_image = PIL.Image.open(fpath)
+        return pil_image
+    finally:
+        os.remove(fpath)
+
+def _internal_pil_image_to_sdl_surface(pil_image, retries=5):
     global sdlimage_initialized
     initialize_sdl()
     if not sdlimage_initialized:
@@ -86,7 +111,7 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
         if retries > 0:
             retries -= 1
             time.sleep(0.1)
-            return _internal_image_to_sdl_surface(
+            return _internal_pil_image_to_sdl_surface(
                 pil_image,
                 retries=(retries - 1))
         err_msg = sdlimage.IMG_GetError()
@@ -100,14 +125,60 @@ def _internal_image_to_sdl_surface(pil_image, retries=5):
     return sdl_image
 
 cdef class RenderImage(object):
+    """ A mutable image object for use in widget draw callbacks.
+        This RenderImage can be created either from a PIL
+        image or a disk file path. Rendering a RenderImage with
+        draw() is fast after it was rendered at least once, all
+        other operations like the editing manipulation are SLOW.
+
+        Modification / editing of a RenderImage
+        ---------------------------------------
+
+        The RenderImage object supports slow but flexible editing
+        operations. Check them out:
+
+        - draw_text_onto_image
+        - draw_filled_rectangle_onto_image
+        - draw_other_image_onto_image
+    """
+
     def __init__(self, object pil_image, render_low_res=False):
         initialize_sdl()
+        if type(pil_image) == str:
+            pil_image = PIL.Image.open(pil_image)
         self.surface = None
-        self.pil_image = pil_image.copy()
-        self.render_size = tuple(self.pil_image.size)
+        self._pil_image = pil_image.copy()
+        self._render_size = tuple(self._pil_image.size)
+        self.internal_image_size = tuple(self._render_size)
         self.render_low_res = (render_low_res is True)
         self._color = Color.white()
-        self.force_update_image()
+
+        if self.render_low_res:
+            (w, h) = self._pil_image.size
+            scale_f = (512 + 512) / (w + h)
+            new_w = max(1, round(w * scale_f))
+            new_h = max(1, round(h * scale_f))
+            if scale_f < 0.95 and (new_w != w or new_h != h):
+                self._pil_image = self._pil_image.resize(
+                    (new_w, new_h))
+        self.surface = _internal_pil_image_to_sdl_surface(
+            self._pil_image)
+        self.internal_image_size = tuple(self._pil_image.size)
+        self._texture = None
+
+    def show_image(self):
+        cmd = [sys.executable, "-c",
+            "from wobblui.imageviewer import launch_viewer; " +
+            "import sys; " +
+            "launch_viewer(sys.argv[1], delete_source=True)"]
+        (fd, fpath) = tempfile.mkstemp(prefix="wobblui-img-view-",
+            suffix=".png")
+        try:
+            with open(fpath, "wb") as f:
+                f.write(self.as_png())
+            subprocess.Popen(cmd + [fpath])
+        except Exception as e:
+            os.remove(fpath) 
 
     @classmethod
     def new_from_size(self, width, height):
@@ -118,42 +189,166 @@ cdef class RenderImage(object):
             max(1, round(height))), (0, 0, 0, 0))
         return RenderImage(pil_image, render_low_res=False)
 
-    def force_update_image(self):
-        if self.surface is not None:
-            sdl.SDL_FreeSurface(self.surface)
-            self.surface = None
-        self.pil_image_scaled = None
-        if self.render_low_res:
-            (w, h) = self.pil_image.size
-            scale_f = (512 + 512) / (w + h)
-            new_w = max(1, round(w * scale_f))
-            new_h = max(1, round(h * scale_f))
-            if scale_f < 0.95 and (new_w != w or new_h != h):
-                self.pil_image_scaled = self.pil_image.resize(
-                    (new_w, new_h))
-        if self.pil_image_scaled is None:
-            self.surface = _internal_image_to_sdl_surface(
-                self.pil_image)
-            
-        else:
-            self.surface = _internal_image_to_sdl_surface(
-                self.pil_image_scaled)
-        self._texture = None
+    def _clip_rect_to_image(self, x, y, w, h):
+        x = round(x)
+        y = round(y)
+        w = round(w) - min(0, -x)
+        h = round(h) - min(0, -y)
+        x = min(self._render_size[0], max(0, x))
+        y = min(self._render_size[1], max(0, y))
+        w = min(w, self._render_size[0] - x)
+        h = min(h, self._render_size[1] - y)
+        return (x, y, w, h)
 
-    def draw_filled_rectangle_onto_image(self,
+    def draw_rectangle_onto_image(self,
             x, y, w, h, color=Color.black(),
-            alpha=1.0):
-        draw = PIL.ImageDraw.Draw(self.pil_image, 'RGBA')
-        rect_values = (round(x), round(y),
-            round(x) + max(0, round(w) - 1),
-            round(y) + max(0, round(h) - 1))
-        draw.rectangle(
-            rect_values,
-            fill=(
-                color.value_red, color.value_green, color.value_blue,
-                max(0, min(255, round(alpha * 255.0)))
-            ))
-        self.force_update_image()
+            alpha=1.0, filled=True
+            ):
+        if self.render_low_res:
+            raise TypeError("cannot modify low-res rendered image")
+        if not filled:
+            raise NotImplementedError("filled=False not implemented")
+
+        # Process input values:
+        (x, y, w, h) = self._clip_rect_to_image(x, y, w, h)
+        if w <= 0 or h <= 0:
+            return
+        alpha = max(0, min(255, round(255.0 * alpha)))
+        if alpha == 0:
+            return
+        if not isinstance(color, Color):
+            color = Color(color)
+
+        # Do rectangle drawing:
+        if alpha == 255:
+            # Render directly onto our internal surface:
+            rect = sdl.SDL_Rect()
+            rect.x = x
+            rect.y = y
+            rect.w = w
+            rect.h = h
+            scolor = sdl.SDL_MapRGBA(self.surface.contents.format,
+                max(0, min(255, round(color.value_red))),
+                max(0, min(255, round(color.value_green))),
+                max(0, min(255, round(color.value_blue))),
+                255
+            )
+            self._texture = None
+            self._pil_image = None    
+            result = sdl.SDL_FillRect(self.surface, rect, scolor)
+            if result != 0:
+                raise RuntimeError("SDL_FillRect returned an error")
+            return
+        # Work around broken alpha handling by rendering to a surface copy:
+        copied_srf = sdl.SDL_ConvertSurface(
+            self.surface,
+            self.surface.contents.format,
+            sdl.SDL_SWSURFACE
+        )
+        try:
+            rect = sdl.SDL_Rect()
+            rect.x = x
+            rect.y = y
+            rect.w = w
+            rect.h = h
+            scolor = sdl.SDL_MapRGBA(copied_srf.contents.format,
+                max(0, min(255, round(color.value_red))),
+                max(0, min(255, round(color.value_green))),
+                max(0, min(255, round(color.value_blue))),
+                255
+            )
+            result = sdl.SDL_FillRect(copied_srf, rect, scolor)
+            if result != 0:
+                raise RuntimeError("SDL_FillRect returned an error")
+
+            # Now render the copied surface back, but with alpha blending:
+            self._texture = None
+            sdl.SDL_SetSurfaceBlendMode(copied_srf,
+                sdl.SDL_BLENDMODE_BLEND)
+            sdl.SDL_SetSurfaceAlphaMod(copied_srf, alpha)
+            sdl.SDL_BlitSurface(copied_srf, rect, self.surface, rect)
+            if result != 0:
+                raise RuntimeError("SDL_BlitSurface returned an error")
+        finally:
+            sdl.SDL_FreeSurface(copied_srf)
+            self._texture = None
+            self._pil_image = None
+
+    def draw_text_onto_image(self,
+            text, font=None,
+            x=0, y=0,
+            color=Color.black(),
+            alpha=1.0
+            ):
+        if self.render_low_res:
+            raise TypeError("cannot modify low-res rendered image")
+        try:
+            text = text.encode("utf-8", "replace")
+        except AttributeError:
+            text = bytes(text)
+        if font is None:
+            font = c_font_manager().get_font("Sans")
+        sfont = font.get_sdl_font()
+        c = sdl.SDL_Color(255, 255, 255)
+        surface = sdlttf.TTF_RenderUTF8_Blended(
+            sfont.font, text, c
+        )
+        if not surface:
+            raise RuntimeError("TTF_RenderUTF8_Blended reported error")
+        self._texture = None
+        try:
+            self._draw_srf_onto_image(
+                surface, x, y, alpha=alpha,
+                color=color)
+        finally:
+            sdl.SDL_FreeSurface(surface)
+
+    def draw_image_onto_image(self,
+            other_image, x, y, alpha=1.0, color=Color.white()
+            ):
+        self._draw_srf_onto_image(
+            other_image.surface, x, y, alpha=alpha, color=color
+        )
+
+    def _draw_srf_onto_image(self,
+            surface, x, y, alpha=1.0, color=Color.white()
+            ):
+        if self.render_low_res:
+            raise TypeError("cannot modify low-res rendered image")
+        alpha = max(0, min(255, round(255.0 * alpha)))
+        if alpha == 0:
+            return
+        if not isinstance(color, Color):
+            color = Color(color)
+        rect = sdl.SDL_Rect()
+        rect.x = round(x)
+        rect.y = round(y)
+        rect.w = surface.contents.w
+        rect.h = surface.contents.h
+        self._texture = None
+        sdl.SDL_SetSurfaceBlendMode(surface,
+            sdl.SDL_BLENDMODE_BLEND)
+        sdl.SDL_SetSurfaceAlphaMod(surface, alpha)
+        sdl.SDL_SetSurfaceColorMod(surface,
+            max(0, min(255, round(color.value_red))),
+            max(0, min(255, round(color.value_green))),
+            max(0, min(255, round(color.value_blue))),
+        )
+        result = sdl.SDL_BlitSurface(surface, None, self.surface, rect)
+        sdl.SDL_SetSurfaceColorMod(surface, 255, 255, 255)
+        sdl.SDL_SetSurfaceAlphaMod(surface, 255)
+        if result != 0:
+            raise RuntimeError("SDL_BlitSurface returned an error")
+        self._pil_image = None
+
+    @property
+    def pil_image(self):
+        if self._pil_image is not None:
+            return self._pil_image
+        self._pil_image = _internal_sdl_surface_to_pil_image(
+            self.surface
+        )
+        return self._pil_image
 
     def as_png(self):
         byteobj = io.BytesIO()
@@ -167,6 +362,8 @@ cdef class RenderImage(object):
         self.surface = None
 
     def to_texture(self, renderer):
+        if renderer is None:
+            raise ValueError("renderer cannot be None")
         initialize_sdl()
         if self._texture is None or \
                 self._texture.is_unloaded() or \
@@ -195,10 +392,14 @@ cdef class RenderImage(object):
     def draw(self, renderer, int x, int y, w=None, h=None):
         tex = self.to_texture(renderer)
         if w is None:
-            w = self.render_size[0]
+            w = self._render_size[0]
         if h is None:
-            h = self.render_size[1]
+            h = self._render_size[1]
         tex.draw(x, y, w, h)
+
+    @property
+    def render_size(self):
+        return tuple(self._render_size)
 
 def image_as_grayscale(pil_image):
     if pil_image.mode.upper() == "RGBA":
@@ -235,17 +436,19 @@ class ImageWidget(Widget):
         super().__init__()
         if type(pil_image) == str or type(pil_image) == bytes:
             pil_image = PIL.Image.open(pil_image)
-        self.pil_image = pil_image.copy()
-        self.pil_image_small = pil_image
+        elif type(pil_image) == RenderImage:
+            pil_image = pil_image.pil_image
+        self._pil_image = pil_image.copy()
+        self._pil_image_small = pil_image
         max_size = 4096
         if is_android():
             max_size = 1024
-        (imgw, imgh) = self.pil_image_small.size
+        (imgw, imgh) = self._pil_image_small.size
         if imgw > max_size or imgh > max_size:
             scaledown_w = (max_size / imgw)
             scaledown_h = (max_size / imgh)
             scaledown = min(scaledown_w, scaledown_h)
-            self.pil_image_small = self.pil_image_small.resize(
+            self._pil_image_small = self._pil_image_small.resize(
                 [max(1, round(imgw * scaledown)),
                 max(1, round(imgh * scaledown))], PIL.Image.ANTIALIAS)
         self.fit_to_width = fit_to_width
@@ -263,8 +466,8 @@ class ImageWidget(Widget):
         if self.renderer is None:
             return
         if self.render_image is None:
-            self.render_image = RenderImage(self.pil_image_small)
-        (imgw, imgh) = self.pil_image.size
+            self.render_image = RenderImage(self._pil_image_small)
+        (imgw, imgh) = self._pil_image.size
         scale_w = (self.width / imgw)
         scale_h = (self.height / imgh)
         scale = min(scale_w, scale_h)
@@ -284,7 +487,7 @@ class ImageWidget(Widget):
         return h
 
     def _natural_size(self):
-        (w, h) = self.pil_image.size
+        (w, h) = self._pil_image.size
         w *= self.dpi_scale
         h *= self.dpi_scale
         if self.fit_to_width != None:

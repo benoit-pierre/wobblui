@@ -20,12 +20,33 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.color cimport Color
+import os
+import sys
+import traceback
 
-cdef class RenderImage(object):
-    cdef object _pil_image, _pil_image_scaled
-    cdef tuple _render_size, internal_image_size
-    cdef object _color, _texture
-    cdef public object surface
-    cdef int render_low_res
+from wobblui import event_loop
+from wobblui.box import VBox
+from wobblui.image import ImageWidget, RenderImage
+from wobblui.label import Label
+from wobblui.window import Window
 
+def launch_viewer(fpath, delete_source=False):
+    # Disable stdout:
+    f = open(os.devnull, 'w')
+    sys.stdout = f
+    
+    # Load image into UI:
+    w = Window(title="Image " + str(fpath))
+    b = VBox()
+    w.add(b)
+    b.add(Label("Image loaded from " + str(fpath)), expand=False)
+    try:
+        ri = RenderImage(fpath)
+        b.add(ImageWidget(ri))
+    except Exception as e:
+        b.add(Label("Failed to load image: " + str(
+            traceback.format_exception_only(type(e), e)
+        )))
+    if delete_source is True:
+        os.remove(fpath)
+    event_loop()

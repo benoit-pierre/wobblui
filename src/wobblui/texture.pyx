@@ -154,7 +154,8 @@ cdef class Texture(object):
     def new_from_sdl_surface(renderer, srf):
         global sdl_tex_count
         if not renderer:
-            raise ValueError("need a valid renderer! not NULL / None")
+            raise ValueError("need a valid renderer! not NULL / None, " +
+                "got: " + str(renderer))
         if not srf:
             raise ValueError("need valid surface! not NULL / None")
         tex = Texture(renderer, srf.contents.w, srf.contents.h,

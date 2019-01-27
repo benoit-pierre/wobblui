@@ -48,7 +48,10 @@ class Button(Widget):
         super().__init__(is_container=False,
             can_get_focus=clickable)
         if clickable:
-            self.triggered = Event("triggered", owner=self)
+            self.triggered = Event(
+                "triggered",
+                owner=self,
+                special_pre_event_func=self.pre_triggered)
         else:
             self.triggered = ForceDisabledDummyEvent(
                 "triggered", owner=self)
@@ -78,6 +81,9 @@ class Button(Widget):
             self.border = 15.0
         if len(text) > 0:
             self.set_text(text)
+
+    def pre_triggered(self, internal_data=None):
+        pass
 
     @property
     def font_family(self):
@@ -403,6 +409,34 @@ class ImageButton(Button):
             color = Color(self.style.get("widget_text_hover"))
             self.image_color_hover = color
         super().do_redraw()
+
+class Checkbox(ImageButton):
+    def __init__(self):
+        self.img_w = 50
+        super().__init__(
+            stock_image("check_off"), clickable=True,
+            scale_to_width=self.img_w)
+        self._checked = False
+
+    @property
+    def checked(self):
+        return self._checked
+
+    @checked.setter
+    def checked(self, v):
+        v = (v is True)
+        if v != self._checked:
+            self.needs_redraw = True
+            self._checked = v
+            if self._checked:
+                self.set_image(stock_image("check_on"),
+                    scale_to_width=self.img_w)
+            else:
+                self.set_image(stock_image("check_off"),
+                    scale_to_width=self.img_w)
+
+    def pre_triggered(self, internal_data=None):
+        self.checked = not self.checked
 
 class HamburgerButton(ImageButton):
     def __init__(self, scale_to_width=None):
