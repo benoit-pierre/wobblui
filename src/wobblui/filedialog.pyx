@@ -398,22 +398,18 @@ class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
                 **(self.separate_window_init_args[1])
             )
             def window_closed_event():
-                print('window closed event.')
                 if not self.callback_issued:
                     self.callback_issued = True
                     if done_callback is not None:
-                        print(" -- > DOING CALLBACK")
                         done_callback(None)
             self.filebrowser_window.closing.register(window_closed_event)
             def file_browser_done(result):
-                print("file browser done.")
                 if not self.callback_issued:
                     self.callback_issued = True
                     try:
                         self.filebrowser_window.close()
                     finally:
                         if done_callback is not None:
-                            print(" --> DOING CALLBACK")
                             done_callback(result)
                 else:
                     self.filebrowser_window.close()
