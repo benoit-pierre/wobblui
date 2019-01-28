@@ -46,7 +46,7 @@ cdef class ListEntry:
             extra_html_at_right=None,
             extra_html_at_right_scale=0.8, is_alternating=False,
             side_icon=None, side_icon_width=40,
-            side_icon_to_left=True,
+            side_icon_to_left=True, side_icon_with_text_color=False,
             with_visible_bg=False,
             override_dpi_scale=None):
         self.y_offset = None
@@ -67,7 +67,6 @@ cdef class ListEntry:
         self.extra_html_as_subtitle_scale =\
             extra_html_as_subtitle_scale
         self.side_icon = None
-        self.set_side_icon(side_icon, side_icon_width=side_icon_width)
 
         self.disabled = False
         self.is_alternating = is_alternating
@@ -78,7 +77,8 @@ cdef class ListEntry:
         self.set_side_icon(
             side_icon,
             side_icon_width=side_icon_width,
-            icon_to_left=side_icon_to_left)
+            side_icon_to_left=side_icon_to_left,
+            side_icon_with_text_color=side_icon_with_text_color)
 
     def set_side_html(self, new_html=None, new_html_scale=None):
         self.extra_html_at_right = new_html
@@ -102,14 +102,16 @@ cdef class ListEntry:
 
     def set_side_icon(self,
             side_icon,
-            icon_to_left=True,
-            side_icon_width=40):
+            side_icon_to_left=True,
+            side_icon_width=40,
+            side_icon_with_text_color=False):
         if side_icon is not None and \
                 not isinstance(side_icon, RenderImage):
             side_icon = RenderImage(side_icon)
         self.side_icon = side_icon
-        self.side_icon_or_space_left = icon_to_left
+        self.side_icon_or_space_left = side_icon_to_left
         self.side_icon_or_space_width = 0
+        self.side_icon_with_text_color = side_icon_with_text_color
         self.side_icon_height = 0
         if self.side_icon is not None:
             self.side_icon_or_space_width = side_icon_width
@@ -294,12 +296,20 @@ cdef class ListEntry:
                 max(0, self.extra_html_at_right_y) + y,
                 color=c)
         if self.side_icon is not None:
+            c = Color.white()
+            if self.side_icon_with_text_color:
+                c = Color(self.style.get("widget_text"))
+                if draw_hover or draw_selected:
+                    c = Color(self.style.get("selected_text"))
+                if self.disabled and self.style.has("widget_disabled_text"):
+                    c = Color(self.style.get("widget_disabled_text"))
             self.side_icon.draw(renderer,
                 self.iconoffset_x + x, self.iconoffset_y + y,
                 round(self.side_icon_or_space_width *
                     self.effective_dpi_scale),
                 round(self.side_icon_height *
-                    self.effective_dpi_scale)
+                    self.effective_dpi_scale),
+                color=c,
             )
         Perf.stop(perf_id)
 
@@ -520,8 +530,10 @@ cdef class ListEntry:
         if self.side_icon is not None:
             self._height = math.ceil(max(self._height,
                 self.side_icon_height + padding * 2))
-            self.iconoffset_y = round((self._height -
-                self.side_icon_height) / 2.0)
+            self.iconoffset_y = round(
+                (self._height -
+                self.side_icon_height * self.effective_dpi_scale) * 0.5
+                )
 
         # Offset everything if icon is to the left:
         if self.side_icon_or_space_left:
@@ -918,41 +930,34 @@ cdef class ListBase(ScrollbarDrawingWidget):
         self._entries[index].set_side_html(
             new_html=html, new_html_scale=new_html_scale
         )
+        self.needs_redraw = True
 
     def modify_side_icon(self, index,
-            new_side_icon=None,
+            new_side_icon="unchanged",
             new_side_width=None,
-            new_side_icon_to_left=None):
-        if new_side_icon is not None:
-            if new_side_width is None:
-                new_side_width = self._entries[index].side_icon_or_space_width
-            if new_side_icon_to_left is None:
-                new_side_icon_to_left =\
-                    self._entries[index].side_icon_or_space_left
-            self._entries[index].set_side_icon(
-                new_side_icon,
-                icon_to_left=new_side_icon_to_left,
-                side_icon_width=new_side_width
-            )
-            return
-        if new_side_width is not None:
-            icon = self._entries[index].side_icon
-            if new_side_icon_to_left is None:
-                new_side_icon_to_left =\
-                    self._entries[index].side_icon_or_space_left
-            self._entries[index].set_side_icon(
-                icon,
-                icon_to_left=new_side_icon_to_left,
-                side_icon_width=new_side_width
-            )
-        elif new_side_icon_to_left is not None:
-            icon = self._entries[index].side_icon
-            width = self._entries[index].side_icon_or_space_width
-            self._entries[index].set_side_icon(
-                icon,
-                icon_to_left=new_side_icon_to_left,
-                side_icon_width=width
-            )
+            new_side_icon_to_left=None,
+            new_side_icon_with_text_color=None):
+        if new_side_icon is None and new_side_width is None and \
+                new_side_icon_to_left is None and \
+                new_side_icon_with_text_color is None:
+            raise ValueError("no changes specified!")
+        if new_side_icon is "unchanged":
+            new_side_icon = new_side_icon
+        if new_side_width is None:
+            new_side_width = self._entries[index].side_icon_or_space_width
+        if new_side_icon_to_left is None:
+            new_side_icon_to_left =\
+                self._entries[index].side_icon_or_space_left
+        if new_side_icon_with_text_color is None:
+            new_side_icon_with_text_color =\
+                self._entries[index].side_icon_with_text_color
+        self._entries[index].set_side_icon(
+            new_side_icon,
+            side_icon_to_left=new_side_icon_to_left,
+            side_icon_width=new_side_width,
+            side_icon_with_text_color=new_side_icon_with_text_color,
+        )
+        self.needs_redraw = True
 
     def insert(self, index, text):
         self.cached_natural_width = None
@@ -975,7 +980,8 @@ cdef class ListBase(ScrollbarDrawingWidget):
     def add(self, text, side_text=None, subtitle=None,
             side_icon=None,
             side_icon_width=40,
-            side_icon_to_left=False
+            side_icon_to_left=True,
+            side_icon_with_text_color=False,
             ):
         if side_text != None:
             side_text = html.escape(side_text)
@@ -984,13 +990,16 @@ cdef class ListBase(ScrollbarDrawingWidget):
         self.add_html(
             html.escape(text), side_html=side_text,
             subtitle_html=subtitle,
-            side_icon_to_left=side_icon_to_left)
+            side_icon_to_left=side_icon_to_left,
+            side_icon_with_text_color=side_icon_with_text_color,
+        )
 
     def add_html(self, html,
             side_html=None, subtitle_html=None,
             side_icon=None,
             side_icon_width=40,
-            side_icon_to_left=False
+            side_icon_to_left=True,
+            side_icon_with_text_color=False,
             ):
         if subtitle_html != None and self.fixed_one_line_entries:
             raise ValueError("cannot use subtitle when list is " +
@@ -1010,6 +1019,7 @@ cdef class ListBase(ScrollbarDrawingWidget):
             side_icon_to_left=side_icon_to_left,
             side_icon_width=side_icon_width,
             side_icon=side_icon,
+            side_icon_with_text_color=side_icon_with_text_color,
             ))
         
 cdef class List(ListBase):

@@ -63,6 +63,7 @@ cdef class ListEntry:
     cdef public object side_icon
     cdef public int side_icon_or_space_width, side_icon_height
     cdef public int side_icon_or_space_left
+    cdef public int side_icon_with_text_color
 
 cdef class ListBase(ScrollbarDrawingWidget):
     cdef public object triggered

@@ -389,12 +389,16 @@ cdef class RenderImage(object):
         if self._texture is not None and not self._texture.is_unloaded():
             self._texture.set_color(self._color)
 
-    def draw(self, renderer, int x, int y, w=None, h=None):
+    def draw(self, renderer,
+                int x, int y, w=None, h=None, color=None
+            ):
         tex = self.to_texture(renderer)
         if w is None:
             w = self._render_size[0]
         if h is None:
             h = self._render_size[1]
+        if color is not None:
+            tex.set_color(color)
         tex.draw(x, y, w, h)
 
     @property
