@@ -295,9 +295,12 @@ cdef class ListEntry:
                 color=c)
         if self.side_icon is not None:
             self.side_icon.draw(renderer,
-                self.iconoffset_x, self.iconoffset_y,
-                self.side_icon_or_space_width,
-                self.side_icon_height)
+                self.iconoffset_x + x, self.iconoffset_y + y,
+                round(self.side_icon_or_space_width *
+                    self.effective_dpi_scale),
+                round(self.side_icon_height *
+                    self.effective_dpi_scale)
+            )
         Perf.stop(perf_id)
 
     def copy(self):
@@ -406,7 +409,10 @@ cdef class ListEntry:
             max_width_without_icon = max(1,
                 self.width - padding * 2)
         max_width_without_icon = max(1, max_width_without_icon
-            - padding_side_icon - round(self.side_icon_or_space_width))
+            - padding_side_icon - round(
+                self.side_icon_or_space_width *
+                self.effective_dpi_scale
+            ))
         is_empty = False
         if self.text_obj.text == "":
             is_empty = True
@@ -519,10 +525,18 @@ cdef class ListEntry:
 
         # Offset everything if icon is to the left:
         if self.side_icon_or_space_left:
-            self.subtitle_x += round(self.side_icon_or_space_width)
+            self.subtitle_x += round(
+                self.side_icon_or_space_width *
+                self.effective_dpi_scale
+            )
             self.extra_html_at_right_x += \
-                round(self.side_icon_or_space_width)
-            self.textoffset_x += round(self.side_icon_or_space_width)
+                round(self.side_icon_or_space_width *
+                    self.effective_dpi_scale
+                )
+            self.textoffset_x += round(
+                self.side_icon_or_space_width *
+                self.effective_dpi_scale
+            )
         elif self.side_icon is not None:
             self.iconoffset_x = max_width_without_icon + padding_side_icon
 
