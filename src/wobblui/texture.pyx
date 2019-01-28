@@ -64,6 +64,8 @@ cdef class Texture(object):
             if self._texture is None:
                 raise RuntimeError("texture creation " +
                     "unexpectedly failed!")
+            sdl.SDL_SetTextureBlendMode(self._texture,
+                sdl.SDL_BLENDMODE_BLEND)
         self.width = width
         self.height = height
         all_textures.append(weakref.ref(self))
