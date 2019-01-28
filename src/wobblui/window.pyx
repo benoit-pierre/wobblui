@@ -126,7 +126,8 @@ cdef class Window(WidgetBase):
             title="Untitled",
             width=640, height=480,
             style=None,
-            stay_alive_without_ref=False
+            stay_alive_without_ref=False,
+            keep_application_running_while_open=True,
             ):
         global all_windows
         self._renderer = None
@@ -141,6 +142,7 @@ cdef class Window(WidgetBase):
         self._hidden = False
         self._width = width
         self._height = height
+        self.keep_application_running = keep_application_running_while_open
         self.hiding = Event("hiding", owner=self)
         self.shown = Event("shown", owner=self)
         self.closing = Event("closing", owner=self)

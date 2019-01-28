@@ -149,10 +149,6 @@ class _FileOrDirChooserDialogContents(Widget):
         self.window_to_add.remove(self)
         self.window_to_add.modal_filter = None
         self.window_to_add.focus_update()
-        if self.start_directory != None:
-            current_path = self.start_directory
-        else:
-            current_path = self.suggest_start_dir()
 
     def abort_dialog(self):
         self.stop_run()
@@ -368,7 +364,8 @@ class _FileOrDirChooserDialogContents(Widget):
         return round(600 * self.dpi_scale)
 
 class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, window, **kwargs):
+        self.window_to_add = window
         self.callback_issued = False
         self.file_browser_window = None
         self.spawn_window_on_run = False
@@ -377,17 +374,26 @@ class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
             # Regularly initialize in current active window:
             if "window_spawned" in kwargs:
                 del(kwargs["window_spawned"])
-            super().__init__(*args, **kwargs)
+            super().__init__(window, **kwargs)
             return
         # For desktop, wait for run() to spawn separate window.
         self.spawn_window_on_run = True
-        self.separate_window_init_args = (list(args), kwargs)
+        self.separate_window_init_args = ([window], kwargs)
         return
 
     def run(self, done_callback):
         if self.spawn_window_on_run:
+            # Add self to parent to block input:
+            def filter_func(widget):
+                if widget.has_as_parent(self.window_to_add):
+                    return False
+                return True
+            self.window_to_add.set_modal_filter(filter_func)
+
+            # Create window:
             self.filebrowser_window = Window(
-                stay_alive_without_ref=True
+                stay_alive_without_ref=True,
+                keep_application_running_while_open=False,
             )
             if len(self.separate_window_init_args[0]) > 0:
                 self.separate_window_init_args[0][0] =\
@@ -401,6 +407,7 @@ class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
                 if not self.callback_issued:
                     self.callback_issued = True
                     if done_callback is not None:
+                        self.window_to_add.modal_filter = None
                         done_callback(None)
             self.filebrowser_window.closing.register(window_closed_event)
             def file_browser_done(result):
@@ -410,6 +417,7 @@ class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
                         self.filebrowser_window.close()
                     finally:
                         if done_callback is not None:
+                            self.window_to_add.modal_filter = None
                             done_callback(result)
                 else:
                     self.filebrowser_window.close()

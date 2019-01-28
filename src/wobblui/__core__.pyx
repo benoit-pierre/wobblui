@@ -213,15 +213,21 @@ def event_loop(app_cleanup_callback=None):
             # Process events:
             result = do_event_processing(ui_active=True)
             if result == "appquit":
-                if app_cleanup_callback != None:
-                    app_cleanup_callback()
-                # Get __del__ processed on as many things as possible
-                # to allow them to wrap up things cleanly:
-                import gc; gc.collect()
-                time.sleep(0.05)
-                gc.collect()
-                time.sleep(0.05)
-                sys.exit(0)
+                try:
+                    for w_ref in all_windows:
+                        w = w_ref()
+                        if w is not None and not w.is_closed:
+                            w.close()
+                    if app_cleanup_callback != None:
+                        app_cleanup_callback()
+                finally:
+                    # Get __del__ processed on as many things as possible
+                    # to allow them to wrap up things cleanly:
+                    import gc; gc.collect()
+                    time.sleep(0.05)
+                    gc.collect()
+                    time.sleep(0.05)
+                    sys.exit(0)
                 return
             if result is True:
                 # Had events. Remain responsive!
@@ -236,6 +242,18 @@ def event_loop(app_cleanup_callback=None):
                         500)
     except (SystemExit, KeyboardInterrupt) as e:
         loginfo("APP SHUTDOWN INITIATED. CLEANING UP...")
+        
+        # Close windows quickly to make it feel fast:
+        try:
+            for w_ref in all_windows:
+                w = w_ref()
+                if w is not None and not w.is_closed:
+                    w.close()
+        except Exception as e:
+            print("Unexpected window close exception: " +
+                str(e)
+            )
+
         sdlfont.stop_queue_for_process_shutdown()
         if app_cleanup_callback != None:
             app_cleanup_callback()
@@ -771,14 +789,7 @@ def _handle_event(event):
     cdef int _debug_mouse_fakes_touch = (
         config.get("mouse_fakes_touch_events") is True)
     if event.type == sdl.SDL_QUIT:
-        window = get_focused_window()
-        if window != None and window.focused:
-            window.unfocus()
-        for w_ref in all_windows:
-            w = w_ref()
-            if w is None or w.is_closed:
-                continue
-            w.destroyed()
+        logwarning("Got unexpected SDL_Quit. Ignoring.")
         return
     elif event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
@@ -916,7 +927,8 @@ def _handle_event(event):
             app_is_gone = True
             for w_ref in all_windows:
                 w = w_ref()
-                if w != None and not w.is_closed:
+                if w != None and not w.is_closed and \
+                        w.keep_application_running:
                     app_is_gone = False
             if app_is_gone:
                 return False
