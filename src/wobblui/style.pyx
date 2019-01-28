@@ -137,7 +137,7 @@ class AppStyleBright(AppStyle):
         self.set("selected_text", "#000")
         self.set("scrollbar_knob_fg", "#ea3")
         self.set("touch_selection_drag_handles", "#ea3")
-        self.set("widget_font_family", "Comic Neue")
+        self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
         self.set("topbar_text_size", 23)
  
