@@ -26,16 +26,27 @@ import io
 import sys
 
 from wobblui.box import HBox, VBox
+from wobblui.font.manager import font_manager
 from wobblui.label import Label
 from wobblui.textentry import TextEntry
 from wobblui.widget import Widget
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 class DebugTerminal(VBox):
-    def __init__(self, exit_callback=None):
+    def __init__(self, exit_callback=None, limit_output_height=200):
         super().__init__()
         self.on_exit_callback = exit_callback
-        self.output_label = Label()
+        self.output_max_height = limit_output_height
+        self.output_label = None
+        try:
+            self.output_label = Label(
+                font=font_manager().get_font("Monospace",
+                    px_size=20
+                ))
+        except ValueError:
+            logwarning("DebugTerminal: " +
+                "failed to load monospace font for terminal")
+            self.output_label = Label()
         self.output_label.set_text("> Debug Terminal")
         super().add(self.output_label, expand=True, shrink=True)
         self.bar = HBox(box_surrounding_padding=3,
@@ -60,7 +71,9 @@ class DebugTerminal(VBox):
                         return True
                     elif cmd == "help" or cmd == "?" or \
                             cmd == "help()":
-                        print("wobblui debug terminal. try python commands!")
+                        # (We block interactive help() since that hangs the
+                        # process. Couldn't figure that one out yet)
+                        print("This is a Python terminal. Try some Python!")
                         return True
                     return False
 
@@ -106,6 +119,16 @@ class DebugTerminal(VBox):
         self.console_entry.keydown.register(console_keypress)
         self.bar.add(self.console_entry, expand=True, shrink=True)
         super().add(self.bar, expand=False, shrink=False)
+        self.on_stylechanged()
+
+    def on_stylechanged(self):
+        try:
+            super().on_stylechanged()
+        except AttributeError:
+            pass
+        if self.output_max_height is not None and self.output_max_height > 0:
+            self.output_label.max_height =\
+                (self.output_max_height * self.dpi_scale)
 
     def focus(self):
         self.console_entry.focus()

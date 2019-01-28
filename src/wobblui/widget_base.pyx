@@ -1562,16 +1562,48 @@ cdef class WidgetBase:
         pass
 
     def set_max_width(self, w):
+        self.max_width = w
+
+    def set_max_height(self, w):
+        self.max_height = w
+
+    def get_desired_width(self):
+        if self._max_width >= 0:
+            return min(self._max_width, self.get_natural_width())
+        return self.get_natural_width()
+
+    def get_desired_height(self, given_width=None):
+        if self._max_height >= 0:
+            return min(self._max_height,
+                self.get_natural_height(given_width=given_width))
+        return self.get_natural_height(given_width=given_width)
+
+    @property
+    def max_height(self):
+        return (self._max_height
+            if self._max_height >= 0 else None)
+
+    @property
+    def max_width(self):
+        return (self._max_width
+            if self._max_width >= 0 else None)
+
+    @max_width.setter
+    def max_width(self, w):
         if w != None:
             w = max(0, int(w))
         else:
             w = -1
         if self._max_width == w:
             return
-        self._max_width = w 
-        self.resized()
+        self._max_width = w
+        if w < self._width:
+            self.needs_relayout = True
+            self.needs_redraw = True
+            self.resized()
 
-    def set_max_height(self, w):
+    @max_height.setter
+    def max_height(self, w):
         if w != None:
             w = max(0, int(w))
         else:
@@ -1579,7 +1611,10 @@ cdef class WidgetBase:
         if self._max_height == w:
             return
         self._max_height = w
-        self.resized()
+        if w < self._height:
+            self.needs_relayout = True
+            self.needs_redraw = True
+            self.resized()
 
     @property
     def width(self):

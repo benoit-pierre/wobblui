@@ -81,7 +81,7 @@ cdef class MenuSeparator(ListEntry):
         draw_rectangle(renderer, draw_x, draw_y,
             draw_w, draw_h, color=c)
 
-    def get_natural_width(self):
+    def get_desired_width(self):  # NOT a widget (where it's "natural_width")
         if self.style != 0.0:
             return round(20.0 * self.style.dpi_scale)
         return 20
@@ -297,7 +297,7 @@ class ContainerWithSlidingMenu(Widget):
 
     def on_relayout(self):
         self.menu.width = min(int(
-            self.menu.get_natural_width() * 1.5),
+            self.menu.get_desired_width() * 1.5),
             self.width)
         self.menu.height = self.height
         if not self.is_opened:

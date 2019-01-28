@@ -321,7 +321,8 @@ cdef class ListEntry:
         li.update_text_objects()
         return li
 
-    def get_natural_width(self):
+    def get_desired_width(self):  # not a regular widget.
+                                  # (where we'd define "natural" width)
         if self._cached_natural_width != None:
             return self._cached_natural_width
         text_copy = self.text_obj.copy()
@@ -891,7 +892,7 @@ cdef class ListBase(ScrollbarDrawingWidget):
         w = 0
         entry_copies = []
         for entry in self._entries:
-            w = max(w, entry.get_natural_width())
+            w = max(w, entry.get_desired_width())
         w = max(w, round(12 * self.dpi_scale)) + border_size * 2
         self.cached_natural_width = w
         return w

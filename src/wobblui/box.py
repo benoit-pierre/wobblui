@@ -161,7 +161,7 @@ class Box(ScrollbarDrawingWidget):
                     2 * self.dpi_scale)
                 if not self.expand_info[child_id][1]:
                     iheight = min(iheight,
-                        item.get_natural_height(item.width))
+                        item.get_desired_height(item.width))
                 item.height = iheight
             else:
                 iwidth = self.width -\
@@ -169,7 +169,7 @@ class Box(ScrollbarDrawingWidget):
                     2 * self.dpi_scale)
                 if not self.expand_info[child_id][0]:
                     iwidth = min(iwidth,
-                        item.get_natural_width(item.width))
+                        item.get_desired_width(item.width))
                 item.width = iwidth
 
         # Adjust size along box axis:
@@ -197,11 +197,11 @@ class Box(ScrollbarDrawingWidget):
                     ):
                 # Regular case: add up all children as usual
                 if self.horizontal:
-                    child.width = child.get_natural_width()
+                    child.width = child.get_desired_width()
                     child_space += child.width + item_padding
                 else:
                     child.height = child.\
-                        get_natural_height(given_width=child.width)
+                        get_desired_height(given_width=child.width)
                     child_space += child.height + item_padding
             else:
                 # SPECIAL CASE / OPTIMIZATION:
@@ -296,7 +296,7 @@ class Box(ScrollbarDrawingWidget):
                     round(self.box_surrounding_padding *
                     2 * self.dpi_scale)
                 iheight = min(iheight,
-                    item.get_natural_height(given_width=item.width))
+                    item.get_desired_height(given_width=item.width))
                 item.height = iheight
 
         # Update placement if not fully stretched on secondary axis:
@@ -349,7 +349,7 @@ class Box(ScrollbarDrawingWidget):
                 if child.invisible:
                     i += 1
                     continue
-                total_w += child.get_natural_width()
+                total_w += child.get_desired_width()
                 item_padding = round(self.item_padding * self.dpi_scale)
                 if not self.got_visible_child_after_index(i):
                     item_padding = 0
@@ -367,7 +367,7 @@ class Box(ScrollbarDrawingWidget):
                 if child.invisible:
                     continue
                 found_children = True
-                max_w = max(max_w, child.get_natural_width())
+                max_w = max(max_w, child.get_desired_width())
             max_w += round(self.box_surrounding_padding *
                 self.dpi_scale * 2)
             if not found_children:
@@ -383,7 +383,7 @@ class Box(ScrollbarDrawingWidget):
                 if child.invisible:
                     i += 1
                     continue
-                total_h += child.get_natural_height(given_width=given_width)
+                total_h += child.get_desired_height(given_width=given_width)
                 item_padding = round(self.item_padding * self.dpi_scale)
                 if not self.got_visible_child_after_index(i):
                     item_padding = 0
@@ -398,7 +398,7 @@ class Box(ScrollbarDrawingWidget):
             # Relayout at given width:
             relayout_at = given_width
             if relayout_at == None:
-                relayout_at = self.get_natural_width()
+                relayout_at = self.get_desired_width()
             old_width = self.width
             old_needs_redraw = self.needs_redraw
             self.width = relayout_at
@@ -411,7 +411,7 @@ class Box(ScrollbarDrawingWidget):
                 if child.invisible:
                     continue
                 found_children = True
-                max_h = max(max_h, child.get_natural_height(
+                max_h = max(max_h, child.get_desired_height(
                     given_width=child.width))
             max_h += round(self.box_surrounding_padding *
                 self.dpi_scale * 2)
@@ -476,11 +476,11 @@ class Box(ScrollbarDrawingWidget):
         )
         self.shrink_info[len(self._children) - 1] = shrink
         if self.horizontal:
-            item.width = item.get_natural_width()
-            item.height = item.get_natural_height()
+            item.width = item.get_desired_width()
+            item.height = item.get_desired_height()
         else:
             item.width = self.width
-            item.height = item.get_natural_height(given_width=self.width)
+            item.height = item.get_desired_height(given_width=self.width)
 
     def add_spacer(self):
         self.add(BoxSpacer(), expand=True, shrink=True)
@@ -549,7 +549,7 @@ class CenterBox(Widget):
             return 0
         min_width = round(self.dpi_scale * self.child_minimum_width) 
         return max(min_width,
-            self._children[0].get_natural_width()) +\
+            self._children[0].get_desired_width()) +\
             (self.padding * 2 * self.dpi_scale)
 
     def get_natural_height(self, given_width=None):
@@ -561,7 +561,7 @@ class CenterBox(Widget):
         v = given_width
         if v != None:
             v -= (self.padding * 2 * self.dpi_scale)
-        return self._children[0].get_natural_height(
+        return self._children[0].get_desired_height(
             given_width=v) +\
             (self.padding * 2 * self.dpi_scale)
 
@@ -578,7 +578,7 @@ class CenterBox(Widget):
         else:
             # Give child natural width or expand it fully:
             if not self.expand_horizontally:
-                nat_width = child.get_natural_width()
+                nat_width = child.get_desired_width()
                 child.width = min(max(1, round(self.width -
                     outer_padding * 2)),
                     max(self.child_minimum_width * self.dpi_scale,
@@ -592,7 +592,7 @@ class CenterBox(Widget):
         else:
             if not self.expand_vertically:
                 child.height = min(round(self.height -
-                    outer_padding * 2), child.get_natural_height(
+                    outer_padding * 2), child.get_desired_height(
                     given_width=child.width))
             else:
                 child.height = max(1, self.height -

@@ -78,7 +78,7 @@ class Topbar(Widget):
             expand=expand,
             shrink=shrink,
             expand_vertically=expand_vertically)
-        self.topbar_box.height = self.topbar_box.get_natural_height()
+        self.topbar_box.height = self.topbar_box.get_desired_height()
         self.needs_relayout = True
         self.needs_redraw = True
 
@@ -143,7 +143,7 @@ class Topbar(Widget):
         self.topbar_box.y = current_y
         self.topbar_box.width = self.width - round(
             self.padding * self.dpi_scale * 2.0)
-        self.topbar_box.height = self.topbar_box.get_natural_height(
+        self.topbar_box.height = self.topbar_box.get_desired_height(
             given_width=self.topbar_box.width)
         topbar_height = round(self.topbar_box.height + (
             self.padding_vertical * 2) * self.dpi_scale)
