@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -112,6 +112,11 @@ cdef class WidgetBase:
 
         def start_redraw(internal_data=None):
             if self.renderer is None:
+                if self.internal_render_target is not None:
+                    if config.get("debug_texture_references"):
+                        logdebug("WidgetBase.<closure>.start_redraw: " +
+                            "DUMPED self.internal_render_target")
+                    self.internal_render_target = None
                 return
             assert(self.renderer != None)
             if self.needs_relayout:
@@ -123,9 +128,9 @@ cdef class WidgetBase:
             tex_y = max(1, math.ceil(self.height + 1.0))
             if self.internal_render_target is None or \
                     self.internal_render_target_width != tex_x or \
-                    self.internal_render_target_height != tex_y:
-                if renderer is None or \
-                        tex_x <= 0 or tex_y <= 0:
+                    self.internal_render_target_height != tex_y or \
+                    self.internal_render_target.renderer is not renderer:
+                if tex_x <= 0 or tex_y <= 0:
                     if renderer is None:
                         self.needs_redraw = True
                     return
@@ -141,7 +146,24 @@ cdef class WidgetBase:
                             "NEW self.internal_render_target")
                 self.internal_render_target_width = tex_x
                 self.internal_render_target_height = tex_y
-            self.internal_render_target.set_as_rendertarget()
+            try:
+                self.internal_render_target.set_as_rendertarget()
+            except ValueError:
+                parent_window = None
+                try:
+                    parent_window = self.parent_window
+                except AttributeError:
+                    pass
+                raise RuntimeError("enabling widget render target " +
+                    "unexpectedly failed. widget: " + str(self) +
+                    ", widget.parent_window: " + str(parent_window) +
+                    ", widget.renderer: " + str(
+                    ctypes.addressof(self.renderer.contents)
+                    if self.renderer is not None else "NULL"
+                    ) +
+                    ", widget.parent: " + str(self.parent) +
+                    ", render target: " + str(
+                    self.internal_render_target))
         def end_redraw(internal_data=None):
             if self.renderer is None or \
                     self.internal_render_target is None:

@@ -70,7 +70,7 @@ cdef class Texture(object):
 
     def is_for_renderer(self, renderer):
         renderer_cmp_key = str(
-            ctypes.addressof(renderer))
+            ctypes.addressof(renderer.contents))
         if self.renderer_key != renderer_cmp_key:
             return False
         return True
@@ -90,8 +90,10 @@ cdef class Texture(object):
                 "or tuple")
 
     def __repr__(self):
-        return "<Texture " + str((str(id(self)), self.width,
-                self.height)) + ">"
+        return ("<Texture " + str((str(id(self)), self.width,
+                self.height)) +
+                (" UNLOADED" if self._texture is None else "") +
+                ">")
 
     def draw(self, int x, int y, w=None, h=None):
         if (w != None and w <= 0) or (
@@ -139,8 +141,7 @@ cdef class Texture(object):
         self._force_unload()
 
     def internal_clean_if_renderer(self, renderer):
-        if self.renderer_key != str(
-                ctypes.addressof(self.renderer.contents)):
+        if not self.is_for_renderer(renderer):
             return
         self._force_unload()
 

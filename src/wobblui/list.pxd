@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -45,6 +45,8 @@ cdef class ListEntry:
     cdef int subtitle_y
     cdef int subtitle_w
     cdef int subtitle_h
+    cdef int textoffset_x, textoffset_y
+    cdef int iconoffset_x, iconoffset_y
     cdef object extra_html_as_subtitle_obj
     cdef double extra_html_as_subtitle_padding
     cdef public int disabled
@@ -56,6 +58,11 @@ cdef class ListEntry:
     cdef public double effective_dpi_scale
     cdef public object y_offset  # can be None
     cdef public int text_width, text_height
+
+    # Side icon:
+    cdef public object side_icon
+    cdef public int side_icon_or_space_width, side_icon_height
+    cdef public int side_icon_or_space_left
 
 cdef class ListBase(ScrollbarDrawingWidget):
     cdef public object triggered

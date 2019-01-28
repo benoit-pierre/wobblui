@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -20,6 +20,7 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+import math
 import sdl2 as sdl
 import time
 
@@ -273,7 +274,7 @@ cdef class Label(ScrollbarDrawingWidget):
         (w, h) = text_obj_copy.layout(bailout_func=\
             bailout_if_excessively_long)
         if bailed_out:
-            w = int(w * 1.05)  # give headroom since this is inaccurate
+            w = math.ceil(w * 1.05)  # give headroom since this is inaccurate
         self.natural_size_cache["natural_width"] = w
         if not "natural_height" in self.natural_size_cache:
             self.natural_size_cache["natural_height"] = dict()

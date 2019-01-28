@@ -1,6 +1,7 @@
+#cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -27,9 +28,9 @@ import time
 
 from wobblui.box import HBox, VBox
 from wobblui.button import Button, ImageButton
-from wobblui.color import Color
-from wobblui.gfx import draw_rectangle
-from wobblui.image import stock_image
+from wobblui.color cimport Color
+from wobblui.gfx cimport draw_rectangle
+from wobblui.image cimport stock_image
 from wobblui.label import Label
 from wobblui.list import List
 from wobblui.osinfo import is_android
@@ -37,16 +38,22 @@ from wobblui.textentry import TextEntry
 from wobblui.timer import schedule
 from wobblui.topbar import Topbar
 from wobblui.uiconf import config
-from wobblui.widget import Widget
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.widget cimport Widget
+from wobblui.window cimport Window
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 CHOSEN_NOTHING=-1
 
-class FileOrDirChooserDialog(Widget):
-    def __init__(self, window, choose_dir=False, confirm_text=None,
-            title=None, can_choose_nothing=False,
+class _FileOrDirChooserDialogContents(Widget):
+    def __init__(self,
+            window,
+            choose_dir=False,
+            confirm_text=None,
+            title=None,
+            can_choose_nothing=False,
             cancel_text="Cancel",
             choose_nonexisting=False, outer_padding=2.0,
+            is_dedicated_window=False,
             start_directory=None, file_filter="*"):
         if confirm_text == None:
             if choose_dir:
@@ -241,7 +248,7 @@ class FileOrDirChooserDialog(Widget):
                         logdebug("wobblui.filedialog " +
                             str(id(self)) + ": " +
                             "error getting isdir for '" +
-                            str(f) + "': " + str(e))
+                            str(item) + "': " + str(e))
             if self.debug:
                 logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                     "listing obtained is: " +
@@ -360,6 +367,61 @@ class FileOrDirChooserDialog(Widget):
     def get_natural_height(self, given_width=None):
         return round(600 * self.dpi_scale)
 
+class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
+    def __init__(self, *args, **kwargs):
+        self.callback_issued = False
+        self.file_browser_window = None
+        self.spawn_window_on_run = False
+        self.separate_window_init_args = None
+        if is_android() or kwargs.get("window_spawned", False):
+            # Regularly initialize in current active window:
+            if "window_spawned" in kwargs:
+                del(kwargs["window_spawned"])
+            super().__init__(*args, **kwargs)
+            return
+        # For desktop, wait for run() to spawn separate window.
+        self.spawn_window_on_run = True
+        self.separate_window_init_args = (list(args), kwargs)
+        return
+
+    def run(self, done_callback):
+        if self.spawn_window_on_run:
+            self.filebrowser_window = Window(
+                stay_alive_without_ref=True
+            )
+            if len(self.separate_window_init_args[0]) > 0:
+                self.separate_window_init_args[0][0] =\
+                    self.filebrowser_window
+            self.separate_window_init_args[1]["window_spawned"] = True
+            actual_browser = FileOrDirChooserDialog(
+                *(self.separate_window_init_args[0]),
+                **(self.separate_window_init_args[1])
+            )
+            def window_closed_event():
+                print('window closed event.')
+                if not self.callback_issued:
+                    self.callback_issued = True
+                    if done_callback is not None:
+                        print(" -- > DOING CALLBACK")
+                        done_callback(None)
+            self.filebrowser_window.closing.register(window_closed_event)
+            def file_browser_done(result):
+                print("file browser done.")
+                if not self.callback_issued:
+                    self.callback_issued = True
+                    try:
+                        self.filebrowser_window.close()
+                    finally:
+                        if done_callback is not None:
+                            print(" --> DOING CALLBACK")
+                            done_callback(result)
+                else:
+                    self.filebrowser_window.close()
+            result = actual_browser.run(file_browser_done)
+            return
+        else:
+            super().run(done_callback)
+
 class FileChooserDialog(FileOrDirChooserDialog):
     def __init__(self, window, confirm_text=None,
             title=None,
@@ -382,7 +444,7 @@ class DirectoryChooserDialog(FileOrDirChooserDialog):
         super().__init__(window, choose_dir=False,
             confirm_text=confirm_text,
             choose_nonexisting=False,
-            can_choose_nothing=can_choose_nothing,
+            can_choose_nothing=False,
             outer_padding=outer_padding,
             start_directory=start_directory)
 

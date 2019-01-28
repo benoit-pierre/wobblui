@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -103,7 +103,7 @@ cpdef get_window_by_sdl_id(sdl_id):
                 str(w))
         seen.add(str(id(w)))
         new_refs.append(w_ref)
-    all_windows = new_refs
+    all_windows[:] = new_refs
     return result
 
 cpdef trigger_global_style_changed():
@@ -119,9 +119,16 @@ cpdef trigger_global_style_changed():
     for w in collected_widgets:
         w.stylechanged()
 
+keep_alive_window_refs = []
+
 cdef class Window(WidgetBase):
-    def __init__(self, title="Untitled", width=640, height=480,
-            style=None):
+    def __init__(self,
+            title="Untitled",
+            width=640, height=480,
+            style=None,
+            stay_alive_without_ref=False
+            ):
+        global all_windows
         self._renderer = None
         self.type = "window"
         initialize_sdl()
@@ -131,7 +138,6 @@ cdef class Window(WidgetBase):
         self._sdl_window = None
         self._style = style
         super().__init__(is_container=True, can_get_focus=True)
-        global all_windows
         self._hidden = False
         self._width = width
         self._height = height
@@ -160,6 +166,8 @@ cdef class Window(WidgetBase):
         self.last_known_dpi_scale = None
         self.schedule_global_dpi_scale_update = False
         all_windows.append(weakref.ref(self))
+        if stay_alive_without_ref:
+            keep_alive_window_refs.append(self)
 
     def screen_based_scale(self):
         scale = 1.0
@@ -242,7 +250,13 @@ cdef class Window(WidgetBase):
         """ Called when a renderer will be destroyed. This will
             clear out all textures to avoid a crash. """
 
-        logdebug("Processing renderer loss...")
+        if self._renderer is None:
+            return
+
+        logdebug("Window: renderer loss on " + str(self) +
+            " (renderer address: " +
+            str(ctypes.addressof(self._renderer.contents))
+            + ")")
         wobblui.texture.mark_textures_invalid(self._renderer)
         wobblui.font.manager.Font.clear_global_cache_textures()
         old_renderer = self._renderer
@@ -288,6 +302,9 @@ cdef class Window(WidgetBase):
                 # We need to wait until we get focused and get another
                 # chance to set a proper renderer.
                 return False
+            logdebug("Window: created renderer with address " +
+                str(ctypes.addressof(self._renderer.contents)) +
+                " for " + str(self))
             self.needs_redraw = True
         return (self._renderer is not None)
 
@@ -321,27 +338,46 @@ cdef class Window(WidgetBase):
             self.set_hidden(False)
         self.redraw_if_necessary()
 
+    def __dealloc__(self):
+        try:
+            if self._sdl_window is not None:
+                self.close()
+        finally:
+            try:
+                super().__dealloc__()
+            except AttributeError:
+                pass
+
     def close(self):
+        global keep_alive_window_refs
+        if self in keep_alive_window_refs:
+            keep_alive_window_refs.remove(self)
         if self._sdl_window is None:
             return
         self.is_closed = True
         try:
-            sdl.SDL_DestroyWindow(self._sdl_window)
+            self.handle_sdlw_close(forced=True)
         finally:
             self._sdl_window = None
 
-    def handle_sdlw_close(self):
+    def handle_sdlw_close(self, forced=False):
+        if self._sdl_window is None:
+            return
         self.next_reopen_width = self._width
         self.next_reopen_height = self._height
 
         close_window = False
         if sdl.SDL_GetPlatform().decode("utf-8",
                 "replace").lower() != "android":
-            logdebug("REGULAR WIN CLOSE")
-            if self.closing():
+            if self.closing() or forced:
+                logdebug("Window: regular close on " + str(self))
                 close_window = True
+            else:
+                logdebug("Window: REJECTED close on " + str(self))
+                return 
+            self.set_hidden(True)
         else:
-            logdebug("ANDROID WIN HIDE")
+            logdebug("Window: android window hide on " + str(self))
             if self.focused:
                 self.unfocus()
             self.set_hidden(True)
@@ -366,7 +402,7 @@ cdef class Window(WidgetBase):
                 self.destroyed()
             else:
                 # Keep it around to be reopened.
-                logdebug("ANDROID RENDERER DUMPED. WAITING FOR RESUME.")
+                logdebug("Window: renderer dumped, waiting for resume")
                 return
 
     def get_mouse_pos(self, mouse_id):
@@ -537,7 +573,7 @@ cdef class Window(WidgetBase):
 
     @property
     def hidden(self):
-        return self._hidden
+        return (self._hidden or self.is_closed)
 
     def set_hidden(self, new_status):
         new_status = (new_status is True)

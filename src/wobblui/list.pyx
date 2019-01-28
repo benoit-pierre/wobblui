@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -28,6 +28,7 @@ import sdl2 as sdl
 from wobblui.color cimport Color
 from wobblui.event cimport Event
 from wobblui.gfx cimport draw_dashed_line, draw_rectangle
+from wobblui.image cimport RenderImage
 from wobblui.osinfo import is_android
 from wobblui.perf cimport CPerf as Perf
 from wobblui.richtext cimport RichText
@@ -44,6 +45,8 @@ cdef class ListEntry:
             extra_html_as_subtitle_scale=0.7,
             extra_html_at_right=None,
             extra_html_at_right_scale=0.8, is_alternating=False,
+            side_icon=None, side_icon_width=40,
+            side_icon_to_left=True,
             with_visible_bg=False,
             override_dpi_scale=None):
         self.y_offset = None
@@ -63,12 +66,59 @@ cdef class ListEntry:
         self.extra_html_as_subtitle = extra_html_as_subtitle
         self.extra_html_as_subtitle_scale =\
             extra_html_as_subtitle_scale
+        self.side_icon = None
+        self.set_side_icon(side_icon, side_icon_width=side_icon_width)
+
         self.disabled = False
         self.is_alternating = is_alternating
         self._style = style
         self.px_size_scaler = px_size_scaler
-        self.update_text_objects()
+
+        # This will also clear the cache and update the text objects:
+        self.set_side_icon(
+            side_icon,
+            side_icon_width=side_icon_width,
+            icon_to_left=side_icon_to_left)
+
+    def set_side_html(self, new_html=None, new_html_scale=None):
+        self.extra_html_at_right = new_html
+        if new_html_scale is not None:
+            self.extra_html_at_right_scale = new_html_scale
+        self.update()
+
+    def update(self):
+        self._cached_natural_width = None
         self.need_size_update = True
+        self.update_text_objects()
+        self.clear_texture()
+
+    def set_blank_side_space(self, space_to_left=True, space_width=40):
+        self.side_icon = None
+        self.side_icon_or_space_width = round(space_width)
+        self.side_icon_height = 0
+        self.side_icon_or_space_left = space_to_left
+        # Clear caches:
+        self.update()
+
+    def set_side_icon(self,
+            side_icon,
+            icon_to_left=True,
+            side_icon_width=40):
+        if side_icon is not None and \
+                not isinstance(side_icon, RenderImage):
+            side_icon = RenderImage(side_icon)
+        self.side_icon = side_icon
+        self.side_icon_or_space_left = icon_to_left
+        self.side_icon_or_space_width = 0
+        self.side_icon_height = 0
+        if self.side_icon is not None:
+            self.side_icon_or_space_width = side_icon_width
+            scaler = (float(side_icon_width) /
+                max(1, self.side_icon.render_size[0]))
+            self.side_icon_height = max(1, round(
+                self.side_icon.render_size[1] * scaler))
+        # Clear caches:
+        self.update()
 
     def update_text_objects(self):
         if self._cached_render_tex != None:
@@ -224,23 +274,30 @@ cdef class ListEntry:
                 c = Color(self.style.get("widget_disabled_text"))
         perf_id = Perf.start("ListItem.draw -> text_objs draw")
         self.text_obj.draw(renderer,
-            round(5.0 * self.effective_dpi_scale) + x,
-            round(self.vertical_padding * self.effective_dpi_scale) + y,
+            round(5.0 * self.effective_dpi_scale) + x +
+            self.textoffset_x,
+            round(self.vertical_padding * self.effective_dpi_scale) +
+            y + self.textoffset_y,
             color=c)
-        if self.extra_html_as_subtitle_obj != None:
+        if self.extra_html_as_subtitle_obj is not None:
             self.extra_html_as_subtitle_obj.draw(renderer,
                 round(5.0 * self.effective_dpi_scale) +\
                 self.subtitle_x + x,
                 round(self.vertical_padding * self.effective_dpi_scale) +\
                 self.subtitle_y +  y,
                 color=c)
-        if self.extra_html_at_right_obj != None:
+        if self.extra_html_at_right_obj is not None:
             self.extra_html_at_right_obj.draw(renderer,
                 round(5.0 * self.effective_dpi_scale) +\
                 self.extra_html_at_right_x + x,
                 round(self.vertical_padding * self.effective_dpi_scale) +\
                 max(0, self.extra_html_at_right_y) + y,
                 color=c)
+        if self.side_icon is not None:
+            self.side_icon.draw(renderer,
+                self.iconoffset_x, self.iconoffset_y,
+                self.side_icon_or_space_width,
+                self.side_icon_height)
         Perf.stop(perf_id)
 
     def copy(self):
@@ -257,7 +314,8 @@ cdef class ListEntry:
         text_copy = self.text_obj.copy()
         (w, h) = text_copy.layout(max_width=None)
         if self.extra_html_at_right_obj != None:
-            w += max(1, round(self.extra_html_at_right_padding *
+            w += max(1, math.ceil(
+                self.extra_html_at_right_padding *
                 self.effective_dpi_scale))
             (w2, h2) = self.extra_html_at_right_obj.layout(
                 max_width=None)
@@ -266,6 +324,9 @@ cdef class ListEntry:
             (subtitle_width, h) = self.extra_html_as_subtitle_obj.\
                 layout(max_width=None)
             w = max(w, subtitle_width)
+        if abs(self.side_icon_or_space_width) > 0.01:
+            w += math.ceil((5.0 + self.side_icon_or_space_width) *
+                self.effective_dpi_scale)
         self._cached_natural_width = (w + round(10.0 *
             self.effective_dpi_scale))
         return self._cached_natural_width
@@ -327,17 +388,25 @@ cdef class ListEntry:
     def update_size(self):
         if not self.need_size_update:
             return
+
         self.need_size_update = False
         if self._cached_render_tex != None:
             self.clear_texture()
         padding = max(0, round(5.0 * self.effective_dpi_scale))
         padding_vertical = max(0,
             round(self.vertical_padding * self.effective_dpi_scale))
-        mw = self.max_width
-        if mw >= 0:
-            mw = min(self.width, mw) - padding * 2
+        padding_side_icon = 0
+        if abs(self.side_icon_or_space_width) > 0.01:
+            padding_side_icon = max(0, round(5.0 * self.effective_dpi_scale))
+        max_width_without_icon = self.max_width
+        if max_width_without_icon >= 0:
+            max_width_without_icon = max(1, min(self.width,
+                max_width_without_icon) - padding * 2)
         else:
-            mw = max(1, self.width - padding * 2)
+            max_width_without_icon = max(1,
+                self.width - padding * 2)
+        max_width_without_icon = max(1, max_width_without_icon
+            - padding_side_icon - round(self.side_icon_or_space_width))
         is_empty = False
         if self.text_obj.text == "":
             is_empty = True
@@ -348,9 +417,16 @@ cdef class ListEntry:
         self.subtitle_y = 0
         self.subtitle_w = 0
         self.subtitle_h = 0
+        self.textoffset_x = 0
+        self.textoffset_y = 0
+        self.iconoffset_x = 0
+        if self.side_icon_or_space_left:
+            self.iconoffset_x += max_width_without_icon
+        self.iconoffset_y = 0
         if self.extra_html_as_subtitle_obj != None:
-            (subtitle_w, subtitle_h) = self.extra_html_as_subtitle_obj.\
-                layout(max_width=mw)
+            (subtitle_w, subtitle_h) = \
+                self.extra_html_as_subtitle_obj.\
+                    layout(max_width=max_width_without_icon)
             self.subtitle_h = subtitle_h
             self.subtitle_w = subtitle_w
         self.extra_html_at_right_x = 0
@@ -363,15 +439,18 @@ cdef class ListEntry:
                 max_width=None)
             missing_space = max(0, math.ceil((natural_w +
                 self.extra_html_at_right_padding *
-                self.effective_dpi_scale + natural_w2) - mw))
-            if mw < (natural_w * 0.5 +
+                self.effective_dpi_scale + natural_w2) -
+                max_width_without_icon))
+            if (max_width_without_icon < (natural_w * 0.5 +
                     self.extra_html_at_right_padding *
                     self.effective_dpi_scale +
-                    natural_w2 * 0.5) and mw <= natural_w * 1.2 and \
-                    missing_space > 5.0 * self.effective_dpi_scale:
+                    natural_w2 * 0.5) and
+                    max_width_without_icon <= natural_w * 1.2 and
+                    missing_space > 5.0 * self.effective_dpi_scale):
                 # Put the extra HTML part below
                 (self.text_width, self.text_height) = \
-                    self.text_obj.layout(max_width=mw)
+                    self.text_obj.layout(
+                        max_width=max_width_without_icon)
                 self.subtitle_y = self.text_height +\
                     math.ceil(self.extra_html_as_subtitle_padding *
                         self.effective_dpi_scale)
@@ -381,7 +460,8 @@ cdef class ListEntry:
                     self.effective_dpi_scale) +\
                     self.subtitle_h
                 (self.extra_html_at_right_w, self.extra_html_at_right_h) =\
-                    self.extra_html_at_right_obj.layout(max_width=mw)
+                    self.extra_html_at_right_obj.layout(
+                        max_width=max_width_without_icon)
                 self._height = round(self.extra_html_at_right_y +
                     self.extra_html_at_right_h + padding_vertical * 2)
             else:
@@ -409,7 +489,8 @@ cdef class ListEntry:
                 self.extra_html_at_right_y = max(0,
                     round((self.text_height -
                     self.extra_html_at_right_h) / 2.0))
-                self.extra_html_at_right_x = round(mw -
+                self.extra_html_at_right_x = round(
+                    max_width_without_icon -
                     self.extra_html_at_right_w - round(padding * 2))
                 self._height = round(max(self.subtitle_y +
                     self.subtitle_h,
@@ -417,7 +498,7 @@ cdef class ListEntry:
                     self.extra_html_at_right_h) + padding_vertical * 2)
         else:
             (self.text_width, self.text_height) = self.text_obj.layout(
-                max_width=mw)
+                max_width=max_width_without_icon)
             self._height = round(self.text_height + padding_vertical * 2)
             self.subtitle_y = self.text_height +\
                 math.ceil(self.extra_html_as_subtitle_padding *
@@ -428,6 +509,22 @@ cdef class ListEntry:
         if is_empty:
             self.text_width = 0
             self.text_obj.set_text("")
+
+        # Make entry large enough to cover icon:
+        if self.side_icon is not None:
+            self._height = math.ceil(max(self._height,
+                self.side_icon_height + padding * 2))
+            self.iconoffset_y = round((self._height -
+                self.side_icon_height) / 2.0)
+
+        # Offset everything if icon is to the left:
+        if self.side_icon_or_space_left:
+            self.subtitle_x += round(self.side_icon_or_space_width)
+            self.extra_html_at_right_x += \
+                round(self.side_icon_or_space_width)
+            self.textoffset_x += round(self.side_icon_or_space_width)
+        elif self.side_icon is not None:
+            self.iconoffset_x = max_width_without_icon + padding_side_icon
 
 cdef class ListBase(ScrollbarDrawingWidget):
     def __init__(self, render_as_menu=False,
@@ -803,6 +900,46 @@ cdef class ListBase(ScrollbarDrawingWidget):
             l.append(entry.text_obj.html)
         return l
 
+    def modify_side_html(self, index, new_html=None, new_html_scale=None):
+        self._entries[index].set_side_html(
+            new_html=html, new_html_scale=new_html_scale
+        )
+
+    def modify_side_icon(self, index,
+            new_side_icon=None,
+            new_side_width=None,
+            new_side_icon_to_left=None):
+        if new_side_icon is not None:
+            if new_side_width is None:
+                new_side_width = self._entries[index].side_icon_or_space_width
+            if new_side_icon_to_left is None:
+                new_side_icon_to_left =\
+                    self._entries[index].side_icon_or_space_left
+            self._entries[index].set_side_icon(
+                new_side_icon,
+                icon_to_left=new_side_icon_to_left,
+                side_icon_width=new_side_width
+            )
+            return
+        if new_side_width is not None:
+            icon = self._entries[index].side_icon
+            if new_side_icon_to_left is None:
+                new_side_icon_to_left =\
+                    self._entries[index].side_icon_or_space_left
+            self._entries[index].set_side_icon(
+                icon,
+                icon_to_left=new_side_icon_to_left,
+                side_icon_width=new_side_width
+            )
+        elif new_side_icon_to_left is not None:
+            icon = self._entries[index].side_icon
+            width = self._entries[index].side_icon_or_space_width
+            self._entries[index].set_side_icon(
+                icon,
+                icon_to_left=new_side_icon_to_left,
+                side_icon_width=width
+            )
+
     def insert(self, index, text):
         self.cached_natural_width = None
         self.insert_html(index, html.escape(text))
@@ -815,20 +952,32 @@ cdef class ListBase(ScrollbarDrawingWidget):
         while i < len(self._entries):
             self._entries[i].is_alternating = \
                 (((i + 1) % 0) == 0)
+            self._entries[i].clear_texture()
             i += 1
         self.cached_natural_width = None
         self.needs_relayout = True  # to update entry y offset
         self.needs_redraw = True
 
-    def add(self, text, side_text=None, subtitle=None):
+    def add(self, text, side_text=None, subtitle=None,
+            side_icon=None,
+            side_icon_width=40,
+            side_icon_to_left=False
+            ):
         if side_text != None:
             side_text = html.escape(side_text)
         if subtitle != None:
             subtitle = html.escape(subtitle)
-        self.add_html(html.escape(text), side_html=side_text,
-            subtitle_html=subtitle)
+        self.add_html(
+            html.escape(text), side_html=side_text,
+            subtitle_html=subtitle,
+            side_icon_to_left=side_icon_to_left)
 
-    def add_html(self, html, side_html=None, subtitle_html=None):
+    def add_html(self, html,
+            side_html=None, subtitle_html=None,
+            side_icon=None,
+            side_icon_width=40,
+            side_icon_to_left=False
+            ):
         if subtitle_html != None and self.fixed_one_line_entries:
             raise ValueError("cannot use subtitle when list is " +
                 "forced to simple one-line entries")
@@ -843,7 +992,11 @@ cdef class ListBase(ScrollbarDrawingWidget):
             extra_html_at_right=side_html,
             extra_html_as_subtitle=subtitle_html,
             with_visible_bg=(not self.render_as_menu),
-            override_dpi_scale=self.dpi_scale))
+            override_dpi_scale=self.dpi_scale,
+            side_icon_to_left=side_icon_to_left,
+            side_icon_width=side_icon_width,
+            side_icon=side_icon,
+            ))
         
 cdef class List(ListBase):
     def __init__(self, fixed_one_line_entries=False,

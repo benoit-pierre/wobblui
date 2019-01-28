@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -59,7 +59,7 @@ cdef redraw_windows(int layout_only=False):
     cdef int i
     for w_ref in all_windows:
         w = w_ref()
-        if w is None or w.hidden:
+        if w is None or w.hidden or w.is_closed:
             continue
         try:
             relayout_perf = Perf.start("redraw_windows_relayout")
@@ -889,7 +889,7 @@ def _handle_event(event):
                 sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
             loading_screen_fix()
             w = get_window_by_sdl_id(event.window.windowID)
-            if w != None and not w.focused and not w.is_closed:
+            if w is not None and not w.focused and not w.is_closed:
                 w.focus()
                 w.redraw()
                 internal_update_text_events()
@@ -898,18 +898,18 @@ def _handle_event(event):
                 event.window.event == \
                 sdl.SDL_WINDOWEVENT_SIZE_CHANGED:
             w = get_window_by_sdl_id(event.window.windowID)
-            if w != None and not w.is_closed:
+            if w is not None and not w.is_closed:
                 w.update_to_real_sdlw_size()
         elif event.window.event == \
                 sdl.SDL_WINDOWEVENT_FOCUS_LOST:
             w = get_window_by_sdl_id(event.window.windowID)
-            if w != None and w.focused and not w.is_closed:
+            if w is not None and w.focused and not w.is_closed:
                 w.unfocus()
                 internal_update_text_events()
         elif event.window.event == \
                 sdl.SDL_WINDOWEVENT_CLOSE:
             w = get_window_by_sdl_id(event.window.windowID)
-            if w != None:
+            if w is not None:
                 if w.focused:
                     w.unfocus()
                 w.handle_sdlw_close()

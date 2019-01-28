@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -39,11 +39,11 @@ from wobblui.font.manager cimport c_font_manager
 from wobblui.osinfo import is_android
 from wobblui.sdlinit cimport initialize_sdl
 from wobblui.texture cimport Texture
-from wobblui.widget import Widget
+from wobblui.widget cimport Widget
 
 sdlimage_initialized = False
 
-def stock_image(name):
+cpdef str stock_image(name):
     p = os.path.join(os.path.abspath(os.path.dirname(__file__)),
         "img", name)
     if name.find(".") < 0:
