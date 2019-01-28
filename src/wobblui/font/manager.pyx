@@ -53,7 +53,8 @@ cdef class Font(object):
     cdef object _sdl_font, mutex
 
     def __init__(self, str font_family,
-            double pixel_size, int italic=False, int bold=False):
+            double pixel_size, int italic=False, int bold=False,
+            ):
         assert(font_family != None)
         self.font_family = font_family
         self.px_size = pixel_size
@@ -145,6 +146,40 @@ cdef class Font(object):
             self.mutex.release()
         return result
 
+    @staticmethod
+    def fallback_suggestions(name):
+        for variant in ["Regular", "Italic", "Bold", "BoldItalic",
+                "ItalicBold", "Oblique", "ObliqueBold",
+                "BoldOblique"]:
+            if name.lower().endswith(" " + variant.lower()):
+                name = name.rpartition(" ")[0]
+                break
+            if name.lower().endswith("-" + variant.lower()):
+                name = name.rpartition("-")[0]
+                break
+            if name.lower().endswith("_" + variant.lower()):
+                name = name.rpartition("_")[0]
+                break
+            if name.lower().endswith(variant.lower()):
+                name = name[:-len(variant)]
+                break
+        # The following will always suggest what should be available as
+        # built-in (in src/wobblui/fon/packaged-fonts/) and then suggest
+        # other fallbacks that might be commonly installed.
+        if name.lower() in ["comic sans"]:
+            return ["Comic Neue", "Comic Sans"]
+        if name.lower() in ["sans", "sans serif", "arial",
+                "helvetica", "impact"]:
+            return ["Tex Gyre Adventor", "Liberal Sans", "Arial"]
+        if name.lower() in ["monospace", "mono", "terminal",
+                "courier", "courier new",
+                "droid mono", "droid sans mono",
+                "dejavu mono", "dejavu sans mono"]:
+            return ["Source Code Pro"]
+        if name.lower() in ["times new roman", "serif", "georgia", "times"]:
+            return ["Tex Gyre Adventor", "Liberal Serif", "Times New Roman"]
+        return None
+
     def get_font_file_path(self):
         if self._sdl_font != None:
             return self._sdl_font
@@ -158,15 +193,17 @@ cdef class Font(object):
             variant = "BoldItalic"
         font_paths = wobblui.font.info.get_font_paths_by_name(
             self.font_family + " " + variant, cached=True)
-        if len(font_paths) == 0 and (
-                self.font_family.lower() in ["sans", "sans serif"]):
-            font_paths = wobblui.font.info.get_font_paths_by_name(
-                "Tex Gyre Adventor " + variant, cached=True)
         for (variant_name, font_path) in font_paths:
             if font_path.endswith(".ttf"):
                 return font_path
         raise ValueError("TTF font not found: " +
             str(self.font_family + " " + variant))
+
+    def ensure_availability(self):
+        # Actually locate the TTF file:
+        fpath = self.get_font_file_path()
+        # If we get here, then it was lcoated.
+        return
 
     def get_space_character_width(self):
         self.mutex.acquire()
@@ -234,32 +271,40 @@ cdef class FontManager(object):
 
     def get_font(self, str name,
             int bold=False, int italic=False, double px_size=12,
-            double draw_scale=1.0, int display_dpi=96):
+            double draw_scale=1.0, int display_dpi=96,
+            int fallback_for_common_missing_fonts=True):
         cdef int unified_draw_scale = round(draw_scale *
             DRAW_SCALE_GRANULARITY_FACTOR)
         self.mutex.acquire()
         result = None
         try:
-            result = self._load_font_info(name, bold, italic,
+            result = self._load_font_info(
+                name, bold, italic,
                 px_size=px_size,
                 draw_scale=draw_scale,
-                display_dpi=display_dpi)
+                display_dpi=display_dpi
+            )
         except ValueError as e:
-            if name.lower() == "sans" or \
-                    name.lower() == "sans serif" or \
-                    name.lower() == "arial":
+            if not fallback_for_common_missing_fonts:
                 self.mutex.release()
-                return self.get_font("Tex Gyre Adventor",
-                    bold=bold, italic=italic, px_size=px_size,
-                    draw_scale=draw_scale, display_dpi=display_dpi)
-            elif name.lower() == "serif" or \
-                    name.lower() == "times new roman":
+                raise e
+            alternatives = Font.fallback_suggestions(name)
+            result = None
+            if len(alternatives) > 0:
+                for alternative in alternatives:
+                    try:
+                        result = self._load_font_info(
+                            alternative, bold, italic,
+                            px_size=px_size,
+                            draw_scale=draw_scale,
+                            display_dpi=display_dpi
+                        )
+                        break
+                    except ValueError as e2:
+                        continue
+            if result is None:
                 self.mutex.release()
-                return self.get_font("Tex Gyre Heros",
-                    bold=bold, italic=italic, px_size=px_size,
-                    draw_scale=draw_scale, display_dpi=display_dpi)
-            self.mutex.release()
-            raise e
+                raise e
         self.mutex.release()
         return result
 
@@ -283,6 +328,7 @@ cdef class FontManager(object):
             f = Font(name, actual_px_size,
                 italic=italic,
                 bold=bold)
+            f.ensure_availability()
             self.font_by_sizedpistyle_cache[(
                 unified_draw_scale, display_dpi, style
                 )] = f
