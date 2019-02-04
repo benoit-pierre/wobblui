@@ -532,7 +532,9 @@ cdef class ListEntry:
         # Make entry large enough to cover icon:
         if self.side_icon is not None:
             self._height = math.ceil(max(self._height,
-                self.side_icon_height + padding * 2))
+                self.side_icon_height * self.effective_dpi_scale +
+                padding * 2)
+            )
             self.iconoffset_y = round(
                 (self._height -
                 self.side_icon_height * self.effective_dpi_scale) * 0.5
