@@ -395,6 +395,7 @@ class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
                 stay_alive_without_ref=True,
                 keep_application_running_while_open=False,
             )
+            self.filebrowser_window.style = self.window_to_add.style.copy()
             if len(self.separate_window_init_args[0]) > 0:
                 self.separate_window_init_args[0][0] =\
                     self.filebrowser_window

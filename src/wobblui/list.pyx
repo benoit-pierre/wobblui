@@ -437,8 +437,10 @@ cdef class ListEntry:
         self.textoffset_x = 0
         self.textoffset_y = 0
         self.iconoffset_x = 0
-        if self.side_icon_or_space_left:
+        if not self.side_icon_or_space_left:
             self.iconoffset_x += max_width_without_icon
+        else:
+            self.iconoffset_x += padding
         self.iconoffset_y = 0
         if self.extra_html_as_subtitle_obj != None:
             (subtitle_w, subtitle_h) = \
@@ -541,15 +543,15 @@ cdef class ListEntry:
             self.subtitle_x += round(
                 self.side_icon_or_space_width *
                 self.effective_dpi_scale
-            )
+            ) + padding_side_icon
             self.extra_html_at_right_x += \
                 round(self.side_icon_or_space_width *
                     self.effective_dpi_scale
-                )
+                ) + padding_side_icon
             self.textoffset_x += round(
                 self.side_icon_or_space_width *
                 self.effective_dpi_scale
-            )
+            ) + padding_side_icon
         elif self.side_icon is not None:
             self.iconoffset_x = max_width_without_icon + padding_side_icon
 
@@ -991,6 +993,8 @@ cdef class ListBase(ScrollbarDrawingWidget):
         self.add_html(
             html.escape(text), side_html=side_text,
             subtitle_html=subtitle,
+            side_icon=side_icon,
+            side_icon_width=side_icon_width,
             side_icon_to_left=side_icon_to_left,
             side_icon_with_text_color=side_icon_with_text_color,
         )
