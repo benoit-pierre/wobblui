@@ -256,8 +256,9 @@ class Button(Widget):
             if self.override_bg_color != None:
                 c = self.override_bg_color
             fill_border = max(0, round(
-                self.border -
-                self.with_surrounding_frame_size
+                (self.border -
+                self.with_surrounding_frame_size) *
+                self.dpi_scale
             ))
             draw_rectangle(self.renderer, fill_border, fill_border,
                 self.width - fill_border * 2,
@@ -272,35 +273,46 @@ class Button(Widget):
                     # Top border:
                     draw_rectangle(self.renderer,
                         fill_border,
-                        round(max(1, fill_border) -
-                        self.with_surrounding_frame_size),
+                        round(max(0, fill_border) -
+                              self.with_surrounding_frame_size *
+                              self.dpi_scale),
                         self.width - fill_border * 2 +
-                        round(self.with_surrounding_frame_size),
-                        max(1, round(self.with_surrounding_frame_size)),
+                        round(self.with_surrounding_frame_size *
+                              self.dpi_scale),
+                        max(1, round(self.with_surrounding_frame_size *
+                                     self.dpi_scale)),
                         color=border_color)
                     # Left border:
                     draw_rectangle(self.renderer,
-                        round(max(1, fill_border) -
-                        self.with_surrounding_frame_size),
-                        round(fill_border - self.with_surrounding_frame_size),
-                        max(1, round(self.with_surrounding_frame_size)),
+                        round(max(0, fill_border) -
+                              self.with_surrounding_frame_size *
+                              self.dpi_scale),
+                        round(fill_border -
+                              self.with_surrounding_frame_size *
+                              self.dpi_scale),
+                        max(1, round(self.with_surrounding_frame_size *
+                                     self.dpi_scale)),
                         self.height - fill_border * 2 +
-                        round(self.with_surrounding_frame_size) * 2,
+                        round(self.with_surrounding_frame_size *
+                              self.dpi_scale) * 2,
                         color=border_color)
                 # Bottom border:
                 draw_rectangle(self.renderer,
                     fill_border,
                     round(self.height - max(1, fill_border)),
                     self.width - fill_border * 2,
-                    max(1, round(self.with_surrounding_frame_size)),
+                    max(1, round(self.with_surrounding_frame_size *
+                                 self.dpi_scale)),
                     color=border_color)
                 # Right border:
                 draw_rectangle(self.renderer,
                     round(self.width - max(1, fill_border)),
                     fill_border,
-                    max(1, round(self.with_surrounding_frame_size)),
+                    max(1, round(self.with_surrounding_frame_size) *
+                                 self.dpi_scale),
                     self.height - fill_border * 2 +
-                    round(self.with_surrounding_frame_size),
+                    round(self.with_surrounding_frame_size *
+                          self.dpi_scale),
                     color=border_color)
         offset_x = round(self.border_size)
         full_available_size_x = round(self.width - (self.border_size * 2))
