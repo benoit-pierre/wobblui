@@ -1,6 +1,6 @@
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -115,6 +115,8 @@ class Topbar(Widget):
         c = Color((100, 100, 100))
         if self.style != None:
             c = Color(self.style.get("border"))
+            if self.style.has("topbar_border"):
+                c = Color(self.style.get("topbar_border"))
         draw_rectangle(self.renderer, 0, topbar_actual_height,
             self._width, self.border_size,
             color=c)
