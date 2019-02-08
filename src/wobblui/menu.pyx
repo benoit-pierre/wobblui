@@ -20,6 +20,7 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+import html
 import sdl2 as sdl
 import time
 import weakref
@@ -129,17 +130,37 @@ cdef class Menu(ListBase):
         self.needs_relayout = True
 
     def add(self, text, func_callback=None,
-            global_shortcut_func=None,
-            global_shortcut=[]):
+            shortcut=[],
+            independent_global_shortcut_func=None,
+            announce_independent_global_shortcut=[]):
+        self.add_html(
+            html.escape(text),
+            func_callback=func_callback, shortcut=shortcut,
+            independent_global_shortcut_func=\
+                independent_global_shortcut_func,
+            announce_independent_global_shortcut=\
+                announce_independent_global_shortcut
+        )
+
+    def add_html(self, entry_html, func_callback=None,
+            shortcut=[],
+            independent_global_shortcut_func=None,
+            announce_independent_global_shortcut=[]):
         side_text = None
-        if len(global_shortcut) > 0:
-            side_text = shortcut_to_text(global_shortcut)
-        super().add(text, side_text=side_text)
+        if len(announce_independent_global_shortcut) > 0:
+            side_text = shortcut_to_text(announce_independent_global_shortcut)
+        elif len(shortcut) > 0:
+            side_text = shortcut_to_text(shortcut)
+        super().add_html(entry_html, side_html=(
+            html.escape(side_text) if side_text is not None else None
+        ))
         self.callback_funcs.append(func_callback)
-        if len(global_shortcut) > 0 and \
-                global_shortcut_func != None:
-            register_global_shortcut(global_shortcut,
-                global_shortcut_func, self)
+        if len(announce_independent_global_shortcut) > 0 and \
+                independent_global_shortcut_func != None:
+            register_global_shortcut(
+                announce_independent_global_shortcut,
+                independent_global_shortcut_func, self
+            )
 
     def on_keydown(self, virtual_key, physical_key, modifiers):
         if virtual_key == "escape":
@@ -313,14 +334,16 @@ class ContainerWithSlidingMenu(Widget):
             self._children[1].height = self.height
 
     def add(self, obj_or_text, func_callback=None,
-            global_shortcut_func=None,
-            global_shortcut=[]):
+            shortcut=[],
+            independent_global_shortcut_func=None,
+            announce_independent_global_shortcut=[]):
         if not isinstance(obj_or_text, str) and \
                 func_callback != None or \
-                len(global_shortcut) > 0:
+                len(announce_independent_global_shortcut) > 0 or \
+                len(shortcut) > 0:
             raise ValueError("the provided value is not a string " +
                 "and therefore can't be added as menu entry, " +
-                "but function callback and/or global shortcut " +
+                "but function callback and/or a shortcut " +
                 "for a menu entry were specified") 
         if not isinstance(obj_or_text, str):
             if len(self._children) >= 2:
@@ -328,8 +351,10 @@ class ContainerWithSlidingMenu(Widget):
             super().add(obj_or_text)
         else:
             self.menu.add(obj_or_text, func_callback=func_callback,
-                global_shortcut_func=global_shortcut_func,
-                global_shortcut=global_shortcut)
+                independent_global_shortcut_func=\
+                    independent_global_shortcut_func,
+                announce_independent_global_shortcut=\
+                    announce_independent_global_shortcut)
         self.needs_relayout = True
         self.needs_redraw = True
 

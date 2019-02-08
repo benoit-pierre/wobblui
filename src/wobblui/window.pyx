@@ -255,6 +255,7 @@ cdef class Window(WidgetBase):
             if child.parent == self:
                 child.internal_override_parent(None)
         self._children = []
+        self.context_menu = None
         assert(len(self.children) == 0)
         self._renderer = old_renderer
         self.update()
@@ -320,6 +321,25 @@ cdef class Window(WidgetBase):
                 " for " + str(self))
             self.needs_redraw = True
         return (self._renderer is not None)
+
+    def open_context_menu(self, menu, xpos, ypos):
+        self.context_menu = menu
+        menu.internal_override_parent(self)
+        self.needs_redraw = True
+        self.context_menu.width = self.context_menu.get_desired_width()
+        self.context_menu.height = self.context_menu.get_desired_height(
+            given_width=self.context_menu.width
+        )
+        self.context_menu.needs_redraw = True
+        def close_menu():
+            self.context_menu.internal_override_parent(None)
+            self.context_menu = None
+            self.needs_redraw = True
+        self.context_menu.focus()
+        self.context_menu.unfocus.register(close_menu)
+        self.context_menu.triggered.register(close_menu)
+        self.context_menu.x = xpos
+        self.context_menu.y = ypos
 
     def internal_app_reopen(self):
         if self.is_closed:
@@ -679,7 +699,14 @@ cdef class Window(WidgetBase):
             self.needs_redraw = True
 
     def get_children_in_strict_mouse_event_order(self):
-        return list(reversed(self._children))
+        r = list(reversed(self.get_children()))
+        return r
+
+    def get_children(self):
+        r = list(self._children)
+        if self.context_menu is not None:
+            r += [self.context_menu]
+        return list(r)
 
     def _internal_on_post_redraw(self, internal_data=None):
         if self.renderer is None:

@@ -1948,7 +1948,7 @@ cdef class WidgetBase:
 
     @property
     def children(self):
-        return copy.copy(self.get_children())
+        return list(self.get_children())
 
     def get_children(self):
         return self._children
