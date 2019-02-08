@@ -26,7 +26,7 @@ from wobblui.style import AppStyle
 cdef class Window(WidgetBase):
     cdef object mouse_position_cache, _renderer, _style
     cdef public object _sdl_window  # accessed by multitouch code
-    cdef int _hidden
+    cdef int _hidden, _fullscreen
     cdef public int keep_application_running
     cdef public object hiding, shown, closing, destroyed
     cdef public object modal_filter

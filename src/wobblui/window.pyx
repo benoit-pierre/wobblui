@@ -22,6 +22,7 @@ freely, subject to the following restrictions:
 
 import ctypes
 import math
+import os
 import platform
 import sdl2 as sdl
 import sdl2.sdlttf as sdlttf
@@ -126,6 +127,7 @@ cdef class Window(WidgetBase):
             title="Untitled",
             width=640, height=480,
             style=None,
+            fullscreen=False,
             stay_alive_without_ref=False,
             keep_application_running_while_open=True,
             ):
@@ -142,6 +144,7 @@ cdef class Window(WidgetBase):
         self._hidden = False
         self._width = width
         self._height = height
+        self._fullscreen = fullscreen
         self.keep_application_running = keep_application_running_while_open
         self.hiding = Event("hiding", owner=self)
         self.shown = Event("shown", owner=self)
@@ -170,6 +173,14 @@ cdef class Window(WidgetBase):
         all_windows.append(weakref.ref(self))
         if stay_alive_without_ref:
             keep_alive_window_refs.append(self)
+
+    @property
+    def fullscreen(self):
+        if is_android():
+            return (os.environ.get(
+                    "P4A_IS_WINDOWED", "false"
+            ).lower().strip() in {"0", "false", "no", "off"})
+        return self._fullscreen
 
     def screen_based_scale(self):
         scale = 1.0
@@ -317,13 +328,26 @@ cdef class Window(WidgetBase):
         if self._sdl_window is None:
             if platform.system().lower() == "windows":
                 ctypes.windll.shcore.SetProcessDpiAwareness(2)
+            wwidth = self.next_reopen_width
+            wheight = self.next_reopen_height
+            fullscreen_flag = 0
+            if self.fullscreen:
+                # Make sure window size is not too large to cause error
+                # (since it's ignored when fullscreen but can still cause
+                # an error when too large according to SDL2 docs)
+                wwidth = 100
+                wheight = 100
+                if is_android():
+                    fullscreen_flag = sdl.SDL_WINDOW_FULLSCREEN
+                else:
+                    fullscreen_flag = sdl.SDL_WINDOW_FULLSCREEN_DESKTOP
             self._sdl_window = sdl.SDL_CreateWindow(
                 self._title.encode("utf-8", "replace"),
                 sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
-                self.next_reopen_width,
-                self.next_reopen_height, sdl.SDL_WINDOW_SHOWN |
-                sdl.SDL_WINDOW_RESIZABLE |
-                sdl.SDL_WINDOW_ALLOW_HIGHDPI)
+                wwidth, wheight,
+                sdl.SDL_WINDOW_SHOWN | sdl.SDL_WINDOW_RESIZABLE |
+                sdl.SDL_WINDOW_ALLOW_HIGHDPI | fullscreen_flag
+            )
             unhide = True
             if self._renderer != None:
                 self.on_renderer_to_be_destroyed()
