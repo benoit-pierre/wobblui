@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -25,15 +26,15 @@ import os
 import PIL.Image
 import sdl2 as sdl
 
-from wobblui.color import Color
-from wobblui.event import ForceDisabledDummyEvent, Event
-from wobblui.gfx import draw_rectangle, pop_render_clip, push_render_clip
-from wobblui.image import RenderImage, stock_image
-from wobblui.richtext import RichText
-from wobblui.texture import Texture
+from wobblui.color cimport Color
+from wobblui.event cimport ForceDisabledDummyEvent, Event
+from wobblui.gfx cimport draw_rectangle, pop_render_clip, push_render_clip
+from wobblui.image cimport RenderImage, stock_image
+from wobblui.richtext cimport RichText
+from wobblui.texture cimport Texture
 from wobblui.uiconf import config
-from wobblui.widget import Widget
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.widget cimport Widget
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 class Button(Widget):
     def __init__(self,
@@ -47,7 +48,8 @@ class Button(Widget):
             ):
         super().__init__(is_container=False,
             can_get_focus=clickable)
-        if clickable:
+        self.clickable = (clickable is True)
+        if self.clickable:
             self.triggered = Event(
                 "triggered",
                 owner=self,
@@ -115,6 +117,8 @@ class Button(Widget):
         self.extra_image_render_func = func
 
     def on_keydown(self, key, physical_key, modifiers):
+        if not self.clickable or self.disabled:
+            return
         if key == "return" or key == "space":
             if not self.hovered:
                 self.hovered = True
@@ -124,6 +128,8 @@ class Button(Widget):
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
+        if not self.clickable or self.disabled:
+            return
         if not self.hovered:
             self.hovered = True
             self.force_redraw_and_blocking_show()
@@ -236,11 +242,13 @@ class Button(Widget):
 
     def on_mouseenter(self):
         self.hovered = True
-        self.needs_redraw = True
+        if self.clickable and not self.disabled:
+            self.needs_redraw = True
 
     def on_mouseleave(self):
         self.hovered = False
-        self.needs_redraw = True
+        if self.clickable and not self.disabled:
+            self.needs_redraw = True
 
     def do_redraw(self):
         if self.renderer is None:
@@ -251,7 +259,8 @@ class Button(Widget):
             if self.style is not None:
                 c = Color(self.style.get("button_bg"))
                 if self.style.has("button_bg_hover") and \
-                        self.hovered and not self.disabled:
+                        self.hovered and not self.disabled and \
+                        self.clickable:
                     c = Color(self.style.get("button_bg_hover"))
             if self.override_bg_color != None:
                 c = self.override_bg_color
@@ -423,7 +432,7 @@ class ImageButton(Button):
             color = self.style.get("widget_text")
             if self.style.has("widget_text_saturated"):
                 color = Color(self.style.get("widget_text_saturated"))
-            if self.disabled and style.has("widget_disabled_text"):
+            if self.disabled and self.style.has("widget_disabled_text"):
                 color = Color(self.style.get("widget_disabled_text"))
         assert(isinstance(color, Color))
         self.set_image_color(color)
