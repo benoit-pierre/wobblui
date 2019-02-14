@@ -91,7 +91,7 @@ cdef class RichTextObj:
         return copy.copy(self)
 
     def character_index_to_offset(self, c):
-        if c == 0:
+        if c <= 0:
             (w, h) = self.get_font().render_size(" ")
             w = 0
         else:

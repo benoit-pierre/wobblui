@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -24,10 +25,10 @@ import sdl2 as sdl
 
 from wobblui.clipboard import set_clipboard_text,\
     get_clipboard_text
-from wobblui.color import Color
-from wobblui.gfx import draw_rectangle
-from wobblui.richtext import RichText
-from wobblui.widget import Widget
+from wobblui.color cimport Color
+from wobblui.gfx cimport draw_rectangle
+from wobblui.richtext cimport RichText
+from wobblui.widget cimport Widget
 
 class TextEditBase(Widget):
     def __init__(self, text="", color=None, hide_with_character=None,
@@ -155,6 +156,10 @@ class TextEditBase(Widget):
             # Get coordinates around this character:
             (x1, y1, h) = self.text_obj.character_index_to_offset(c)
             (x2, y2, h) = self.text_obj.character_index_to_offset(c + 1)
+            x1 = round(x1)
+            x2 = round(x2)
+            if x1 == x2:
+                x2 += 1  # make sure to differentiate them
             if y1 + h * 1.2 < y:
                 # Skip if in some above, irrelevant line
                 c += 1
@@ -187,7 +192,7 @@ class TextEditBase(Widget):
             # See if we want to place cursor before or after character:
             x1 += self.padding
             x2 += self.padding
-            if x >= x1 and x < x2 and (y >= y1 and y <= y1 + h):
+            if x >= x1 and x <= x2 and (y >= y1 and y <= y1 + h):
                 if abs(x1 - x) < abs(x2 - x):
                     # Left-side of letter
                     return c
@@ -219,9 +224,9 @@ class TextEditBase(Widget):
                 not self._mouse_dragging:
             return
         start_pos = self.mouse_offset_to_cursor_offset(
-            self._mouse_drag_x, self._mouse_drag_y)
-        end_pos = self.mouse_offset_to_cursor_offset(
-            x, y)
+            self._mouse_drag_x, self._mouse_drag_y
+        )
+        end_pos = self.mouse_offset_to_cursor_offset(x, y)
         if self._known_mouse_pos == end_pos:
             return
         self._known_mouse_pos = end_pos
@@ -377,9 +382,10 @@ class TextEditBase(Widget):
         self.select_full_word_at_cursor()
 
     def move_cursor_to_mouse(self, mx, my):
-        self.cursor_offset = max(0, min(len(self.text) - 1,
-            self.mouse_offset_to_cursor_offset(
-                mx, my)))
+        self.cursor_offset = max(0, min(
+            len(self.text),
+            self.mouse_offset_to_cursor_offset(mx, my)
+        ))
 
     def select_full_word_at_cursor(self):
         word_start = max(0, self.cursor_offset)
@@ -397,12 +403,14 @@ class TextEditBase(Widget):
         self.update()
 
     def move_touch_selection_handle(self,
-            first_one, target_x, target_y, target_h):
+            first_one, target_x, target_y, target_h
+            ):
         if self.selection_length <= 0:
             return None
         if first_one:
             new_pos = self.mouse_offset_to_cursor_offset(
-                x, y)
+                target_x, target_y + round(target_h * 0.5)
+            )
             if new_pos >= 0:
                 move_diff = (new_pos - self.cursor_offset)
                 self.cursor_offset += move_diff
@@ -410,7 +418,8 @@ class TextEditBase(Widget):
                     self.selection_length - move_diff
         else:
             new_pos = self.mouse_offset_to_cursor_offset(
-                x, y)
+                target_x, target_y + round(target_h * 0.5)
+            )
             if new_pos >= 0:
                 move_diff = (new_pos - (self.cursor_offset
                     + self.selection_length))
