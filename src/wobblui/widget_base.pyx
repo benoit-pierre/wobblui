@@ -94,6 +94,7 @@ cdef class WidgetBase:
         self.last_mouse_click_with_time = dict()  # for double clicks
         self.last_touch_was_inside = False
         self.last_touch_was_pressed = False
+        self.multitouch_end_avoid_scroll_hack = False
         self.generate_double_click_for_touches =\
             generate_double_click_for_touches
         self._x = 0
@@ -578,6 +579,9 @@ cdef class WidgetBase:
     def _internal_on_multitouchend(self, internal_data=None):
         self.prevent_touch_long_click_due_to_gesture = False
         self.multitouch_two_finger_distance = 0.0
+        self.multitouch_end_avoid_scroll_hack = True
+        self.multitouch_end_avoid_scroll_hack_timeout =\
+            time.monotonic() + 1.0
 
     def _internal_on_touchstart(self, int x, int y, internal_data=None):
         self._post_mouse_event_handling("touchstart",
@@ -981,6 +985,13 @@ cdef class WidgetBase:
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
 
+        # Remove multitouch prevent scroll hack state if it has expired:
+        if self.multitouch_end_avoid_scroll_hack and (
+                self.multitouch_end_avoid_scroll_hack_timeout <
+                time.monotonic()
+                ):
+            self.multitouch_end_avoid_scroll_hack = False
+
         # If this is a mouse move, remember whether it was fake touch:
         if is_post and event_name == "mousemove":
             self.last_mouse_move_was_fake_touch =\
@@ -1228,21 +1239,27 @@ cdef class WidgetBase:
                     (self.touch_max_ever_distance >
                     20.0 * self.dpi_scale and \
                     self.touch_start_time + 0.7 > now)):
-                self.touch_scrolling = True
                 self.consider_mouse_click_focus(hit_check_x,
                     hit_check_y)
-                scalar = 0.019
-                self._prevent_mouse_event_propagate = True
-                old_value = self._in_touch_fake_event_processing
-                try:
-                    self._in_touch_fake_event_processing = True
-                    self.mousewheel(0,
-                        diff_x * scalar, diff_y * scalar,
-                        internal_data=[
-                        orig_touch_start_x, orig_touch_start_y])
-                finally:
-                    self._in_touch_fake_event_processing = old_value
-                    self._prevent_mouse_event_propagate = False
+                if event_name != "touchend" and \
+                        not self.multitouch_end_avoid_scroll_hack:
+                    self.touch_scrolling = True
+                    scalar = 0.019
+                    self._prevent_mouse_event_propagate = True
+                    old_value = self._in_touch_fake_event_processing
+                    try:
+                        self._in_touch_fake_event_processing = True
+                        self.mousewheel(0,
+                            diff_x * scalar, diff_y * scalar,
+                            internal_data=[
+                            orig_touch_start_x, orig_touch_start_y])
+                    finally:
+                        self._in_touch_fake_event_processing = old_value
+                        self._prevent_mouse_event_propagate = False
+            if event_name == "touchend":
+                self.touch_scrolling = False
+            if event_name == "touchmove" or event_name == "touchend":
+                self.multitouch_end_avoid_scroll_hack = False
 
         Perf.chain(chain_id, "fakemouse_events_done")
 
