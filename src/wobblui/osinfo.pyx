@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -21,14 +22,21 @@ freely, subject to the following restrictions:
 
 from wobblui.sdlinit import initialize_sdl
 
+cdef extern from "oscheck.h":
+    cdef bint COMPILED_WITH_ANDROID_NDK
+
 cached_is_android = None
 def is_android():
     global cached_is_android
     if cached_is_android != None:
         return cached_is_android
     initialize_sdl()
-    import sdl2 as sdl
-    cached_is_android = (sdl.SDL_GetPlatform().decode(
-        "utf-8", "replace").lower() == "android")
+    try:
+        import sdl2 as sdl
+        cached_is_android = (sdl.SDL_GetPlatform().decode(
+            "utf-8", "replace").lower() == "android")
+    except ImportError:
+        # No SDL2. So we need to rely on other clues.
+        cached_is_android = (COMPILED_WITH_ANDROID_NDK == 1)
     return cached_is_android
  
