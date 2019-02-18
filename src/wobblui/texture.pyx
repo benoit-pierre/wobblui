@@ -238,7 +238,6 @@ cdef class RenderTarget(Texture):
         if not self.set_as_target:
             raise ValueError("this is not set as render target yet!")
         self.set_as_target = False
-        sdl.SDL_RenderPresent(self.renderer)
         sdl.SDL_SetRenderTarget(self.renderer, self.previous_target)
         sdl.SDL_SetRenderDrawColor(self.renderer,
             255, 255, 255, 255)
