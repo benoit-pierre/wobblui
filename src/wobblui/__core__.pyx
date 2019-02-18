@@ -28,6 +28,12 @@ import threading
 import time
 import traceback
 
+
+from wobblui.dragselection cimport (
+    touch_handles_take_touch_start,
+    touch_handles_take_touch_move,
+    touch_handles_take_touch_end,
+)
 cimport wobblui.font.sdlfont as sdlfont
 from wobblui.keyboard import internal_update_text_events,\
     get_active_text_widget, get_modifiers, \
@@ -47,6 +53,7 @@ from wobblui.widgetman import all_widgets, all_windows
 from wobblui.window cimport get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
 
 cdef long long sdl_touch_mouseid = 4294967295
 

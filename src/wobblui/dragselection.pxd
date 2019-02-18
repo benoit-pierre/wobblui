@@ -1,6 +1,7 @@
+#cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -19,25 +20,9 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.keyboard import get_all_active_text_widgets
-from wobblui.osinfo import is_android
-from wobblui.uiconf import config
 
-touch_handles_enabled = False
+cdef int touch_handles_take_touch_start(window, mx, my)
 
-def draw_drag_selection_handles(window):
-    global touch_handles_enabled
-    if is_android():
-        touch_handles_enabled = True
-    if config.get("mouse_fakes_touch_events"):
-        touch_handles_enabled = True
-    if not touch_handles_enabled:
-        return
-    for w in get_all_active_text_widgets():
-        if not hasattr(w, "parent_window"):
-            continue
-        if w.parent_window != window:
-            continue
-        w.draw_touch_selection_handles_if_any(
-            w.parent_window.width, w.parent_window.height)
+cdef int touch_handles_take_touch_move(window, mx, my)
 
+cdef int touch_handles_take_touch_end(window, mx, my)
