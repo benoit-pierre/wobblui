@@ -187,16 +187,16 @@ cdef class Texture:
         r2.y = 0
         r2.w = self.width
         r2.h = self.height
-        cdef size_t renderer_address = (<long long>(
+        cdef size_t renderer_address = (<size_t>(
             ctypes.addressof(self.renderer.contents)
         ))
-        cdef size_t texture_address = (<long long>(
+        cdef size_t texture_address = (<size_t>(
             ctypes.addressof(self._texture.contents)
         ))
-        cdef size_t r1_address = (<long long>(
+        cdef size_t r1_address = (<size_t>(
             ctypes.addressof(r1)
         ))
-        cdef size_t r2_address = (<long long>(
+        cdef size_t r2_address = (<size_t>(
             ctypes.addressof(r2)
         ))
         cdef _sdl_SetRenderDrawColorType setrendercolor = _sdl_SetRenderDrawColor
@@ -314,15 +314,15 @@ cdef class RenderTarget(Texture):
         if self.set_as_target:
             raise ValueError("this is already set as render target!")
 
-        cdef size_t renderer_address = (<long long>(
+        cdef size_t renderer_address = (<size_t>(
             ctypes.addressof(self.renderer.contents)
         ))
-        cdef size_t texture_address = (<long long>(
+        cdef size_t texture_address = (<size_t>(
             ctypes.addressof(self._texture.contents)
         ))
 
         self.set_as_target = True
-        self.previous_target = int(<long long>_sdl_GetRenderTarget(<void*>renderer_address))
+        self.previous_target = (<size_t>_sdl_GetRenderTarget(<void*>renderer_address))
         _sdl_SetRenderTarget(<void*>renderer_address, <void*>texture_address)
         self.ever_rendered_to = True
         if clear:
@@ -342,10 +342,10 @@ cdef class RenderTarget(Texture):
         if not self.set_as_target:
             raise ValueError("this is not set as render target yet!")
         self.set_as_target = False
-        cdef size_t renderer_address = (<long long>(
+        cdef size_t renderer_address = (<size_t>(
             ctypes.addressof(self.renderer.contents)
         ))
-        cdef size_t prevtarget_address = (<long long>(self.previous_target))
+        cdef size_t prevtarget_address = (<size_t>(self.previous_target))
         _sdl_SetRenderTarget(<void*>renderer_address,
                              <void*>prevtarget_address)
         _sdl_SetRenderDrawColor(
