@@ -73,6 +73,11 @@ class TextEditBase(Widget):
         self.text_obj.set_html(self.html)
         self.needs_relayout = True
 
+    def get_text_height(self):
+        if self.needs_relayout:
+            self.relayout()
+        return self._layout_height
+
     def get_default_cursor(self):
         return "text"
 
@@ -159,10 +164,15 @@ class TextEditBase(Widget):
             x2 = round(x2)
             if x1 == x2:
                 x2 += 1  # make sure to differentiate them
+            is_last_line = False
             if y1 + h * 1.2 < y:
-                # Skip if in some above, irrelevant line
-                c += 1
-                continue
+                # Skip if we're in some above, irrelevant line...
+                if y1 + h * 1.1 >= self.padding + self.get_text_height():
+                    # ... unless this is the last line.
+                    is_last_line = True
+                else:
+                    c += 1
+                    continue
 
             # See if this is the beginning of the line:
             first_of_line = False
@@ -191,17 +201,18 @@ class TextEditBase(Widget):
             # See if we want to place cursor before or after character:
             x1 += self.padding
             x2 += self.padding
-            if x >= x1 and x <= x2 and (y >= y1 and y <= y1 + h):
-                if abs(x1 - x) < abs(x2 - x):
-                    # Left-side of letter
+            if (y >= y1 and y <= y1 + h) or is_last_line:
+                if x >= x1 and x <= x2:
+                    if abs(x1 - x) < abs(x2 - x):
+                        # Left-side of letter
+                        return c
+                    else:
+                        # Right side of letter
+                        return c + 1
+                if x < x1 and first_of_line:
                     return c
-                else:
-                    # Right side of letter
+                if x > x2 and last_of_line:
                     return c + 1
-            if x < x1 and first_of_line:
-                return c
-            if x > x2 and last_of_line:
-                return c + 1
             c += 1
         return 0
 
@@ -401,14 +412,24 @@ class TextEditBase(Widget):
         self.selection_length = (word_end - word_start)
         self.update()
 
+    def current_touch_handle_height(self, first_one):
+        positions = self.get_touch_selection_positions()
+        if positions is None:
+            return 0.0
+        if first_one:
+            return positions[2]
+        else:
+            return positions[5]
+
     def move_touch_selection_handle(self,
-            first_one, target_x, target_y, target_h
+            first_one, target_x, target_y
             ):
         if self.selection_length <= 0:
             return None
+        offset_y = round(self.current_touch_handle_height(first_one) * 0.5)
         if first_one:
             new_pos = self.mouse_offset_to_cursor_offset(
-                target_x, target_y + round(target_h * 0.5)
+                target_x, target_y + offset_y
             )
             if new_pos >= 0:
                 move_diff = (new_pos - self.cursor_offset)
@@ -417,7 +438,7 @@ class TextEditBase(Widget):
                     self.selection_length - move_diff
         else:
             new_pos = self.mouse_offset_to_cursor_offset(
-                target_x, target_y + round(target_h * 0.5)
+                target_x, target_y + offset_y
             )
             if new_pos >= 0:
                 move_diff = (new_pos - (self.cursor_offset

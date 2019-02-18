@@ -59,6 +59,7 @@ cdef long long sdl_touch_mouseid = 4294967295
 
 cdef int MULTITOUCH_DEBUG = 0
 
+
 cdef redraw_windows(int layout_only=False):
     cdef int i
     for w_ref in all_windows:
@@ -90,6 +91,7 @@ cdef redraw_windows(int layout_only=False):
         except Exception as e:
             logerror("*** ERROR HANDLING WINDOW ***")
             logerror(str(traceback.format_exc()))
+
 
 def sdl_vkey_map(int key):
     import sdl2 as sdl
@@ -132,6 +134,7 @@ def sdl_vkey_map(int key):
         return "pageup"
     return str("keycode-" + str(key))
 
+
 def sdl_key_map(int key):
     import sdl2 as sdl
     if key >= sdl.SDL_SCANCODE_0 and key <= sdl.SDL_SCANCODE_9:
@@ -165,6 +168,7 @@ def sdl_key_map(int key):
         return "pageup"
     return str("scancode-" + str(key))
 
+
 stuck_thread = None
 last_alive_time = None
 def stuck_check():
@@ -183,6 +187,7 @@ def stuck_check():
             del(th)
             # Make sure we don't fire this again right away:
             last_alive_time = time.monotonic() + 30.0
+
 
 def event_loop(app_cleanup_callback=None):
     global stuck_thread, last_alive_time
@@ -272,6 +277,7 @@ def event_loop(app_cleanup_callback=None):
         time.sleep(0.05)
         raise e
 
+
 def sdl_event_name(event):
     import sdl2 as sdl
     cdef int ev_no = event.type
@@ -316,6 +322,7 @@ def sdl_event_name(event):
                 str(event.window.event)
     return "unknown-" + str(ev_no)
 
+
 def debug_describe_event(event):
     import sdl2 as sdl
     cdef str t = sdl_event_name(event)
@@ -335,10 +342,12 @@ def debug_describe_event(event):
             ",y:" + str(event.wheel.y) + ")"
     return t
 
+
 def do_event_processing_if_on_main_thread(ui_active=True):
     if threading.current_thread() != threading.main_thread():
         return
     do_event_processing(ui_active=ui_active)
+
 
 _last_clean_shortcuts_ts = None
 def do_event_processing(int ui_active=True):
@@ -352,6 +361,7 @@ def do_event_processing(int ui_active=True):
         _last_clean_shortcuts_ts = time.monotonic()
     if _last_clean_shortcuts_ts + 1.0 < time.monotonic():
         clean_global_shortcuts()
+        _last_clean_shortcuts_ts = time.monotonic()
 
     if config.get("debug_core_event_loop") is True:
         logdebug("do_event_processing(): fetching SDL " +
@@ -444,8 +454,11 @@ def do_event_processing(int ui_active=True):
             "at " + str(time.monotonic()))
     return True
 
-def _process_mouse_click_event(event,
-        force_no_widget_can_receive_new_input=False):
+
+def _process_mouse_click_event(
+        event,
+        force_no_widget_can_receive_new_input=False
+        ):
     global capture_enabled, touch_pressed, \
         mouse_ids_button_ids_pressed,\
         multitouch_gesutre_active
@@ -497,8 +510,11 @@ def _process_mouse_click_event(event,
                 return
             touch_pressed = True
             Perf.chain("mouseevent", "callback_prep")
-            w.touchstart(
-                int(event.button.x), int(event.button.y))
+            if not touch_handles_take_touch_start(
+                    w, int(event.button.x), int(event.button.y)
+                    ):
+                w.touchstart(
+                    int(event.button.x), int(event.button.y))
         else:
             mouse_ids_button_ids_pressed.add(
                 (int(event.button.which),
@@ -509,7 +525,7 @@ def _process_mouse_click_event(event,
                 int(event.button.x), int(event.button.y),
                 internal_data=[int(event.button.x),
                 int(event.button.y)])
-            Perf.chain('mouseevent', "callback")
+        Perf.chain('mouseevent', "callback")
         if not capture_enabled:
             if config.get("capture_debug"):
                 logdebug("wobblui.py: debug: mouse capture engage")
@@ -525,10 +541,13 @@ def _process_mouse_click_event(event,
             if multitouch_gesture_active:
                 return
             Perf.chain("mouseevent", "callback_prep")
-            w.touchend(
-                int(event.button.x), int(event.button.y),
-                internal_data=[int(event.button.x),
-                int(event.button.y)])
+            if not touch_handles_take_touch_end(
+                    w, int(event.button.x), int(event.button.y)
+                    ):
+                w.touchend(
+                    int(event.button.x), int(event.button.y),
+                    internal_data=[int(event.button.x),
+                    int(event.button.y)])
             Perf.chain("mouseevent", "callback")
         else:
             if force_no_widget_can_receive_new_input and \
@@ -742,10 +761,13 @@ def update_multitouch():
         last_single_finger_xpos = main_finger_x
         last_single_finger_ypos = main_finger_y
         w = get_window_by_sdl_id(last_single_finger_sdl_windowid)
-        w.touchmove(float(main_finger_x),
-                    float(main_finger_y),
-                    internal_data=[float(main_finger_x),
-                        float(main_finger_y)])
+        if not touch_handles_take_touch_move(
+                w, float(main_finger_x), float(main_finger_y)
+                ):
+            w.touchmove(float(main_finger_x),
+                        float(main_finger_y),
+                        internal_data=[float(main_finger_x),
+                            float(main_finger_y)])
 
     # If no finger moved from last time, don't report anything:
     if last_multitouch_finger_coordinates == finger_positions:
@@ -858,10 +880,13 @@ def _handle_event(event):
                         event.button.which == sdl_touch_mouseid:
                     # Don't handle this, multitouch update will do so.
                     return
-                w.touchmove(float(event.motion.x),
-                    float(event.motion.y),
-                    internal_data=[float(event.motion.x),
-                        float(event.motion.y)])
+                if not touch_handles_take_touch_move(
+                        w, float(event.motion.x), float(event.motion.y)
+                        ):
+                    w.touchmove(float(event.motion.x),
+                        float(event.motion.y),
+                        internal_data=[float(event.motion.x),
+                            float(event.motion.y)])
         else:
             reset_cursors_seen_during_mousemove()
             w.mousemove(int(event.motion.which),

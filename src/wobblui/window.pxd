@@ -28,7 +28,7 @@ cdef class Window(WidgetBase):
     cdef public object _sdl_window  # accessed by multitouch code
     cdef int _hidden, _fullscreen
     cdef public int keep_application_running
-    cdef object context_menu
+    cdef object _context_menu
     cdef public object hiding, shown, closing, destroyed
     cdef public object modal_filter
     cdef public int is_closed

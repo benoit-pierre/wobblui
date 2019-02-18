@@ -58,6 +58,7 @@ class Button(Widget):
                 "triggered", owner=self)
         self.with_surrounding_frame = (with_surrounding_frame is True)
         self.with_surrounding_frame_size = 2.0
+        self.inner_text_padding = 2.0
         self.with_surrounding_frame_all_sides = True
         self._image_draw_scaledown = 1.0
         self.hovered = False
@@ -269,7 +270,9 @@ class Button(Widget):
                 self.with_surrounding_frame_size) *
                 self.dpi_scale
             ))
-            draw_rectangle(self.renderer, fill_border, fill_border,
+            draw_rectangle(self.renderer,
+                fill_border,
+                fill_border,
                 self.width - fill_border * 2,
                 self.height - fill_border * 2,
                 color=c)
@@ -375,11 +378,18 @@ class Button(Widget):
             if self.with_surrounding_frame:
                 push_render_clip(self.renderer,
                     fill_border, fill_border,
-                    self.width - fill_border * 2,
-                    self.height - fill_border * 2)
+                    self.width - fill_border * 2 - round(
+                        self.inner_text_padding * 2 * self.dpi_scale
+                    ),
+                    self.height - fill_border * 2 - round(
+                        self.inner_text_padding * 2 * self.dpi_scale
+                    )
+                )
             try:
                 self.contained_richtext_obj.draw(
-                    self.renderer, offset_x,
+                    self.renderer,
+                    offset_x + round(self.inner_text_padding *
+                                     self.dpi_scale),
                     round(self.height / 2.0 - self.text_layout_height / 2.0),
                     color=c, draw_scale=self.dpi_scale)
             finally:
@@ -401,7 +411,8 @@ class Button(Widget):
                 self.border_size * 2))
         if self.contained_richtext_obj != None:
             my_h = max(my_h, self.text_layout_height +
-                round(self.border_size * 2))
+                round(self.border_size * 2) +
+                round(self.inner_text_padding * 2 * self.dpi_scale))
         return my_h
 
     def get_natural_width(self):
@@ -414,7 +425,8 @@ class Button(Widget):
             # Add in-between spacing:
             my_w += round(self.border_size * 0.7)
         if self.contained_richtext_obj != None:
-            my_w += round(self.text_layout_width)
+            my_w += round(self.text_layout_width) +\
+                round(self.inner_text_padding * 2 * self.dpi_scale)
         return my_w
 
 class ImageButton(Button):

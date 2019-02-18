@@ -254,7 +254,7 @@ cdef class Window(WidgetBase):
             if child.parent == self:
                 child.internal_override_parent(None)
         self._children = []
-        self.context_menu = None
+        self._context_menu = None
         assert(len(self.children) == 0)
         self._renderer = old_renderer
         self.update()
@@ -322,8 +322,17 @@ cdef class Window(WidgetBase):
             self.needs_redraw = True
         return (self._renderer is not None)
 
-    def open_context_menu(self, menu, xpos, ypos):
-        self.context_menu = menu
+    @property
+    def context_menu(self):
+        return self._context_menu
+
+    def close_context_menu(self):
+        self.context_menu.internal_override_parent(None)
+        self._context_menu = None
+        self.needs_redraw = True
+
+    def open_context_menu(self, menu, xpos, ypos, autofocus=True):
+        self._context_menu = menu
         menu.internal_override_parent(self)
         self.needs_redraw = True
         self.context_menu.width = self.context_menu.get_desired_width()
@@ -332,12 +341,17 @@ cdef class Window(WidgetBase):
         )
         self.context_menu.needs_redraw = True
         def close_menu():
-            self.context_menu.internal_override_parent(None)
-            self.context_menu = None
-            self.needs_redraw = True
-        self.context_menu.focus()
-        self.context_menu.unfocus.register(close_menu)
-        self.context_menu.triggered.register(close_menu)
+            self.close_context_menu()
+        if autofocus:
+            self.context_menu.focus()
+            try:
+                self.context_menu.unfocus.register(close_menu)
+            except AttributeError:
+                pass
+        try:
+            self.context_menu.triggered.register(close_menu)
+        except AttributeError:
+            pass
         self.context_menu.x = xpos
         self.context_menu.y = ypos
 

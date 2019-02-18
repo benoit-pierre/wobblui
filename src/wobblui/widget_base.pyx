@@ -369,7 +369,8 @@ cdef class WidgetBase:
             overall_w=overall_w, overall_h=overall_h)
 
     def move_touch_selection_handle(self,
-            left_one, target_x, target_y, target_h):
+            left_one, target_x, target_y
+            ):
         """ Needs to be implemented by concrete widgets. """
         pass
 

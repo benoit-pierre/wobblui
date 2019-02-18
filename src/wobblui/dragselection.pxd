@@ -21,6 +21,8 @@ freely, subject to the following restrictions:
 '''
 
 
+cdef void reposition_hover_menu(window)
+
 cdef int touch_handles_take_touch_start(window, mx, my)
 
 cdef int touch_handles_take_touch_move(window, mx, my)

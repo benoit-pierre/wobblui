@@ -250,14 +250,19 @@ cdef class RichTextFragment(RichTextObj):
 
     def get_width_up_to_length(self, int index):
         self.update_cache()
-        index = max(0, min(index, len(self.text)))
+        if index < 0:
+            index = 0
+        if index > len(self.text):
+            index = len(self.text)
         if index in self._width_cache:
             return self._width_cache[index]
         cdef str text_part = self.text[:index]
-        font = font_manager().get_font(self.font_family,
+        font = font_manager().get_font(
+            self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
-            draw_scale=self._draw_scale)
+            draw_scale=self._draw_scale
+        )
         cdef int w, h
         (w, h) = font.render_size(text_part)
         self._width_cache[index] = w
