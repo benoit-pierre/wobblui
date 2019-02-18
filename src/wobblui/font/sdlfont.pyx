@@ -24,7 +24,6 @@ import ctypes
 import cython
 import queue
 from queue import Queue
-import sdl2.sdlttf as sdlttf
 import threading
 
 from wobblui.sdlinit import initialize_sdl
@@ -58,6 +57,7 @@ cdef _sdl_TextSize_utf8_type _sdl_TextSize_utf8 = NULL
 
 cdef tuple _get_font_size_fast_unthreaded(object sdl_font, char* text):
     global _sdl_TextSize_utf8
+    import sdl2.sdlttf as sdlttf
     if not _sdl_TextSize_utf8:
         _sdl_TextSize_utf8 = <_sdl_TextSize_utf8_type>(
             cython.operator.dereference(<size_t*>(
@@ -100,10 +100,12 @@ cdef class SDLFontCloseJob(ThreadJob):
         self.font_ref = sdl_ttf_font_ref
 
     def execute(self):
+        import sdl2.sdlttf as sdlttf
         sdlttf.TTF_CloseFont(self.font_ref)
         self.result_waiter.set()
 
 def get_sdl_font(str font_path, int px_size):
+    import sdl2.sdlttf as sdlttf
     font = sdlttf.TTF_OpenFont(
         font_path.encode("utf-8"),
         px_size)
@@ -184,6 +186,7 @@ cpdef SDLFontWrapper get_thread_safe_sdl_font(path, px_size):
     if not ttf_was_initialized:
         ttf_was_initialized = True
         initialize_sdl()
+        import sdl2.sdlttf as sdlttf
         sdlttf.TTF_Init()
     load_job = SDLFontLoadJob(path, round(px_size))
     if is_main_thread():

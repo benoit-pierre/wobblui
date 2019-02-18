@@ -21,8 +21,6 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
-import sdl2 as sdl
-import sdl2.sdlttf as sdlttf
 
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
@@ -32,6 +30,8 @@ cpdef void initialize_sdl():
     if sdl_init_done:
         return
     sdl_init_done = True
+
+    import sdl2 as sdl
 
     loginfo("Setting SDL2 settings")
     sdl.SDL_SetHintWithPriority(b"SDL_HINT_ORIENTATIONS",
@@ -56,6 +56,7 @@ cpdef void initialize_sdl():
         loginfo("NOT calling SDL_Init, already initialized")
 
 cpdef tuple sdl_version():
+    import sdl2 as sdl
     v = sdl.SDL_version()
     sdl.SDL_GetVersion(ctypes.byref(v))
     return (int(v.major), int(v.minor), int(v.patch))

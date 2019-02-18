@@ -20,12 +20,13 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
-import sdl2 as sdl
 
 def set_clipboard_text(t):
+    import sdl2 as sdl
     sdl.SDL_SetClipboardText(t.encode("utf-8", "ignore"))
 
 def get_clipboard_text():
+    import sdl2 as sdl
     paste_text_ptr = ctypes.c_char_p()
     old_restype = sdl.SDL_GetClipboardText.restype
     sdl.SDL_GetClipboardText.restype = ctypes.c_void_p

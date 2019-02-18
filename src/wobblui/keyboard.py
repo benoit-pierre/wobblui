@@ -20,7 +20,6 @@ freely, subject to the following restrictions:
 '''
 
 import functools
-import sdl2 as sdl
 import weakref
 
 from wobblui.widgetman import all_windows
@@ -245,6 +244,7 @@ def internal_update_keystate_keyup(vkey, pkey):
 
 def get_modifiers():
     """ Get currently pressed modifier keys. """
+    import sdl2 as sdl
     result = set()
     sdl_modstate = sdl.SDL_GetModState()
     if ((sdl_modstate & sdl.KMOD_LSHIFT) != 0 or
@@ -268,6 +268,7 @@ def internal_update_text_events():
     global current_text_events_widgets, \
         all_windows,\
         text_input_suspended
+    import sdl2 as sdl
 
     # Throw out all widgets that have lost keyboard focus or lost
     # their parent window:

@@ -24,7 +24,6 @@ import html
 import math
 import os
 import PIL.Image
-import sdl2 as sdl
 
 from wobblui.color cimport Color
 from wobblui.event cimport ForceDisabledDummyEvent, Event
@@ -251,6 +250,7 @@ class Button(Widget):
             self.needs_redraw = True
 
     def do_redraw(self):
+        import sdl2 as sdl
         if self.renderer is None:
             return
         self.update_texture_color()

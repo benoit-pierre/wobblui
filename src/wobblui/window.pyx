@@ -24,8 +24,6 @@ import ctypes
 import math
 import os
 import platform
-import sdl2 as sdl
-import sdl2.sdlttf as sdlttf
 import weakref
 
 from wobblui.color cimport Color
@@ -159,6 +157,7 @@ cdef class Window(WidgetBase):
         
         # Now that SDL window is open, we can access screen geometry:
         if self._sdl_window != None:
+            import sdl2 as sdl
             scale = self.screen_based_scale()
             # Correct our initial size if not on android:
             if abs(scale - 1.0) > 0.1 and not is_android():
@@ -292,6 +291,7 @@ cdef class Window(WidgetBase):
         logdebug("Renderer loss processed.")
 
     def ensure_renderer(self):
+        import sdl2 as sdl
         if self._sdl_window is None or not self._sdl_window:
             return
         if self._renderer is None:
@@ -342,6 +342,7 @@ cdef class Window(WidgetBase):
         self.context_menu.y = ypos
 
     def internal_app_reopen(self):
+        import sdl2 as sdl
         if self.is_closed:
             return
         unhide = False
@@ -407,6 +408,7 @@ cdef class Window(WidgetBase):
             self._sdl_window = None
 
     def handle_sdlw_close(self, forced=False):
+        import sdl2 as sdl
         if self._sdl_window is None:
             return
         self.next_reopen_width = self._width
@@ -508,6 +510,7 @@ cdef class Window(WidgetBase):
                 return (self._last_sdl_coordinates_x,
                     self._last_sdl_coordinates_y)
             return (0, 0)
+        import sdl2 as sdl
         x = ctypes.c_int32()
         y = ctypes.c_int32()
         sdl.SDL_GetWindowPosition(self._sdl_window,
@@ -522,6 +525,7 @@ cdef class Window(WidgetBase):
     def containing_screen_dimensions(self):
         if self._sdl_window is None:
             return (0, 0)
+        import sdl2 as sdl
         screen_mode = sdl.SDL_DisplayMode()
         result = sdl.SDL_GetCurrentDisplayMode(self.screen_index,
             ctypes.byref(screen_mode))
@@ -534,6 +538,7 @@ cdef class Window(WidgetBase):
     def screen_index(self):
         if self._sdl_window is None:
             return 0
+        import sdl2 as sdl
         return sdl.SDL_GetWindowDisplayIndex(self._sdl_window)
 
     def get_sdl_incorrect_scaling_correction_factor(self):
@@ -545,6 +550,7 @@ cdef class Window(WidgetBase):
             this internally to correct things, so you don't need to bother
             to do this manually.
         """
+        import sdl2 as sdl
 
         w = ctypes.c_int32()
         h = ctypes.c_int32()
@@ -569,6 +575,7 @@ cdef class Window(WidgetBase):
     def update_to_real_sdlw_size(self):
         if self._sdl_window is None:
             return
+        import sdl2 as sdl
         w = ctypes.c_int32()
         h = ctypes.c_int32()
         sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
@@ -615,6 +622,7 @@ cdef class Window(WidgetBase):
     def sdl_window_id(self):
         if self._sdl_window is None:
             return None
+        import sdl2 as sdl
         return int(sdl.SDL_GetWindowID(self._sdl_window))
 
     @property
@@ -709,6 +717,7 @@ cdef class Window(WidgetBase):
         return list(r)
 
     def _internal_on_post_redraw(self, internal_data=None):
+        import sdl2 as sdl
         if self.renderer is None:
             return
         elif self.needs_redraw:

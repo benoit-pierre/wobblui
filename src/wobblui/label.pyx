@@ -21,7 +21,6 @@ freely, subject to the following restrictions:
 '''
 
 import math
-import sdl2 as sdl
 import time
 
 from wobblui.button import Button

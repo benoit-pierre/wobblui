@@ -22,8 +22,6 @@ freely, subject to the following restrictions:
 
 import ctypes
 import functools
-import sdl2 as sdl
-import sdl2.sdlttf as sdlttf
 import threading
 import time
 
@@ -42,7 +40,6 @@ render_size_cache = KeyValueCache(size=500)
 rendered_words_cache = KeyValueCache(size=50,
     destroy_func=lambda x: x._force_unload())
 
-_reuse_draw_rect = sdl.SDL_Rect()
 cdef class Font(object):
     cdef public int italic, bold
     cdef public double px_size
@@ -102,13 +99,14 @@ cdef class Font(object):
     def draw_at(self, renderer, str text, int x, int y, color=Color.black()):
         if len(text) == 0:
             return
-        global _reuse_draw_rect
         tex = self.get_cached_rendered_texture(renderer, text)
         tex.set_color(color)
         tex.draw(x, y)
 
     def get_cached_rendered_texture(self, renderer, str text):
         global rendered_words_cache
+        import sdl2 as sdl
+        import sdl2.sdlttf as sdlttf
         cdef str key = str((self.font_family, self.italic, self.bold,
             self.px_size, str(ctypes.addressof(
                 renderer.contents)))) + "_" + text

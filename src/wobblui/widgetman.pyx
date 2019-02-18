@@ -24,7 +24,6 @@ import copy
 import ctypes
 import functools
 import math
-import sdl2 as sdl
 import sys
 import time
 import traceback

@@ -26,9 +26,6 @@ import os
 import PIL.Image
 import PIL.ImageDraw
 import platform
-import sdl2 as sdl
-import sdl2.sdlimage as sdlimage
-import sdl2.sdlttf as sdlttf
 import subprocess
 import sys
 import tempfile
@@ -54,6 +51,7 @@ cpdef str stock_image(name):
     return p
 
 def _internal_sdl_surface_to_pil_image(sdl_surface):
+    import sdl2 as sdl
     (fd, fpath) = tempfile.mkstemp(
         prefix="wobblui-srf-to-pil-", suffix=".bmp"
     )
@@ -76,6 +74,9 @@ def _internal_sdl_surface_to_pil_image(sdl_surface):
 def _internal_pil_image_to_sdl_surface(pil_image, retries=5):
     global sdlimage_initialized
     initialize_sdl()
+    import sdl2 as sdl
+    import sdl2.sdlimage as sdlimage
+
     if not sdlimage_initialized:
         sdlimage_initialized = True
         if not platform.system().lower() == "windows":
@@ -204,6 +205,7 @@ cdef class RenderImage(object):
             x, y, w, h, color=Color.black(),
             alpha=1.0, filled=True
             ):
+        import sdl2 as sdl
         if self.render_low_res:
             raise TypeError("cannot modify low-res rendered image")
         if not filled:
@@ -280,6 +282,8 @@ cdef class RenderImage(object):
             color=Color.black(),
             alpha=1.0
             ):
+        import sdl2 as sdl
+        import sdl2.ttf as sdlttf
         if self.render_low_res:
             raise TypeError("cannot modify low-res rendered image")
         try:
@@ -313,6 +317,7 @@ cdef class RenderImage(object):
     def _draw_srf_onto_image(self,
             surface, x, y, alpha=1.0, color=Color.white()
             ):
+        import sdl2 as sdl
         if self.render_low_res:
             raise TypeError("cannot modify low-res rendered image")
         alpha = max(0, min(255, round(255.0 * alpha)))
@@ -358,6 +363,7 @@ cdef class RenderImage(object):
 
     def __dealloc__(self):
         if self.surface is not None:
+            import sdl2 as sdl
             sdl.SDL_FreeSurface(self.surface)
         self.surface = None
 
@@ -467,6 +473,7 @@ class ImageWidget(Widget):
         super().update_renderer()
 
     def on_redraw(self):
+        import sdl2 as sdl
         if self.renderer is None:
             return
         if self.render_image is None:

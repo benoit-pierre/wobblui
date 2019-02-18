@@ -21,7 +21,6 @@ freely, subject to the following restrictions:
 '''
 
 import html
-import sdl2 as sdl
 import time
 import weakref
 
@@ -301,6 +300,8 @@ class ContainerWithSlidingMenu(Widget):
         self.needs_redraw = True
 
     def on_redraw(self):
+        import sdl2 as sdl
+
         # Draw actual children behind menu, if any:
         if len(self._children) >= 2:
             for child in self._children[1:]:

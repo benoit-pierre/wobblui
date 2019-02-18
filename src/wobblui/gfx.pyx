@@ -22,7 +22,6 @@ freely, subject to the following restrictions:
 
 import ctypes
 import math
-import sdl2 as sdl
 import weakref
 
 from wobblui.color cimport Color
@@ -32,11 +31,14 @@ from wobblui.uiconf import config
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 
-_rect = sdl.SDL_Rect()
+_rect = None
 cpdef draw_rectangle(renderer, int x, int y, int w, int h,
         color=None,
         int filled=True, unfilled_border_thickness=1.0):
     global _rect
+    import sdl2 as sdl
+    if _rect is None:
+        _rect = sdl.SDL_Rect()
     if color is None:
         color = Color("#aaa")
     if not filled:
@@ -71,6 +73,7 @@ dash_tex_wide = 32
 dashed_texture_store = dict()
 cdef get_dashed_texture(renderer, int vertical=False):
     global dashed_texture_store
+    import sdl2 as sdl
     renderer_key = str(ctypes.addressof(renderer.contents))
     if (vertical, renderer_key) in dashed_texture_store:
         return dashed_texture_store[(vertical, renderer_key)]
@@ -109,6 +112,7 @@ cdef get_dashed_texture(renderer, int vertical=False):
 
 cpdef clear_renderer_gfx(renderer):
     global dashed_texture_store
+    import sdl2 as sdl
     renderer_key = str(ctypes.addressof(renderer.contents))
     new_dashed_store = dict()
     for entry in dashed_texture_store:
@@ -124,6 +128,7 @@ cpdef draw_dashed_line(
         object color=None,
         double dash_length=7.0,
         double thickness=3.0):
+    import sdl2 as sdl
     if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
         raise NotImplementedError("lines that aren't straight vertical or " +
             "horizontal aren't implemented yet")
@@ -254,6 +259,7 @@ cpdef draw_font(renderer, text, x, y,
         tex.draw(round(x), round(y))
 
 cpdef is_font_available(font_family, bold=False, italic=False):
+    import sdl2 as sdl
     try:
         f = font_manager().get_font(font_family, bold=bold, italic=italic)
         # intentionally unused, will cause error if no such font:
@@ -272,6 +278,7 @@ cpdef get_draw_font_size(text,
     return font.render_size(text)
 
 cdef int clipping_is_enabled(object renderer):
+    import sdl2 as sdl
     try:
         return (sdl.SDL_RenderIsClipEnabled() == 1)
     except AttributeError:
@@ -287,6 +294,8 @@ cdef int clipping_is_enabled(object renderer):
 previous_clip_stacks_by_renderer = dict()
 cpdef push_render_clip(renderer, _x, _y, _w, _h):
     global previous_clip_stacks_by_renderer
+    import sdl2 as sdl
+
     cdef int x, y, w, h
     x = round(_x)
     y = round(_y)
@@ -331,6 +340,7 @@ cpdef push_render_clip(renderer, _x, _y, _w, _h):
     _apply_clip_rect(renderer, x, y, w, h)
 
 cdef _apply_clip_rect(object renderer, int x, int y, int w, int h):
+    import sdl2 as sdl
     new_clip = sdl.SDL_Rect()
     new_clip.x = x
     new_clip.y = y
@@ -341,6 +351,8 @@ cdef _apply_clip_rect(object renderer, int x, int y, int w, int h):
 
 cpdef pop_render_clip(renderer):
     global previous_clip_stacks_by_renderer
+    import sdl2 as sdl
+
     renderer_key = str(ctypes.addressof(renderer.contents))
     if renderer_key not in previous_clip_stacks_by_renderer:
         previous_clip_stacks_by_renderer[renderer_key] =\

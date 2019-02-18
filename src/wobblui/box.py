@@ -20,7 +20,6 @@ freely, subject to the following restrictions:
 '''
 
 import math
-import sdl2 as sdl
 
 from wobblui.color import Color
 from wobblui.gfx import draw_rectangle

@@ -20,7 +20,6 @@ freely, subject to the following restrictions:
 '''
 
 import math
-import sdl2 as sdl
 
 from wobblui.box import HBox
 from wobblui.color import Color
@@ -90,6 +89,7 @@ class Topbar(Widget):
     def do_redraw(self):
         if self.renderer is None:
             return
+        import sdl2 as sdl
         c = Color((100, 100, 100))
         if self.style != None:
             c = Color(self.style.get("topbar_bg"))

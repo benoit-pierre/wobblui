@@ -20,10 +20,9 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-import sdl2 as sdl
-
 class AppStyle(object):
     def __init__(self):
+        import sdl2 as sdl
         self._dpi_scale_base = 1.0
         self._dpi_scale = 1.0
         self.is_android = (sdl.SDL_GetPlatform().decode(

@@ -25,7 +25,6 @@ import ctypes
 import functools
 import math
 import random
-import sdl2 as sdl
 import sys
 import time
 import traceback
@@ -1535,6 +1534,7 @@ cdef class WidgetBase:
         return 64
 
     def draw_children(self):
+        import sdl2 as sdl
         for child in self.children:
             child.redraw_if_necessary()
             sdl.SDL_SetRenderDrawColor(self.renderer,

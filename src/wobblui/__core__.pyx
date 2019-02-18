@@ -23,7 +23,6 @@ freely, subject to the following restrictions:
 import copy
 import ctypes
 import math
-import sdl2 as sdl
 import sys
 import threading
 import time
@@ -50,8 +49,6 @@ from wobblui.window cimport get_focused_window,\
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cdef long long sdl_touch_mouseid = 4294967295
-if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
-    sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
 
 cdef int MULTITOUCH_DEBUG = 0
 
@@ -88,6 +85,7 @@ cdef redraw_windows(int layout_only=False):
             logerror(str(traceback.format_exc()))
 
 def sdl_vkey_map(int key):
+    import sdl2 as sdl
     if key >= sdl.SDLK_0 and key <= sdl.SDLK_9:
         return chr(ord("0") + (key - sdl.SDLK_0))
     elif key >= sdl.SDLK_a and key <= sdl.SDLK_z:
@@ -128,6 +126,7 @@ def sdl_vkey_map(int key):
     return str("keycode-" + str(key))
 
 def sdl_key_map(int key):
+    import sdl2 as sdl
     if key >= sdl.SDL_SCANCODE_0 and key <= sdl.SDL_SCANCODE_9:
         return chr(ord("0") + (key - sdl.SDL_SCANCODE_0))
     elif key >= sdl.SDL_SCANCODE_A and key <= sdl.SDL_SCANCODE_Z:
@@ -267,6 +266,7 @@ def event_loop(app_cleanup_callback=None):
         raise e
 
 def sdl_event_name(event):
+    import sdl2 as sdl
     cdef int ev_no = event.type
     if ev_no == sdl.SDL_MOUSEBUTTONDOWN:
         return "mousebuttondown"
@@ -310,6 +310,7 @@ def sdl_event_name(event):
     return "unknown-" + str(ev_no)
 
 def debug_describe_event(event):
+    import sdl2 as sdl
     cdef str t = sdl_event_name(event)
     if event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
@@ -335,6 +336,7 @@ def do_event_processing_if_on_main_thread(ui_active=True):
 _last_clean_shortcuts_ts = None
 def do_event_processing(int ui_active=True):
     global _last_clean_shortcuts_ts, last_alive_time
+    import sdl2 as sdl
     if threading.current_thread() != threading.main_thread():
         raise RuntimeError("UI events can't be processed " +
             "from another thread")
@@ -440,6 +442,7 @@ def _process_mouse_click_event(event,
     global capture_enabled, touch_pressed, \
         mouse_ids_button_ids_pressed,\
         multitouch_gesutre_active
+    import sdl2 as sdl
     _debug_mouse_fakes_touch = (
         config.get("mouse_fakes_touch_events") is True)
 
@@ -548,6 +551,7 @@ def _process_mouse_click_event(event,
 def _process_key_event(event,
         int trigger_shortcuts=True,
         int force_no_widget_can_receive_new_input=False):
+    import sdl2 as sdl
     virtual_key = sdl_vkey_map(event.key.keysym.sym)
     physical_key = sdl_key_map(event.key.keysym.scancode)
     shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
@@ -588,6 +592,7 @@ def _process_key_event(event,
         trigger_exit_callback()
 
 def loading_screen_fix():
+    import sdl2 as sdl
     if sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android":
         from android.loadingscreen import hide_loading_screen
@@ -623,6 +628,7 @@ def update_multitouch():
         last_single_finger_sdl_windowid
     global multitouch_gesture_active, active_touch_device, \
         last_multitouch_finger_coordinates
+    import sdl2 as sdl
     if active_touch_device is None:
         multitouch_gesture_active = False
         return
@@ -784,6 +790,7 @@ def _handle_event(event):
         last_single_finger_ypos, multitouch_gesture_active,\
         last_single_finger_sdl_windowid
     global active_touch_device
+    import sdl2 as sdl
     cdef int x, y
     cdef str text
     cdef int _debug_mouse_fakes_touch = (

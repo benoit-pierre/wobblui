@@ -24,7 +24,6 @@ import copy
 import ctypes
 import html
 import math
-import sdl2 as sdl
 import string
 import sys
 import threading
@@ -221,6 +220,7 @@ cdef class RichTextFragment(RichTextObj):
         return t
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
+        import sdl2 as sdl
         if len(self.text.strip()) == 0:
             return
         perf_id = Perf.start("fragment draw part 1")

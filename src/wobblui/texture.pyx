@@ -22,7 +22,6 @@ freely, subject to the following restrictions:
 
 import ctypes
 import math
-import sdl2 as sdl
 import weakref
 
 from wobblui.color import Color
@@ -51,6 +50,7 @@ cdef class Texture(object):
             raise ValueError("not a valid renderer, is None or " +
                 "null pointer")
         global all_textures, sdl_tex_count
+        import sdl2 as sdl
         self._texture = None
         self.renderer = renderer
         self.renderer_key = str(ctypes.addressof(self.renderer.contents))
@@ -81,6 +81,7 @@ cdef class Texture(object):
         return (self._texture is None)
 
     def set_color(self, o):
+        import sdl2 as sdl
         if isinstance(o, Color):
             sdl.SDL_SetTextureColorMod(
                 self._texture, o.value_red, o.value_green, o.value_blue)
@@ -98,6 +99,7 @@ cdef class Texture(object):
                 ">")
 
     def draw(self, int x, int y, w=None, h=None):
+        import sdl2 as sdl
         if (w != None and w <= 0) or (
                 h != None and h <= 0):
             return
@@ -119,6 +121,7 @@ cdef class Texture(object):
         sdl.SDL_RenderCopy(self.renderer, self._texture, src, tg)
 
     def _force_unload(self):
+        import sdl2 as sdl
         global sdl_tex_count
         if self._texture is not None:
             try:
@@ -155,6 +158,7 @@ cdef class Texture(object):
 
     @staticmethod
     def new_from_sdl_surface(renderer, srf):
+        import sdl2 as sdl
         global sdl_tex_count
         if not renderer:
             raise ValueError("need a valid renderer! not NULL / None, " +
@@ -170,6 +174,7 @@ cdef class Texture(object):
 
 cdef class RenderTarget(Texture):
     def __init__(self, renderer, width, height):
+        import sdl2 as sdl
         global sdl_tex_count
         super().__init__(renderer, width, height, _dontcreate=True)
         self.set_as_target = False
@@ -190,12 +195,14 @@ cdef class RenderTarget(Texture):
 
     def __del__(self):
         if self.set_as_target:
+            import sdl2 as sdl
             sdl.SDL_SetRenderTarget(self.renderer, None)
         self.set_as_target = False
         super().__del__()
 
     def __dealloc__(self):
         if self.set_as_target:
+            import sdl2 as sdl
             sdl.SDL_SetRenderTarget(self.renderer, None)
         self.set_as_target = False
 
@@ -207,6 +214,7 @@ cdef class RenderTarget(Texture):
         super().draw(x, y, w=w, h=h)
 
     def set_as_rendertarget(self, clear=True):
+        import sdl2 as sdl
         if self._texture is None or self.renderer is None:
             raise ValueError("invalid render target, " +
                 "was cleaned up. did you observe renderer_update()??")
@@ -223,12 +231,14 @@ cdef class RenderTarget(Texture):
                 255,255,255)
 
     def unset_as_rendertarget(self):
+        import sdl2 as sdl
         if self._texture is None or self.renderer is None:
             raise ValueError("invalid render target, " +
                 "was cleaned up. did you observe renderer_update()??")
         if not self.set_as_target:
             raise ValueError("this is not set as render target yet!")
         self.set_as_target = False
+        sdl.SDL_RenderPresent(self.renderer)
         sdl.SDL_SetRenderTarget(self.renderer, self.previous_target)
         sdl.SDL_SetRenderDrawColor(self.renderer,
             255, 255, 255, 255)

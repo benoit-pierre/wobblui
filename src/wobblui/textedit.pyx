@@ -21,7 +21,6 @@ freely, subject to the following restrictions:
 '''
 
 import html
-import sdl2 as sdl
 
 from wobblui.clipboard import set_clipboard_text,\
     get_clipboard_text

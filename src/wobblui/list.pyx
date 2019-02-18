@@ -23,7 +23,6 @@ freely, subject to the following restrictions:
 import copy
 import html
 import math
-import sdl2 as sdl
 
 from wobblui.color cimport Color
 from wobblui.event cimport Event
@@ -218,7 +217,6 @@ cdef class ListEntry:
 
         tex = self._cached_render_tex
         if tex is None:
-            old_t = sdl.SDL_GetRenderTarget(renderer)
             self._cached_render_tex = RenderTarget(
                 renderer, round(self.width), round(self.height))
             self._cached_render_tex.set_as_rendertarget()
@@ -227,7 +225,6 @@ cdef class ListEntry:
                 draw_hover=draw_hover,
                 draw_soft_hover=draw_soft_hover,
                 draw_keyboard_focus=draw_keyboard_focus)
-            sdl.SDL_RenderPresent(renderer)
             self._cached_render_tex.unset_as_rendertarget()
             tex = self._cached_render_tex
         tex.draw(x, y, w=round(self.width), h=round(self.height))
