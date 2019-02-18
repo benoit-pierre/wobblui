@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import cython
 import math
 import weakref
 
@@ -43,14 +44,45 @@ def mark_textures_invalid(sdl_renderer):
         tex.internal_clean_if_renderer(sdl_renderer)
     all_textures[:] = new_refs
 
-cdef class Texture(object):
+
+
+ctypedef int (*_sdl_SetRenderDrawColorType)(void *renderer,
+    unsigned char r, unsigned char g, unsigned char b, unsigned char a
+) nogil
+cdef _sdl_SetRenderDrawColorType _sdl_SetRenderDrawColor = NULL
+ctypedef int (*_sdl_RenderCopyType)(
+    void *renderer, void *texture, void *rect1, void *rect2
+) nogil
+cdef _sdl_RenderCopyType _sdl_RenderCopy = NULL
+cdef object texture_render_rect_1, texture_render_rect_2
+
+
+cdef class Texture:
     def __init__(self, object renderer, int width, int height,
             int _dontcreate=False):
         if not renderer or renderer is None:
             raise ValueError("not a valid renderer, is None or " +
                 "null pointer")
         global all_textures, sdl_tex_count
+
+        # Make sure global functions are available:
+        global _sdl_SetRenderDrawColor, _sdl_RenderCopy
         import sdl2 as sdl
+        if not _sdl_SetRenderDrawColor:
+            import sdl2 as sdl
+            _sdl_SetRenderDrawColor = <_sdl_SetRenderDrawColorType>(
+                cython.operator.dereference(<size_t*>(
+                <size_t>ctypes.addressof(sdl.SDL_SetRenderDrawColor)
+                ))
+            )
+        if not _sdl_RenderCopy:
+            import sdl2 as sdl
+            _sdl_RenderCopy = <_sdl_RenderCopyType>(
+                cython.operator.dereference(<size_t*>(
+                <size_t>ctypes.addressof(sdl.SDL_RenderCopy)
+                ))
+            )
+
         self._texture = None
         self.renderer = renderer
         self.renderer_key = str(ctypes.addressof(self.renderer.contents))
@@ -99,26 +131,52 @@ cdef class Texture(object):
                 ">")
 
     def draw(self, int x, int y, w=None, h=None):
-        import sdl2 as sdl
+        global texture_render_rect_1, texture_render_rect_2
+        global _sdl_SetRenderDrawColor, _sdl_RenderCopy
         if (w != None and w <= 0) or (
                 h != None and h <= 0):
             return
         if self._texture is None or self.renderer is None:
             raise ValueError("invalid dumped texture. " +
                 "did you observe renderer_update()??")
-        tg = sdl.SDL_Rect()
-        tg.x = round(x)
-        tg.y = round(y)
-        tg.w = max(1, round(w or self.width))
-        tg.h = max(1, round(h or self.height))
-        src = sdl.SDL_Rect()
-        src.x = 0
-        src.y = 0
-        src.w = self.width
-        src.h = self.height
-        sdl.SDL_SetRenderDrawColor(self.renderer,
-            255, 255, 255, 255)
-        sdl.SDL_RenderCopy(self.renderer, self._texture, src, tg)
+        if texture_render_rect_1 is None:
+            import sdl2 as sdl
+            texture_render_rect_1 = sdl.SDL_Rect()
+            texture_render_rect_2 = sdl.SDL_Rect()
+        r1 = texture_render_rect_1
+        r2 = texture_render_rect_2
+        r1.x = round(x)
+        r1.y = round(y)
+        r1.w = max(1, round(w or self.width))
+        r1.h = max(1, round(h or self.height))
+        r2.x = 0
+        r2.y = 0
+        r2.w = self.width
+        r2.h = self.height
+        cdef size_t renderer_address = (<long long>(
+            ctypes.addressof(self.renderer.contents)
+        ))
+        cdef size_t texture_address = (<long long>(
+            ctypes.addressof(self._texture.contents)
+        ))
+        cdef size_t r1_address = (<long long>(
+            ctypes.addressof(r1)
+        ))
+        cdef size_t r2_address = (<long long>(
+            ctypes.addressof(r2)
+        ))
+        cdef _sdl_SetRenderDrawColorType setrendercolor = _sdl_SetRenderDrawColor
+        cdef _sdl_RenderCopyType rendercopy = _sdl_RenderCopy
+        with nogil:
+            setrendercolor(
+                <void*>renderer_address, 255, 255, 255, 255
+            )
+            rendercopy(
+                <void*>renderer_address,
+                <void*>texture_address,
+                <void*>r2_address,
+                <void*>r1_address
+            )
 
     def _force_unload(self):
         import sdl2 as sdl
