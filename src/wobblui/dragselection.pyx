@@ -141,7 +141,7 @@ cdef void reposition_hover_menu(window):
         return
     # Add a menu if we don't have one yet:
     if window.context_menu is None:
-        menu = HBox()
+        menu = HBox(item_padding=0.0)
         menu.add(Button("Cut", with_outer_padding=False))
         menu.add(Button("Copy", with_outer_padding=False))
         menu.add(Button("Paste", with_outer_padding=False))

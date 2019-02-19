@@ -41,7 +41,8 @@ class Box(ScrollbarDrawingWidget):
     def __init__(self,
             horizontal,
             box_surrounding_padding=0,
-            default_expand_on_secondary_axis=True
+            default_expand_on_secondary_axis=True,
+            item_padding=5.0,
             ):
         super().__init__(is_container=True)
         self.default_expand_on_secondary_axis =\
@@ -49,7 +50,7 @@ class Box(ScrollbarDrawingWidget):
         self.horizontal = (horizontal is True)
         self.expand_info = dict()
         self.shrink_info = dict()
-        self.item_padding = 5.0
+        self.item_padding = item_padding
         self.box_surrounding_padding =\
             max(0, box_surrounding_padding)
         self.bg_color = None
@@ -487,19 +488,25 @@ class Box(ScrollbarDrawingWidget):
 
 class VBox(Box):
     def __init__(self, box_surrounding_padding=0,
-            default_expand_on_secondary_axis=True):
+            default_expand_on_secondary_axis=True,
+            item_padding=5.0):
         super().__init__(False,
             box_surrounding_padding=box_surrounding_padding,
             default_expand_on_secondary_axis=\
-                default_expand_on_secondary_axis)
+                default_expand_on_secondary_axis,
+            item_padding=item_padding,
+        )
 
 class HBox(Box):
     def __init__(self, box_surrounding_padding=0,
-            default_expand_on_secondary_axis=True):
+            default_expand_on_secondary_axis=True,
+            item_padding=5.0):
         super().__init__(True,
             box_surrounding_padding=box_surrounding_padding,
             default_expand_on_secondary_axis=\
-                default_expand_on_secondary_axis)
+                default_expand_on_secondary_axis,
+            item_padding=item_padding,
+        )
 
 class CenterBox(Widget):
     def __init__(self, padding=0,

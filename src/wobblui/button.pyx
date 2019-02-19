@@ -59,7 +59,8 @@ class Button(Widget):
                 "triggered", owner=self)
         self.with_surrounding_frame = (with_surrounding_frame is True)
         self.with_surrounding_frame_size = 2.0
-        self.inner_text_padding = 2.0
+        self.inner_text_padding_x = 6.0
+        self.inner_text_padding_y = 2.0
         self.with_surrounding_frame_all_sides = True
         self._image_draw_scaledown = 1.0
         self.hovered = False
@@ -185,6 +186,9 @@ class Button(Widget):
         self.update_font_object()
 
     def update_font_object(self):
+        if len(self._html) == 0:
+            self.contained_richtext_obj = None
+            return
         font_family = self.font_family
         px_size = round(self.style.get("widget_text_size") *
             self.text_scale)
@@ -331,7 +335,15 @@ class Button(Widget):
                     color=border_color)
         offset_x = round(self.border_size)
         full_available_size_x = round(self.width - (self.border_size * 2))
+        if self.contained_richtext_obj is not None:
+            full_available_size_x -= round(
+                self.inner_text_padding_x * self.dpi_scale * 2
+            )
         full_available_size_y = round(self.height - (self.border_size * 2))
+        if self.contained_richtext_obj is not None:
+            full_available_size_y -= round(
+                self.inner_text_padding_y * self.dpi_scale * 2
+            )
         if full_available_size_x <= 0 or full_available_size_y <= 0:
             return
         used_up_size_x = (self.text_layout_width or 0)
@@ -380,18 +392,19 @@ class Button(Widget):
             sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
             if self.with_surrounding_frame:
                 push_render_clip(self.renderer,
-                    fill_border, fill_border,
+                    fill_border + self.inner_text_padding_x * self.dpi_scale,
+                    fill_border + self.inner_text_padding_y * self.dpi_scale,
                     self.width - fill_border * 2 - round(
-                        self.inner_text_padding * 2 * self.dpi_scale
+                        self.inner_text_padding_x * 2 * self.dpi_scale
                     ),
                     self.height - fill_border * 2 - round(
-                        self.inner_text_padding * 2 * self.dpi_scale
+                        self.inner_text_padding_y * 2 * self.dpi_scale
                     )
                 )
             try:
                 self.contained_richtext_obj.draw(
                     self.renderer,
-                    offset_x + round(self.inner_text_padding *
+                    offset_x + round(self.inner_text_padding_x *
                                      self.dpi_scale),
                     round(self.height / 2.0 - self.text_layout_height / 2.0),
                     color=c, draw_scale=self.dpi_scale)
@@ -415,7 +428,7 @@ class Button(Widget):
         if self.contained_richtext_obj != None:
             my_h = max(my_h, self.text_layout_height +
                 round(self.border_size * 2) +
-                round(self.inner_text_padding * 2 * self.dpi_scale))
+                round(self.inner_text_padding_y * 2 * self.dpi_scale))
         return my_h
 
     def get_natural_width(self):
@@ -429,7 +442,7 @@ class Button(Widget):
             my_w += round(self.border_size * 0.7)
         if self.contained_richtext_obj != None:
             my_w += round(self.text_layout_width) +\
-                round(self.inner_text_padding * 2 * self.dpi_scale)
+                round(self.inner_text_padding_x * 2 * self.dpi_scale)
         return my_w
 
 class ImageButton(Button):
