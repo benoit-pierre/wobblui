@@ -106,6 +106,7 @@ def coordinates_to_widget_with_drag_handle(window, mx, my):
 cdef int touch_handles_take_touch_start(window, mx, my):
     global touch_handle_drag_active, touch_handle_drag_widget, \
         touch_handle_drag_widget_left_side, touch_handle_last_position
+    reposition_hover_menu(window)
     (widget, handle_left_side) = coordinates_to_widget_with_drag_handle(
         window, mx, my
     )
@@ -141,22 +142,22 @@ cdef void reposition_hover_menu(window):
     # Add a menu if we don't have one yet:
     if window.context_menu is None:
         menu = HBox()
-        menu.add(Button("Cut"))
-        menu.add(Button("Copy"))
-        menu.add(Button("Paste"))
+        menu.add(Button("Cut", with_outer_padding=False))
+        menu.add(Button("Copy", with_outer_padding=False))
+        menu.add(Button("Paste", with_outer_padding=False))
         window.open_context_menu(menu, 0, 0, autofocus=False)
     # Re-position menu:
     menu = window.context_menu
     old_x = menu.x
     old_y = menu.y
     selected_rect = (
-        round(min(p[0], p[3])),
-        round(min(p[1], p[4])),
+        round(min(p[0], p[3])) + next_to_widget.abs_x,
+        round(min(p[1], p[4])) + next_to_widget.abs_y,
         max(1, round(max(p[0], p[3])) - round(min(p[0], p[3]))),
         max(1, round(max(p[1] + p[2], p[4] + p[5])) -
             round(min(p[1], p[4]))),
     )
-    distance = round(30 * window.dpi_scale)
+    distance = round(20 * window.dpi_scale)
     new_x = None
     new_y = None
     if selected_rect[0] + selected_rect[2] < window.width / 2 and (
@@ -166,31 +167,42 @@ cdef void reposition_hover_menu(window):
         new_x = selected_rect[0] + selected_rect[2] + distance
         if selected_rect[1] > distance * 2 + menu.height:
             # Place above (top-right)
-            new_y = selected_rect[1] - distance - menu.height
-        else:
+            new_y = min(window.height - menu.height - distance,
+                        selected_rect[1] - distance - menu.height)
+        elif selected_rect[1] > distance:
             # Place right next to it (horizontal right)
             new_y = selected_rect[1]
+        else:
+            # Place below if possible:
+            new_y = min(window.height - menu.height,
+                        selected_rect[1] + selected_rect[3] + distance)
     elif menu.width + distance < selected_rect[0]:
         # Place to the left.
         new_x = selected_rect[0] - distance - menu.width
         if selected_rect[1] > distance * 2 + menu.height:
             # Place above (top-left)
-            new_y = selected_rect[1] - distance - menu.height
-        else:
+            new_y = min(window.height - menu.height - distance,
+                        selected_rect[1] - distance - menu.height)
+        elif selected_rect[1] > distance:
             # Place left next to it (horizontal left)
             new_y = selected_rect[1]
+        else:
+            # Place below if possible:
+            new_y = min(window.height - menu.height,
+                        selected_rect[1] + selected_rect[3] + distance)
     else:
         if selected_rect[1] > distance * 2 + menu.height:
             # Place above, as much top-right as is possible:
             new_x = min(window.width - menu.width,
-                selected_rect[0] + selected_rect[2] + distance)
+                        selected_rect[0] + selected_rect[2] + distance)
             new_y = selected_rect[1] - distance - menu.height
         elif (selected_rect[1] + selected_rect[3] + distance +
               menu.height < window.height):
             # Place below, as much bottom-right as possible:
             new_x = min(window.width - menu.width,
                 selected_rect[0] + selected_rect[2] + distance)
-            new_y = selected_rect[1] + selected_rect[3] + distance
+            new_y = min(window.height - menu.height - distance,
+                        selected_rect[1] + selected_rect[3] + distance)
         else:
             # Place in the center:
             new_x = (selected_rect[0] + selected_rect[2] * 0.5
@@ -202,10 +214,11 @@ cdef void reposition_hover_menu(window):
     if new_x != menu.x or new_y != menu.y:
         menu.x = new_x
         menu.y = new_y
+        menu.needs_redraw = True
         window.needs_redraw = True
 
 
-cdef handle_touch_drag(window, new_x, new_y):
+cdef void handle_touch_drag(window, new_x, new_y):
     global touch_handle_last_position, touch_handle_drag_widget, \
         touch_handle_drag_widget_left_side
     if touch_handle_drag_widget is None:

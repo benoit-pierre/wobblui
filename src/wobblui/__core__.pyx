@@ -30,6 +30,7 @@ import traceback
 
 
 from wobblui.dragselection cimport (
+    reposition_hover_menu,
     touch_handles_take_touch_start,
     touch_handles_take_touch_move,
     touch_handles_take_touch_end,
@@ -70,6 +71,8 @@ cdef redraw_windows(int layout_only=False):
             relayout_perf = Perf.start("redraw_windows_relayout")
             w.update_to_real_sdlw_size()
             w.do_scheduled_dpi_scale_update()
+            if w.needs_relayout or w.needs_redraw:
+                reposition_hover_menu(w)
             i = 0
             while i < 20:
                 if not w.relayout_if_necessary():

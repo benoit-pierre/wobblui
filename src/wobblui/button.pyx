@@ -39,6 +39,7 @@ class Button(Widget):
     def __init__(self,
             text="",
             with_surrounding_frame=True,
+            with_outer_padding=True,
             clickable=True,
             image_placement="left",
             text_scale=1.0,
@@ -81,6 +82,8 @@ class Button(Widget):
         self._html = ""
         self.extra_image_render_func = None
         self.border = 5.0
+        if not with_outer_padding:
+            self.border = 0.0
         if with_surrounding_frame:
             self.border += self.with_surrounding_frame_size
         if len(text) > 0:
