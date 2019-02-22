@@ -43,6 +43,7 @@ class Box(ScrollbarDrawingWidget):
             box_surrounding_padding=0,
             default_expand_on_secondary_axis=True,
             item_padding=5.0,
+            with_border=False
             ):
         super().__init__(is_container=True)
         self.default_expand_on_secondary_axis =\
@@ -51,6 +52,9 @@ class Box(ScrollbarDrawingWidget):
         self.expand_info = dict()
         self.shrink_info = dict()
         self.item_padding = item_padding
+        self.border = 0
+        if with_border:
+            self.border = 1
         self.box_surrounding_padding =\
             max(0, box_surrounding_padding)
         self.bg_color = None
@@ -112,6 +116,33 @@ class Box(ScrollbarDrawingWidget):
             for child in self.children:
                 child.y += move_y
 
+        # Draw border:
+        border_color = Color.black()
+        if self.style is not None:
+            border_color = Color(self.style.get("widget_text"))
+        if self.border > 0:
+            border = self.effective_border
+            draw_rectangle(
+                self.renderer,
+                0, 0, border, self.height,
+                color=border_color
+            )
+            draw_rectangle(
+                self.renderer,
+                self.width - border, 0, border, self.height,
+                color=border_color
+            )
+            draw_rectangle(
+                self.renderer,
+                0, 0, self.width, border,
+                color=border_color
+            )
+            draw_rectangle(
+                self.renderer,
+                0, self.height - border, self.width, border,
+                color=border_color
+            )
+
     def on_mousewheel(self, mouse_id, x, y):
         self.scroll_offset_y = max(0,
             self.scroll_offset_y -
@@ -147,6 +178,12 @@ class Box(ScrollbarDrawingWidget):
                 return False
         return (flexible_children_count == 1)
 
+    @property
+    def effective_border(self):
+        if self.border <= 0.001:
+            return 0
+        return max(1, round(self.border * self.dpi_scale))
+
     def on_relayout(self):
         layout_height = 0
         layout_width = 0
@@ -158,7 +195,8 @@ class Box(ScrollbarDrawingWidget):
             if self.horizontal:
                 iheight = self.height -\
                     round(self.box_surrounding_padding *
-                    2 * self.dpi_scale)
+                    self.dpi_scale) * 2 - \
+                    self.effective_border * 2
                 if not self.expand_info[child_id][1]:
                     iheight = min(iheight,
                         item.get_desired_height(item.width))
@@ -166,7 +204,8 @@ class Box(ScrollbarDrawingWidget):
             else:
                 iwidth = self.width -\
                     round(self.box_surrounding_padding *
-                    2 * self.dpi_scale)
+                    self.dpi_scale) * 2 - \
+                    self.effective_border * 2
                 if not self.expand_info[child_id][0]:
                     iwidth = min(iwidth,
                         item.get_desired_width(item.width))
@@ -221,10 +260,12 @@ class Box(ScrollbarDrawingWidget):
                         child.height = 1
                     child_space += child.height + item_padding
         remaining_space = (self.height - child_space -
-            round(self.box_surrounding_padding * self.dpi_scale * 2))
+            round(self.box_surrounding_padding * self.dpi_scale) * 2 +
+            self.effective_border * 2)
         if self.horizontal:
             remaining_space = (self.width - child_space -
-                round(self.box_surrounding_padding * self.dpi_scale * 2))
+                round(self.box_surrounding_padding * self.dpi_scale) * 2 +
+                self.effective_border * 2)
         expanding = True
         space_per_item = 0
         if expand_widget_count > 0 and remaining_space > 0:
@@ -235,8 +276,10 @@ class Box(ScrollbarDrawingWidget):
             space_per_item = math.ceil(
                 remaining_space / shrink_widget_count)
         child_id = -1
-        cx = round(self.box_surrounding_padding * self.dpi_scale)
-        cy = round(self.box_surrounding_padding * self.dpi_scale)
+        cx = round(self.box_surrounding_padding * self.dpi_scale) +\
+            self.effective_border
+        cy = round(self.box_surrounding_padding * self.dpi_scale) +\
+            self.effective_border
         for child in self._children:
             child_id += 1
             if child.invisible:
@@ -263,11 +306,11 @@ class Box(ScrollbarDrawingWidget):
                 if self.horizontal:
                     assigned_w = (self.width - cx -
                         round(self.box_surrounding_padding *
-                        self.dpi_scale))
+                        self.dpi_scale) - self.effective_border)
                 else:
                     assigned_h = (self.height - cy -
                         round(self.box_surrounding_padding *
-                        self.dpi_scale))
+                        self.dpi_scale) - self.effective_border)
             expand_widget_count -= 1
             child.x = cx
             child.y = cy
@@ -294,7 +337,8 @@ class Box(ScrollbarDrawingWidget):
                     continue
                 iheight = self.height -\
                     round(self.box_surrounding_padding *
-                    2 * self.dpi_scale)
+                    self.dpi_scale) * 2 -\
+                    self.effective_border * 2
                 iheight = min(iheight,
                     item.get_desired_height(given_width=item.width))
                 item.height = iheight
@@ -309,16 +353,20 @@ class Box(ScrollbarDrawingWidget):
                 continue
             if self.horizontal and child.height < (self.height -
                     round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)):
+                          self.dpi_scale) * 2 -
+                    self.effective_border * 2):
                 child.y += math.floor((self.height - child.height -
                     round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)) / 2.0)
+                          self.dpi_scale) * 2 -
+                    self.effective_border * 2) / 2.0)
             elif not self.horizontal and child.width < (self.width -
                     round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)):
+                          self.dpi_scale) * 2 -
+                    self.effective_border * 2):
                 child.x += math.floor((self.width - child.width -
                     round(self.box_surrounding_padding *
-                        self.dpi_scale * 2)) / 2.0)
+                          self.dpi_scale) * 2 -
+                    self.effective_border * 2) / 2.0)
 
         # Compute layout dimensions:
         for child in self.children:
@@ -356,10 +404,11 @@ class Box(ScrollbarDrawingWidget):
                 total_w += item_padding
                 i += 1
             total_w += round(self.box_surrounding_padding *
-                self.dpi_scale * 2)
+                self.dpi_scale) * 2 + self.effective_border * 2
             return total_w
         elif len(self.children) == 0:
-            return 0
+            return round(self.box_surrounding_padding *
+                self.dpi_scale) * 2 + self.effective_border * 2
         else:
             found_children = False
             max_w = 0
@@ -369,7 +418,7 @@ class Box(ScrollbarDrawingWidget):
                 found_children = True
                 max_w = max(max_w, child.get_desired_width())
             max_w += round(self.box_surrounding_padding *
-                self.dpi_scale * 2)
+                self.dpi_scale) * 2 + self.effective_border * 2
             if not found_children:
                 return 0
             return max_w
@@ -390,10 +439,11 @@ class Box(ScrollbarDrawingWidget):
                 total_h += item_padding
                 i += 1
             total_h += round(self.box_surrounding_padding *
-                self.dpi_scale * 2)
+                self.dpi_scale) * 2 + self.effective_border * 2
             return total_h
         elif len(self.children) == 0:
-            return 0
+            return round(self.box_surrounding_padding *
+                self.dpi_scale) * 2 + self.effective_border * 2
         else:
             # Relayout at given width:
             relayout_at = given_width
@@ -414,7 +464,7 @@ class Box(ScrollbarDrawingWidget):
                 max_h = max(max_h, child.get_desired_height(
                     given_width=child.width))
             max_h += round(self.box_surrounding_padding *
-                self.dpi_scale * 2)
+                self.dpi_scale * 2) + self.effective_border * 2
 
             # Return to old layout:
             self.width = old_width
@@ -423,8 +473,8 @@ class Box(ScrollbarDrawingWidget):
             self.needs_redraw = old_needs_redraw
 
             if not found_children:
-                return (self.box_surrounding_padding *
-                    self.dpi_scale * 2)
+                return round(self.box_surrounding_padding *
+                    self.dpi_scale) * 2 + self.effective_border * 2
             return max_h
 
     def add(self,
@@ -489,23 +539,27 @@ class Box(ScrollbarDrawingWidget):
 class VBox(Box):
     def __init__(self, box_surrounding_padding=0,
             default_expand_on_secondary_axis=True,
-            item_padding=5.0):
+            item_padding=5.0,
+            with_border=False):
         super().__init__(False,
             box_surrounding_padding=box_surrounding_padding,
             default_expand_on_secondary_axis=\
                 default_expand_on_secondary_axis,
             item_padding=item_padding,
+            with_border=with_border,
         )
 
 class HBox(Box):
     def __init__(self, box_surrounding_padding=0,
             default_expand_on_secondary_axis=True,
-            item_padding=5.0):
+            item_padding=5.0,
+            with_border=False):
         super().__init__(True,
             box_surrounding_padding=box_surrounding_padding,
             default_expand_on_secondary_axis=\
                 default_expand_on_secondary_axis,
             item_padding=item_padding,
+            with_border=with_border,
         )
 
 class CenterBox(Widget):

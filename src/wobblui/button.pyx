@@ -292,46 +292,39 @@ class Button(Widget):
                     # Top border:
                     draw_rectangle(self.renderer,
                         fill_border,
-                        round(max(0, fill_border) -
-                              self.with_surrounding_frame_size *
-                              self.dpi_scale),
-                        self.width - fill_border * 2 +
-                        round(self.with_surrounding_frame_size *
-                              self.dpi_scale),
+                        round(max(0, fill_border)),
+                        self.width - fill_border * 2,
                         max(1, round(self.with_surrounding_frame_size *
                                      self.dpi_scale)),
                         color=border_color)
                     # Left border:
                     draw_rectangle(self.renderer,
-                        round(max(0, fill_border) -
-                              self.with_surrounding_frame_size *
-                              self.dpi_scale),
-                        round(fill_border -
-                              self.with_surrounding_frame_size *
-                              self.dpi_scale),
+                        round(max(0, fill_border)),
+                        round(fill_border),
                         max(1, round(self.with_surrounding_frame_size *
                                      self.dpi_scale)),
-                        self.height - fill_border * 2 +
-                        round(self.with_surrounding_frame_size *
-                              self.dpi_scale) * 2,
+                        self.height - fill_border * 2,
                         color=border_color)
                 # Bottom border:
                 draw_rectangle(self.renderer,
                     fill_border,
-                    round(self.height - max(1, fill_border)),
-                    self.width - fill_border * 2,
+                    round(self.height - max(0, fill_border) - max(1, round(
+                          self.with_surrounding_frame_size * self.dpi_scale))
+                         ),
+                    self.width - max(0, fill_border) * 2,
                     max(1, round(self.with_surrounding_frame_size *
                                  self.dpi_scale)),
                     color=border_color)
                 # Right border:
                 draw_rectangle(self.renderer,
-                    round(self.width - max(1, fill_border)),
-                    fill_border,
+                    round(self.width - max(0, fill_border) - max(1, round(
+                             self.with_surrounding_frame_size *
+                             self.dpi_scale
+                         ))),
+                    max(0, fill_border),
                     max(1, round(self.with_surrounding_frame_size) *
                                  self.dpi_scale),
-                    self.height - fill_border * 2 +
-                    round(self.with_surrounding_frame_size *
-                          self.dpi_scale),
+                    self.height - max(0, fill_border) * 2,
                     color=border_color)
         offset_x = round(self.border_size)
         full_available_size_x = round(self.width - (self.border_size * 2))
@@ -428,7 +421,7 @@ class Button(Widget):
         if self.contained_richtext_obj != None:
             my_h = max(my_h, self.text_layout_height +
                 round(self.border_size * 2) +
-                round(self.inner_text_padding_y * 2 * self.dpi_scale))
+                round(self.inner_text_padding_y * self.dpi_scale) * 2)
         return my_h
 
     def get_natural_width(self):
@@ -440,9 +433,9 @@ class Button(Widget):
                 self.contained_richtext_obj != None:
             # Add in-between spacing:
             my_w += round(self.border_size * 0.7)
-        if self.contained_richtext_obj != None:
+        if self.contained_richtext_obj is not None:
             my_w += round(self.text_layout_width) +\
-                round(self.inner_text_padding_x * 2 * self.dpi_scale)
+                round(self.inner_text_padding_x * self.dpi_scale) * 2
         return my_w
 
 class ImageButton(Button):

@@ -31,14 +31,20 @@ from wobblui.widgetman import all_windows
 touch_handles_enabled = False
 
 
-def draw_drag_selection_handles(window):
-    global touch_handles_enabled, all_windows
+def touch_handles_platform():
+    touch_handles_enabled = False
     if is_android():
         touch_handles_enabled = True
     if config.get("mouse_fakes_touch_events"):
         touch_handles_enabled = True
     if not touch_handles_enabled:
         return
+    return touch_handles_enabled
+
+
+def draw_drag_selection_handles(window):
+    global touch_handles_enabled, all_windows
+    touch_handles_enabled = touch_handles_platform()
 
     for win_ref in all_windows:
         win = win_ref()
@@ -121,6 +127,8 @@ cdef int touch_handles_take_touch_start(window, mx, my):
 
 
 cdef void reposition_hover_menu(window):
+    if not touch_handles_platform():
+        return
     next_to_widget = None
     drag_handle_positions = None
     for tw in get_all_active_text_widgets():
@@ -141,7 +149,7 @@ cdef void reposition_hover_menu(window):
         return
     # Add a menu if we don't have one yet:
     if window.context_menu is None:
-        menu = HBox(item_padding=0.0)
+        menu = HBox(item_padding=0.0, with_border=True)
         menu.add(Button("Cut", with_outer_padding=False))
         menu.add(Button("Copy", with_outer_padding=False))
         menu.add(Button("Paste", with_outer_padding=False))
