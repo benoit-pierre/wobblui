@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -21,13 +22,13 @@ freely, subject to the following restrictions:
 
 import math
 
-from wobblui.color import Color
-from wobblui.gfx import draw_rectangle
-from wobblui.image import RenderImage
-from wobblui.scrollbarwidget import ScrollbarDrawingWidget
-from wobblui.widget import Widget
+from wobblui.color cimport Color
+from wobblui.gfx cimport draw_rectangle
+from wobblui.image cimport RenderImage
+from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
+from wobblui.widget cimport Widget
 
-class BoxSpacer(Widget):
+cdef class BoxSpacer(Widget):
     def __init__(self):
         super().__init__(is_container=False)
 
@@ -37,7 +38,7 @@ class BoxSpacer(Widget):
     def get_natural_height(self, given_width=None):
         return 0
 
-class Box(ScrollbarDrawingWidget):
+cdef class Box(ScrollbarDrawingWidget):
     def __init__(self,
             horizontal,
             box_surrounding_padding=0,
@@ -58,8 +59,8 @@ class Box(ScrollbarDrawingWidget):
         self.box_surrounding_padding =\
             max(0, box_surrounding_padding)
         self.bg_color = None
-        self.actual_layout_height = None
-        self.actual_layout_width = None
+        self.actual_layout_height = -1
+        self.actual_layout_width = -1
         self.scroll_offset_y = 0
         self._background_image = None
         self._background_image_keep_aspect = False
@@ -536,7 +537,7 @@ class Box(ScrollbarDrawingWidget):
         self.add(BoxSpacer(), expand=True, shrink=True)
         assert(len(self._children) > 0)
 
-class VBox(Box):
+cdef class VBox(Box):
     def __init__(self, box_surrounding_padding=0,
             default_expand_on_secondary_axis=True,
             item_padding=5.0,
@@ -549,7 +550,7 @@ class VBox(Box):
             with_border=with_border,
         )
 
-class HBox(Box):
+cdef class HBox(Box):
     def __init__(self, box_surrounding_padding=0,
             default_expand_on_secondary_axis=True,
             item_padding=5.0,
@@ -562,7 +563,7 @@ class HBox(Box):
             with_border=with_border,
         )
 
-class CenterBox(Widget):
+cdef class CenterBox(Widget):
     def __init__(self, padding=0,
             child_minimum_width=0,
             child_fixed_width=-1,
