@@ -52,6 +52,9 @@ class TextEditBase(Widget):
             self.set_text(text)
         self._user_set_color = color
 
+    def can_cutcopy(self):
+        return (self.hide_with_character is None)
+
     @property
     def padding(self):
         return max(1, round(self.padding_base_size *
@@ -312,29 +315,39 @@ class TextEditBase(Widget):
         self.selection_length = len(self.text)
         self.needs_redraw = True
 
+    def do_copy(self):
+        if self.selection_length > 0:
+            set_clipboard_text(
+                self.text[self.cursor_offset:
+                    self.cursor_offset + self.selection_length])
+        elif self.selection_length < 0:
+            set_clipboard_text(
+                self.text[
+                    self.cursor_offset + self.selection_length:
+                    self.cursor_offset])
+
+    def do_cut(self):
+        self.do_copy()
+        self.del_selection()
+
+    def do_paste(self):
+        insert_text = get_clipboard_text()
+        if len(insert_text) == 0:
+            return
+        self.del_selection()
+        self.insert_at(
+            self.cursor_offset, insert_text)
+
     def on_keydown(self, virtual_key, physical_key, modifiers):
         if "ctrl" in modifiers:
-            if virtual_key == "c" or virtual_key == "x":
-                if self.selection_length > 0:
-                    set_clipboard_text(
-                        self.text[self.cursor_offset:
-                            self.cursor_offset + self.selection_length])
-                elif self.selection_length < 0:
-                    set_clipboard_text(
-                        self.text[
-                            self.cursor_offset + self.selection_length:
-                            self.cursor_offset])
-                if virtual_key == "x" and self.selection_length != 0:
-                    self.del_selection()
+            if virtual_key == "c":
+                self.do_copy()
+            elif virtual_key == "x":
+                self.do_cut()
             elif virtual_key == "a":
                 self.select_all()
             elif virtual_key == "v":
-                insert_text = get_clipboard_text()
-                if len(insert_text) == 0:
-                    return
-                self.del_selection()
-                self.insert_at(
-                    self.cursor_offset, insert_text)
+                self.do_paste()
         elif "shift" in modifiers:
             if virtual_key == "left" or virtual_key == "up":
                 self.cursor_offset = max(0, self.cursor_offset - 1)
