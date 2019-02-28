@@ -20,6 +20,8 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+import weakref
+
 from wobblui.box import HBox
 from wobblui.button import Button
 from wobblui.keyboard import get_all_active_text_widgets
@@ -150,9 +152,46 @@ cdef void reposition_hover_menu(window):
     # Add a menu if we don't have one yet:
     if window.context_menu is None:
         menu = HBox(item_padding=0.0, with_border=True)
+        w_ref = weakref.ref(next_to_widget)
+
+        def attempt_cut():
+            w = w_ref()
+            if w is None:
+                return
+            if hasattr(w, "can_cutcopy"):
+                if not w.can_cutcopy():
+                    return
+            if hasattr(w, "do_cut"):
+                w.do_cut()
+        def attempt_copy():
+            w = w_ref()
+            if w is None:
+                return
+            if hasattr(w, "can_cutcopy"):
+                if not w.can_cutcopy():
+                    return
+            if hasattr(w, "do_copy"):
+                w.do_copy()
+        def attempt_paste():
+            w = w_ref()
+            if w is None:
+                return
+            if hasattr(w, "do_paste"):
+                w.do_paste()
+        def attempt_select_all():
+            w = w_ref()
+            if w is None:
+                return
+            if hasattr(w, "select_all"):
+                w.select_all()
         menu.add(Button("Cut", with_outer_padding=False))
+        menu.children[-1].triggered.register(attempt_cut)
         menu.add(Button("Copy", with_outer_padding=False))
+        menu.children[-1].triggered.register(attempt_copy)
         menu.add(Button("Paste", with_outer_padding=False))
+        menu.children[-1].triggered.register(attempt_paste)
+        menu.add(Button("Select All", with_outer_padding=False))
+        menu.children[-1].triggered.register(attempt_select_all)
         window.open_context_menu(menu, 0, 0, autofocus=False)
     # Re-position menu:
     menu = window.context_menu
