@@ -46,7 +46,7 @@ pip install --user -U wobblui
 Documentation
 -------------
 
-[Jump into the documentation here!](docs/index.html)
+[Jump into the documentation here!](docs/index.md)
 
 
 License

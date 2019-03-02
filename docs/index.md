@@ -15,7 +15,6 @@ Contents
 --------
 
 * [Installation & Getting Started](getting_started.md)
-* Advanced Technical Details
-  * [Custom Widgets](custom_widget.md)
-  * [Architecture](architecture.md)
+* [Tech Details: Custom Widgets](custom_widget.md)
+* [Tech Details: Overall Architecture](architecture.md)
 
