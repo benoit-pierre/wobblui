@@ -1,7 +1,7 @@
 #cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -20,23 +20,9 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.sdlinit import initialize_sdl
 
-cdef extern from "oscheck.h":
-    cdef bint COMPILED_WITH_ANDROID_NDK
+cpdef internal_update_text_events()
 
-cached_is_android = None
-cpdef is_android():
-    global cached_is_android
-    if cached_is_android != None:
-        return cached_is_android
-    initialize_sdl()
-    try:
-        import sdl2 as sdl
-        cached_is_android = (sdl.SDL_GetPlatform().decode(
-            "utf-8", "replace").lower() == "android")
-    except ImportError:
-        # No SDL2. So we need to rely on other clues.
-        cached_is_android = (COMPILED_WITH_ANDROID_NDK == 1)
-    return cached_is_android
- 
+cpdef get_active_text_widget()
+
+cpdef get_all_active_text_widgets()

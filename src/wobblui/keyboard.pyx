@@ -1,6 +1,7 @@
+#cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -22,7 +23,7 @@ freely, subject to the following restrictions:
 import functools
 import weakref
 
-from wobblui.widgetman import all_windows
+from wobblui.widgetman import get_all_windows
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 exit_callbacks = list()
@@ -264,16 +265,15 @@ current_text_events_widgets = []
 # Current state of text input:
 text_input_suspended = True
 
-def internal_update_text_events():
+cpdef internal_update_text_events():
     global current_text_events_widgets, \
-        all_windows,\
         text_input_suspended
     import sdl2 as sdl
 
     # Throw out all widgets that have lost keyboard focus or lost
     # their parent window:
     seen_windows = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w != None:
             seen_windows.append(w)
@@ -317,13 +317,13 @@ def enable_text_events(widget):
     current_text_events_widgets.append(widget)
     internal_update_text_events()
 
-def get_active_text_widget():
+cpdef get_active_text_widget():
     widgets = internal_update_text_events()
     if len(widgets) == 0:
         return None
     return widgets[0]
 
-def get_all_active_text_widgets():
+cpdef get_all_active_text_widgets():
     return internal_update_text_events()
 
 def push_exit_callback(callback):

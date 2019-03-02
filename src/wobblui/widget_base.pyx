@@ -40,8 +40,8 @@ from wobblui.perf cimport CPerf as Perf
 from wobblui.texture cimport RenderTarget
 from wobblui.timer import schedule
 from wobblui.uiconf import config
-from wobblui.widgetman import add_widget, all_widgets, \
-    get_widget_id, get_add_id, tab_sort
+from wobblui.widgetman import add_widget, get_all_widgets, \
+    get_widget_id, get_add_id, focus_tab_index_sort
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 # Helper function to move coordinates outside of widget:
@@ -1658,13 +1658,12 @@ cdef class WidgetBase:
 
     @staticmethod
     def focus_candidates(group_widget):
-        global all_widgets
         assert(group_widget != None)
         group_widgets = group_widget
         if type(group_widgets) != list:
             group_widgets = [group_widgets]
         candidates = []
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not w.focusable:
                 continue
@@ -1683,7 +1682,7 @@ cdef class WidgetBase:
                     group_widget.focusable:
                 candidates.append(group_widget)
         sorted_candidates = sorted(candidates,
-            key=functools.cmp_to_key(tab_sort))
+            key=functools.cmp_to_key(focus_tab_index_sort))
         return sorted_candidates
 
     def size_change(self, int w, int h):
@@ -1695,8 +1694,7 @@ cdef class WidgetBase:
 
     @staticmethod
     def get_focused_widget(group_widget):
-        global all_widgets
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not w.focused or \
                     not w.shares_focus_group(group_widget) or \
@@ -1707,8 +1705,7 @@ cdef class WidgetBase:
 
     @staticmethod
     def get_focused_widget_by_window(window):
-        global all_widgets
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not w.focused \
                     or not w.focusable \
@@ -1795,8 +1792,7 @@ cdef class WidgetBase:
         if self.focused:
             return
         def unfocus_focused():
-            global all_widgets
-            for w_ref in all_widgets:
+            for w_ref in get_all_widgets():
                 w = w_ref()
                 if w is None or w is self or \
                         not w.shares_focus_group(self):
@@ -1809,7 +1805,7 @@ cdef class WidgetBase:
             # See if a child can be focused:
             def try_children_focus(w):
                 tab_index_sorted = sorted(w.children,
-                    key=functools.cmp_to_key(tab_sort))
+                    key=functools.cmp_to_key(focus_tab_index_sort))
                 for child in tab_index_sorted:
                     if child.disabled:
                         continue

@@ -20,23 +20,20 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.sdlinit import initialize_sdl
+from libc.stdint cimport uint32_t, int64_t
 
-cdef extern from "oscheck.h":
-    cdef bint COMPILED_WITH_ANDROID_NDK
 
-cached_is_android = None
-cpdef is_android():
-    global cached_is_android
-    if cached_is_android != None:
-        return cached_is_android
-    initialize_sdl()
-    try:
-        import sdl2 as sdl
-        cached_is_android = (sdl.SDL_GetPlatform().decode(
-            "utf-8", "replace").lower() == "android")
-    except ImportError:
-        # No SDL2. So we need to rely on other clues.
-        cached_is_android = (COMPILED_WITH_ANDROID_NDK == 1)
-    return cached_is_android
- 
+cpdef get_all_widgets()
+
+cpdef get_all_windows()
+
+cpdef reduce_memory()
+
+cpdef add_widget(widget)
+
+cpdef get_widget_id()
+
+cpdef int64_t focus_tab_index_sort(a, b)
+
+cpdef get_add_id()
+

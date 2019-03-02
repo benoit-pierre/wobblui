@@ -22,12 +22,12 @@ freely, subject to the following restrictions:
 
 import weakref
 
-from wobblui.box import HBox
+from wobblui.box cimport HBox
 from wobblui.button import Button
-from wobblui.keyboard import get_all_active_text_widgets
-from wobblui.osinfo import is_android
+from wobblui.keyboard cimport get_all_active_text_widgets
+from wobblui.osinfo cimport is_android
 from wobblui.uiconf import config
-from wobblui.widgetman import all_windows
+from wobblui.widgetman cimport get_all_windows
 
 
 touch_handles_enabled = False
@@ -45,10 +45,10 @@ def touch_handles_platform():
 
 
 def draw_drag_selection_handles(window):
-    global touch_handles_enabled, all_windows
+    global touch_handles_enabled
     touch_handles_enabled = touch_handles_platform()
 
-    for win_ref in all_windows:
+    for win_ref in get_all_windows():
         win = win_ref()
         if win is None:
             continue

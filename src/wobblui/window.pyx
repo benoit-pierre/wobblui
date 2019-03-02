@@ -37,12 +37,11 @@ from wobblui.style import AppStyle, AppStyleBright, AppStyleDark
 cimport wobblui.texture
 from wobblui.uiconf import config
 from wobblui.widget_base cimport WidgetBase
-from wobblui.widgetman import all_widgets, all_windows
+from wobblui.widgetman import get_all_widgets, get_all_windows
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cpdef get_focused_window():
-    global all_windows
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or not w.focused:
             continue
@@ -52,13 +51,13 @@ cpdef get_focused_window():
 cpdef apply_style_to_all_windows(object style):
     style = style.copy()
     new_w_refs = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None:
             continue
         new_w_refs.append(w_ref)
         w.style = style
-    all_windows[:] = new_w_refs
+    get_all_windows()[:] = new_w_refs
     trigger_global_style_changed()
 
 cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
@@ -67,7 +66,7 @@ cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
         "firing stylechanged() on all widgets...")
     styles_seen = dict()
     new_w_refs = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None:
             continue
@@ -78,15 +77,14 @@ cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
         # Assign new copy of the style, to make sure the window and all
         # widgets realize it changed:
         w.style = styles_seen[w.style]
-    all_windows[:] = new_w_refs
+    get_all_windows()[:] = new_w_refs
     trigger_global_style_changed()
 
 cpdef get_window_by_sdl_id(sdl_id):
-    global all_windows
     result = None
     seen = set()
     new_refs = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or w.sdl_window_id != int(sdl_id):
             if w != None:
@@ -102,19 +100,19 @@ cpdef get_window_by_sdl_id(sdl_id):
                 str(w))
         seen.add(str(id(w)))
         new_refs.append(w_ref)
-    all_windows[:] = new_refs
+    get_all_windows()[:] = new_refs
     return result
 
 cpdef trigger_global_style_changed():
     new_refs = []
     collected_widgets = []
-    for w_ref in all_widgets:
+    for w_ref in get_all_widgets():
         w = w_ref()
         if w is None:
             continue
         collected_widgets.append(w)
         new_refs.append(w_ref)
-    all_widgets[:] = new_refs
+    get_all_widgets()[:] = new_refs
     for w in collected_widgets:
         w.stylechanged()
 
@@ -129,7 +127,6 @@ cdef class Window(WidgetBase):
             stay_alive_without_ref=False,
             keep_application_running_while_open=True,
             ):
-        global all_windows
         self._renderer = None
         self.type = "window"
         initialize_sdl()
@@ -169,7 +166,7 @@ cdef class Window(WidgetBase):
 
         self.last_known_dpi_scale = None
         self.schedule_global_dpi_scale_update = False
-        all_windows.append(weakref.ref(self))
+        get_all_windows().append(weakref.ref(self))
         if stay_alive_without_ref:
             keep_alive_window_refs.append(self)
 
@@ -677,7 +674,7 @@ cdef class Window(WidgetBase):
 
     def _internal_on_resized(self, internal_data=None):
         self.needs_relayout = True
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not hasattr(w, "parent_window") or \
                     w.parent_window != self:

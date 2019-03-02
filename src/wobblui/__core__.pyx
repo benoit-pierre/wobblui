@@ -50,7 +50,7 @@ from wobblui.sdlinit cimport sdl_version
 from wobblui.timer import internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
-from wobblui.widgetman import all_widgets, all_windows
+from wobblui.widgetman import get_all_widgets, get_all_windows
 from wobblui.window cimport get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
@@ -63,7 +63,7 @@ cdef int MULTITOUCH_DEBUG = 0
 
 cdef redraw_windows(int layout_only=False):
     cdef int i
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or w.hidden or w.is_closed:
             continue
@@ -84,7 +84,7 @@ cdef redraw_windows(int layout_only=False):
                     "relayout() loop !!! affected window: " +
                     str(w) + ", all widgets that need relayouting: " +
                     str([widget for widget in [
-                        wi_ref() for wi_ref in all_widgets] if \
+                        wi_ref() for wi_ref in get_all_widgets()] if \
                         widget != None and widget.needs_relayout and \
                         ((hasattr(widget, "parent_window") and
                         widget.parent_window) == w or widget == w)]))
@@ -228,7 +228,7 @@ def event_loop(app_cleanup_callback=None):
             result = do_event_processing(ui_active=True)
             if result == "appquit":
                 try:
-                    for w_ref in all_windows:
+                    for w_ref in get_all_windows():
                         w = w_ref()
                         if w is not None and not w.is_closed:
                             w.close()
@@ -259,7 +259,7 @@ def event_loop(app_cleanup_callback=None):
         
         # Close windows quickly to make it feel fast:
         try:
-            for w_ref in all_windows:
+            for w_ref in get_all_windows():
                 w = w_ref()
                 if w is not None and not w.is_closed:
                     w.close()
@@ -639,7 +639,7 @@ active_touch_device = None
 
 def finger_coordinates_to_window_coordinates(
         touch_device_id, finger_x, finger_y):
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or not hasattr(w, "_sdl_window") or \
                 w._sdl_window is None:
@@ -682,7 +682,7 @@ def update_multitouch():
                 touch_pressed = False
         # End multitouch gesture:
         last_multitouch_finger_coordinates = None
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w != None:
                 if w.multitouch_gesture_reported_in_progress:
@@ -785,7 +785,7 @@ def update_multitouch():
     if MULTITOUCH_DEBUG:
         logdebug("multitouch reporting loop with" +
             " screen index: " + str(touch_event_screen_index))
-    for w_ref in all_widgets:
+    for w_ref in get_all_widgets():
         w = w_ref()
         if w == None or (hasattr(w, "parent_window") and
                 (w.parent_window is None or
@@ -967,7 +967,7 @@ def _handle_event(event):
                     w.unfocus()
                 w.handle_sdlw_close()
             app_is_gone = True
-            for w_ref in all_windows:
+            for w_ref in get_all_windows():
                 w = w_ref()
                 if w != None and not w.is_closed and \
                         w.keep_application_running:
@@ -999,7 +999,7 @@ def _handle_event(event):
                 "recreate_renderer_when_in_background")
             if dump_renderers:
                 logdebug("ANDROID IN BACKGROUND. DUMP ALL WINDOW RENDERERS.")
-                for w_ref in all_windows:
+                for w_ref in get_all_windows():
                     w = w_ref()
                     if w != None:
                         if w.focused:
@@ -1010,7 +1010,7 @@ def _handle_event(event):
                     "PER CONFIG OPTION. (not recommended)")
     elif (event.type == sdl.SDL_APP_WILLENTERFOREGROUND):
         logdebug("APP RESUME EVENT")
-        for w_ref in all_windows:
+        for w_ref in get_all_windows():
             w = w_ref()
             if w != None and not w.is_closed:
                 w.internal_app_reopen()
