@@ -292,18 +292,11 @@ cdef class Window(WidgetBase):
         if self._sdl_window is None or not self._sdl_window:
             return
         if self._renderer is None:
-            if config.get("software_renderer") or \
-                    not is_android():
-                # Sadly, I've observed render errors on Windows, and bad
-                # GPU memory leaks leading to crashes on Linux. The software
-                # backend has been fine in all of these cases.
-                # In summary, it appears SDL's GPU backend (or the drivers)
-                # is too buggy to be worth the risk if not REALLY needed.
+            if config.get("software_renderer"):
                 self._renderer = \
                     sdl.SDL_CreateRenderer(self._sdl_window, -1,
                         sdl.SDL_RENDERER_SOFTWARE)
             else:
-                # On Android, enable GPU backend since it's vital for perf:
                 self._renderer = \
                     sdl.SDL_CreateRenderer(self._sdl_window, -1,
                         sdl.SDL_RENDERER_ACCELERATED)
