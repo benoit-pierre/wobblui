@@ -47,10 +47,10 @@ from wobblui.mouse import cursors_seen_during_mousemove,\
 from wobblui.osinfo import is_android
 from wobblui.perf cimport CPerf as Perf
 from wobblui.sdlinit cimport sdl_version
-from wobblui.timer import internal_trigger_check,\
+from wobblui.timer cimport internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
-from wobblui.widgetman import get_all_widgets, get_all_windows
+from wobblui.widgetman cimport get_all_widgets, get_all_windows
 from wobblui.window cimport get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
