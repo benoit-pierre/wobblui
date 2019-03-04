@@ -34,9 +34,6 @@ cpdef void initialize_sdl():
     import sdl2 as sdl
 
     loginfo("Setting SDL2 settings")
-    sdl.SDL_SetHintWithPriority(b"SDL_HINT_ORIENTATIONS",
-        b"LandscapeLeft LandscapeRight Portrait PortraitUpsideDown",
-        sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(b"SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH", b"1",
         sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(b"SDL_ANDROID_TRAP_BACK_BUTTON", b"1",
@@ -46,7 +43,7 @@ cpdef void initialize_sdl():
     sdl.SDL_SetHintWithPriority(b"SDL_RENDER_BATCHING", b"1",
         sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(
-        b"SDL_HINT_RENDER_SCALE_QUALITY", b"2",
+        b"SDL_HINT_RENDER_SCALE_QUALITY", b"1",
         sdl.SDL_HINT_OVERRIDE)
     subsystems = sdl.SDL_WasInit(sdl.SDL_INIT_EVERYTHING)
     if not (subsystems & sdl.SDL_INIT_VIDEO):
