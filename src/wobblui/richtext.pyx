@@ -29,13 +29,43 @@ import sys
 import threading
 import time
 
+import nettools.cssparse as cssparse
+import nettools.htmlparse as htmlparse
+
 from wobblui.color cimport Color
-import wobblui.cssparse as cssparse
 cimport wobblui.debug as debug
 import nettools.htmlparse as htmlparse
 from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
+
+def html_element_text_color(element):
+    if type(element) == str:
+        parse_result = htmlparse.parse(element)
+        if len(parse_result) == 0:
+            return None
+        element = parse_result[0]
+    if element.node_type != "element":
+        return None
+    for node_attr in element.attributes:
+        if node_attr.lower() == "style":
+            values = cssparse.parse_css_inline_attributes(
+                cssparse.extract_string_without_comments(
+                    element.attributes[node_attr]
+                )
+            )
+            for attr in values:
+                if attr.name.lower() == "color":
+                    color = cssparser.parse_css_color(attr.value)
+                    if color != None:
+                        return color
+        if node_attr.lower() == "color":
+            color = cssparse.parse_css_color(element.attributes[node_attr])
+            if color != None:
+                return color
+    return None
+
 
 class TagInfo(object):
     def __init__(self, tag_name, is_block=False):
@@ -1033,7 +1063,7 @@ cdef class RichText:
             return False
 
         def visit_item(item):
-            text_color = cssparse.element_text_color(item)
+            text_color = html_element_text_color(item)
             effective_color = text_color
             if text_color != None:
                 state["text_color_nesting"].append(text_color)
@@ -1120,7 +1150,7 @@ cdef class RichText:
                     state["at_block_end"] = False
 
         def leave_item(item):
-            text_color = cssparse.element_text_color(item)
+            text_color = html_element_text_color(item)
             if text_color != None:
                 assert(len(state["text_color_nesting"]) > 0)
                 state["text_color_nesting"] =\
