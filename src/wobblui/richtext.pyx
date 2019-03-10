@@ -57,7 +57,7 @@ def html_element_text_color(element):
             )
             for attr in values:
                 if attr.name.lower() == "color":
-                    color = cssparser.parse_css_color(attr.value)
+                    color = cssparse.parse_css_color(attr.value)
                     if color != None:
                         return color
         if node_attr.lower() == "color":
