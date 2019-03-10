@@ -47,14 +47,6 @@ with open("requirements.txt") as fh:
     dependencies = [l.strip() for l in fh.read().replace("\r\n", "\n").\
         split("\n") if len(l.strip()) > 0]
 
-class force_build_ext_install_hook(install):
-    def run(self, *args, **kwargs):
-        import subprocess, sys
-        subprocess.check_output([sys.executable,
-            "setup.py", "build_ext"],
-            cwd=os.path.dirname(__file__))
-        super().run(*args, **kwargs)
-
 class cythonize_build_ext_hook(build_ext):
     def run(self):
         from Cython.Build import cythonize
@@ -74,7 +66,7 @@ class cythonize_build_ext_hook(build_ext):
                     compiler_directives={
                         'always_allow_keywords': True,
                         'boundscheck': True,
-                        'language_level': 2,
+                        'language_level': 3,
                     }
                 )
         super().run()
