@@ -100,6 +100,7 @@ cdef class ModalBox(CenterBox):
 
 cdef class ModalDialog(Widget):
     def __init__(self, modal_to_window):
+        super().__init__(is_container=False)
         self.window_to_add = modal_to_window
         self.modaldlg_callback_issued = False
         self.modal_dlg_window = None
@@ -116,20 +117,21 @@ cdef class ModalDialog(Widget):
                     self.window_to_add.remove(self.modal_box)
                     self.window_to_add.update()
         if self.parent_window is not None:
+            if self.modal_box in self.parent_window.children:
+                self.parent_window.children.remove(self.modal_box)
+                self.parent_window.update()
             if self in self.parent_window.children:
                 if self.unset_filter:
                     self.parent_window.modal_filter = None
+                w = self.parent_window
                 self.parent_window.remove(self)
-                self.parent_window.update()
-            if self.modal_box in self.window_to_add.children:
-                self.parent_window.children.remove(self.modal_box)
-                self.parent_window.update()
+                w.update()
 
     def run(self, child, done_callback):
         if self.modal_box is not None:
             raise RuntimeError("dialog was already run()")
         self.modal_box = ModalBox(child)
-        if is_android() or True:
+        if is_android():
             # Initialize in current active window:
             if self.parent_window is not None:
                 self.parent_window.add(self.modal_box)

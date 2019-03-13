@@ -1957,19 +1957,24 @@ cdef class WidgetBase:
             )
             logerror(str(traceback.format_exc()))
         # Fire actual parent changed event:
+        assert(self.parentchanged is not None)
         try:
             self.parentchanged()
         except Exception:
             logerror(
-                "error in internal_override_parent() "
-                "in direct parentchanged() callback!"
+                "error in {} internal_override_parent() "
+                "in direct parentchanged() callback!".format(
+                str(self)
+                )
             )
             logerror(str(traceback.format_exc()))
         # Fire necessary events if renderer changes (e.g. on window change):
         if self.get_renderer() != old_renderer:
             if config.get("debug_texture_references"):
-                logdebug("WidgetBase.internal_override_parent: " +
-                    "recursive renderer_update() call")
+                logdebug(
+                    "WidgetBase.internal_override_parent: "
+                    "recursive renderer_update() call"
+                )
             def recursive_update_event(item):
                 item.renderer_update()
                 for child in item.children:
