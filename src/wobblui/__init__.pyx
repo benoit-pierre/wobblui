@@ -263,9 +263,9 @@ def event_loop(app_cleanup_callback=None):
                 w = w_ref()
                 if w is not None and not w.is_closed:
                     w.close()
-        except Exception as e:
+        except Exception as inner_e:
             print("Unexpected window close exception: " +
-                str(e)
+                str(inner_e)
             )
 
         sdlfont.stop_queue_for_process_shutdown()

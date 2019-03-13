@@ -564,14 +564,14 @@ cdef class HBox(Box):
         )
 
 cdef class CenterBox(Widget):
-    def __init__(self, padding=0,
+    def __init__(self, content_padding=0,
             child_minimum_width=0,
             child_fixed_width=-1,
             child_fixed_height=-1,
             expand_vertically=False,
             expand_horizontally=False):
         super().__init__(is_container=True)
-        self.padding = padding
+        self.content_padding = content_padding
         self.child_minimum_width = child_minimum_width
         self.child_fixed_width = child_fixed_width
         self.child_fixed_height = child_fixed_height
@@ -587,10 +587,10 @@ cdef class CenterBox(Widget):
 
     def do_redraw(self):
         if self.bg_color != None:
-            x = self.padding
-            y = self.padding
-            w = self.width - self.padding * 2
-            h = self.height - self.padding * 2
+            x = self.content_padding
+            y = self.content_padding
+            w = self.width - self.content_padding * 2
+            h = self.height - self.content_padding * 2
             if self.child_fixed_width >= 0:
                 w = self.child_fixed_width
                 x = round(max(0, self.width - self.child_fixed_width) * 0.5)
@@ -604,32 +604,32 @@ cdef class CenterBox(Widget):
 
     def get_natural_width(self):
         if self.child_fixed_width > 0:
-            return (self.padding * 2 * self.dpi_scale) + \
+            return (self.content_padding * 2 * self.dpi_scale) + \
                 self.child_fixed_width * self.dpi_scale
         if len(self._children) == 0:
             return 0
         min_width = round(self.dpi_scale * self.child_minimum_width) 
         return max(min_width,
             self._children[0].get_desired_width()) +\
-            (self.padding * 2 * self.dpi_scale)
+            (self.content_padding * 2 * self.dpi_scale)
 
     def get_natural_height(self, given_width=None):
         if self.child_fixed_height > 0:
-            return (self.padding * 2 * self.dpi_scale) + \
+            return (self.content_padding * 2 * self.dpi_scale) + \
                 self.child_fixed_height * self.dpi_scale
         if len(self._children) == 0:
             return 0
         v = given_width
         if v != None:
-            v -= (self.padding * 2 * self.dpi_scale)
+            v -= (self.content_padding * 2 * self.dpi_scale)
         return self._children[0].get_desired_height(
             given_width=v) +\
-            (self.padding * 2 * self.dpi_scale)
+            (self.content_padding * 2 * self.dpi_scale)
 
     def on_relayout(self):
         if len(self._children) == 0:
             return
-        outer_padding = (self.padding * self.dpi_scale)
+        outer_padding = (self.content_padding * self.dpi_scale)
         child = self._children[0]
 
         if self.child_fixed_width > 0:
@@ -657,7 +657,7 @@ cdef class CenterBox(Widget):
                     given_width=child.width))
             else:
                 child.height = max(1, self.height -
-                    self.padding * 2 * self.dpi_scale)
+                    self.content_padding * 2 * self.dpi_scale)
         child.x = math.floor((self.width - child.width) / 2)
         child.y = math.floor((self.height - child.height) / 2)
         child.relayout_if_necessary()

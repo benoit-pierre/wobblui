@@ -32,9 +32,13 @@ from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 
 _rect = None
-cpdef draw_rectangle(renderer, int x, int y, int w, int h,
-        color=None,
-        int filled=True, unfilled_border_thickness=1.0):
+cpdef draw_rectangle(
+        renderer,
+        int x, int y, int w, int h,
+        object color=None,
+        int filled=True,
+        double unfilled_border_thickness=1.0,
+        double alpha=1.0):
     global _rect
     import sdl2 as sdl
     if _rect is None:
@@ -62,9 +66,15 @@ cpdef draw_rectangle(renderer, int x, int y, int w, int h,
     _rect.h = round(abs(h) + min(0, y))
     if _rect.w <= 0 or _rect.h <= 0:
         return
-    sdl.SDL_SetRenderDrawColor(renderer,
-        round(color.value_red), round(color.value_green),
-        round(color.value_blue), 255)
+    sdl.SDL_SetRenderDrawColor(
+        renderer,
+        round(color.value_red),
+        round(color.value_green),
+        round(color.value_blue),
+        max(0, min(255, round(255.0 * alpha)))
+        )
+    sdl.SDL_SetRenderDrawBlendMode(
+        renderer, sdl.SDL_BLENDMODE_BLEND)
     sdl.SDL_RenderFillRect(renderer, _rect)
 
 dash_tex_dashlength = 10

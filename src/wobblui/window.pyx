@@ -287,6 +287,12 @@ cdef class Window(WidgetBase):
             self.internal_render_target = None
         logdebug("Renderer loss processed.")
 
+    def bring_to_front(self):
+        import sdl2 as sdl
+        if self._sdl_window is None or not self._sdl_window:
+            return
+        sdl.SDL_RaiseWindow(self._sdl_window)
+
     def ensure_renderer(self):
         import sdl2 as sdl
         if self._sdl_window is None or not self._sdl_window:

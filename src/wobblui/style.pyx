@@ -20,7 +20,7 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-class AppStyle(object):
+class AppStyle:
     def __init__(self):
         import sdl2 as sdl
         self._dpi_scale_base = 1.0
@@ -140,7 +140,8 @@ class AppStyleBright(AppStyle):
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
         self.set("topbar_text_size", 23)
- 
+        self.set("modal_dialog_bg", "#ccc")
+
 class AppStyleDark(AppStyle):
     def __init__(self):
         super().__init__()
@@ -169,3 +170,4 @@ class AppStyleDark(AppStyle):
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
         self.set("topbar_text_size", 23)
+        self.set("modal_dialog_bg", "#000")

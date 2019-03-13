@@ -20,35 +20,9 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
 from wobblui.widget cimport Widget
 
 
-cdef class BoxSpacer(Widget):
-    pass
-
-
-cdef class Box(ScrollbarDrawingWidget):
-    cdef int default_expand_on_secondary_axis
-    cdef public int horizontal
-    cdef dict expand_info, shrink_info
-    cdef int item_padding, border, box_surrounding_padding
-    cdef object bg_color
-    cdef int actual_layout_height, actual_layout_width, scroll_offset_y
-    cdef object _background_image
-    cdef int _background_image_keep_aspect
-
-
-cdef class VBox(Box):
-    pass
-
-
-cdef class HBox(Box):
-    pass
-
-
-cdef class CenterBox(Widget):
-    cdef int content_padding, child_minimum_width
-    cdef int child_fixed_width, child_fixed_height
-    cdef int expand_vertically, expand_horizontally
-    cdef object bg_color
+cdef class ModalDialog(Widget):
+    cdef object window_to_add, modal_dlg_window, modal_box
+    cdef int modaldlg_callback_issued

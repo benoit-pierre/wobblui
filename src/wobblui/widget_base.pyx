@@ -40,8 +40,9 @@ from wobblui.perf cimport CPerf as Perf
 from wobblui.texture cimport RenderTarget
 from wobblui.timer import schedule
 from wobblui.uiconf import config
-from wobblui.widgetman import add_widget, get_all_widgets, \
-    get_widget_id, get_add_id, focus_tab_index_sort
+from wobblui.widgetman cimport add_widget, get_all_widgets, \
+    get_widget_id, get_add_id
+from wobblui.widgetman import focus_tab_index_sort
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 # Helper function to move coordinates outside of widget:
@@ -1927,25 +1928,44 @@ cdef class WidgetBase:
             self.remove(child)
 
     def internal_override_parent(self, parent):
-        old_renderer = self.get_renderer()
         if self._parent == parent:
             return
+
+        # Do parent swap:
+        old_renderer = self.get_renderer()
+        old_parent_window = None
+        if hasattr(self, "parent_window"):
+            old_parent_window = self.parent_window
         prev_style = self.get_style()
         prev_dpi = self.dpi_scale
         old_parent = self._parent
         self._parent = parent
+        parent_window_changed = False
+        if hasattr(self, "parent_window"):
+            parent_window_changed = True
+
         self.needs_redraw = True
-        if self.mouse_reported_as_entered:
-            self.mouse_reported_as_entered = False
-            self.mouseleave()
-        self.parentchanged()
-        if prev_style != self.get_style() or \
-                abs(prev_dpi - self.dpi_scale) > 0.01:
-            def recursive_style_event(item):
-                item.stylechanged()
-                for child in item.children:
-                    recursive_style_event(child)
-            recursive_style_event(self)
+        # Make sure mouse is treated as outside by widget:
+        try:
+            if self.mouse_reported_as_entered:
+                self.mouse_reported_as_entered = False
+                self.mouseleave()
+        except Exception:
+            logerror(
+                "error in internal_override_parent() "
+                "when unsetting mouse status!"
+            )
+            logerror(str(traceback.format_exc()))
+        # Fire actual parent changed event:
+        try:
+            self.parentchanged()
+        except Exception:
+            logerror(
+                "error in internal_override_parent() "
+                "in direct parentchanged() callback!"
+            )
+            logerror(str(traceback.format_exc()))
+        # Fire necessary events if renderer changes (e.g. on window change):
         if self.get_renderer() != old_renderer:
             if config.get("debug_texture_references"):
                 logdebug("WidgetBase.internal_override_parent: " +
@@ -1955,6 +1975,37 @@ cdef class WidgetBase:
                 for child in item.children:
                     recursive_update_event(child)
             recursive_update_event(self)
+        # Fire descending parentchanged() if parent window changed:
+        if parent_window_changed:
+            def recursive_trigger_pchanged(item):
+                try:
+                    item.parentchanged()
+                except Exception:
+                    logerror(
+                        "error in internal_override_parent() "
+                        "in recursive parentchanged() callback!"
+                    )
+                    logerror(str(traceback.format_exc()))
+                for child in item.children:
+                    recursive_trigger_pchanged(child)
+            for child in self.children:
+                recursive_trigger_pchanged(child)
+        # File style changed if our DPI changed (can happen with
+        # parent window change):
+        if prev_style != self.get_style() or \
+                abs(prev_dpi - self.dpi_scale) > 0.01:
+            def recursive_style_event(item):
+                try:
+                    item.stylechanged()
+                except Exception as e:
+                    logerror(
+                        "error in internal_override_parent() "
+                        "when calling stylechanged() on child!"
+                    )
+                    logerror(str(traceback.format_exc()))
+                for child in item.children:
+                    recursive_style_event(child)
+            recursive_style_event(self)
 
     @property
     def parent(self):
