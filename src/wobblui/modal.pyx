@@ -109,13 +109,29 @@ cdef class ModalDialog(Widget):
         return
 
     def close(self):
+        # Remove modal window if any:
         if self.modal_dlg_window is not None:
             self.modal_dlg_window.close()
-        else:
+            # With a modal window we must have had a focus enforce callback:
+            if self.parent_window is not None:
+                try:
+                    self.parent_window.focus.unregister(
+                        self.modal_focus_enforce_callback
+                    )
+                except ValueError:
+                    pass
             if self.window_to_add is not None:
-                if self.modal_box in self.window_to_add.children:
-                    self.window_to_add.remove(self.modal_box)
-                    self.window_to_add.update()
+                try:
+                    self.window_to_add.focus.unregister(
+                        self.modal_focus_enforce_callback
+                    )
+                except ValueError:
+                    pass
+        # Remove self and modal box from all windows:    
+        if self.window_to_add is not None:
+            if self.modal_box in self.window_to_add.children:
+                self.window_to_add.remove(self.modal_box)
+                self.window_to_add.update()
         if self.parent_window is not None:
             if self.modal_box in self.parent_window.children:
                 self.parent_window.children.remove(self.modal_box)
@@ -127,12 +143,28 @@ cdef class ModalDialog(Widget):
                 self.parent_window.remove(self)
                 w.update()
 
+    def use_separate_window_mode(self):
+        return not is_android()
+
+    def modal_focus_enforce_callback(self):
+        if self.modal_dlg_window is not None:
+            self.modal_dlg_window.bring_to_front()
+            self.modal_dlg_window.focus()
+
     def run(self, child, done_callback):
         if self.modal_box is not None:
             raise RuntimeError("dialog was already run()")
-        self.modal_box = ModalBox(child)
-        if is_android():
-            # Initialize in current active window:
+
+        # Create modal box widget to contain the child:
+        if self.use_separate_window_mode():
+            # if in separate window, don't add padding around it:
+            self.modal_box = ModalBox(child, content_padding=0)
+        else:
+            self.modal_box = ModalBox(child)
+
+        # Launch modal box as separate window or overlay:
+        if not self.use_separate_window_mode():
+            # Initialize as overlay in current active window:
             if self.parent_window is not None:
                 self.parent_window.add(self.modal_box)
             else:
@@ -153,6 +185,14 @@ cdef class ModalDialog(Widget):
                 stay_alive_without_ref=True,
                 keep_application_running_while_open=False,
             )
+            if self.parent_window is not None:
+                self.parent_window.focus.register(
+                    self.modal_focus_enforce_callback
+                )
+            elif self.window_to_add is not None:
+                self.window_to_add.focus.register(
+                    self.modal_focus_enforce_callback
+                )
             self.modal_dlg_window.bring_to_front()
             self.modal_dlg_window.style = self.window_to_add.style.copy()
             def window_closed_event():
