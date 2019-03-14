@@ -30,9 +30,10 @@ from wobblui.gfx cimport draw_rectangle
 from wobblui.keyboard import register_global_shortcut,\
     shortcut_to_text
 from wobblui.list cimport ListBase, ListEntry
-from wobblui.timer import schedule
+from wobblui.timer cimport schedule
 from wobblui.widget cimport Widget
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
 
 cdef class MenuSeparator(ListEntry):
     cdef double padding_horizontal, padding_vertical
@@ -93,16 +94,23 @@ cdef class MenuSeparator(ListEntry):
         self._height = round(
             self.padding_vertical * dpi_scale) * 2 +\
             max(1, round(self.line_thickness * dpi_scale))
-    
+
 
 cdef class Menu(ListBase):
     cdef public object callback_funcs, defocus_on_trigger
 
-    def __init__(self, unfocus_on_trigger=True,
-            fixed_one_line_entries=False):
-        super().__init__(render_as_menu=True,
+    def __init__(self,
+            unfocus_on_trigger=True,
+            fixed_one_line_entries=False,
+            _internal_top_extra_drawing_space=0,
+            ):
+        super().__init__(
+            render_as_menu=True,
             triggered_by_single_click=True,
-            fixed_one_line_entries=fixed_one_line_entries)
+            fixed_one_line_entries=fixed_one_line_entries,
+            _internal_top_extra_drawing_space=\
+                _internal_top_extra_drawing_space,
+            )
         self.callback_funcs = []
         self.defocus_on_trigger = unfocus_on_trigger
 
@@ -167,11 +175,14 @@ cdef class Menu(ListBase):
             return True
         return super().on_keydown(virtual_key, physical_key, modifiers)
 
+
 class ContainerWithSlidingMenu(Widget):
     def __init__(self):
-        super().__init__(can_get_focus=False,
-            is_container=True)
-        self.menu = Menu()
+        super().__init__(
+            can_get_focus=False,
+            is_container=True,
+            )
+        self.menu = Menu(_internal_top_extra_drawing_space=0)
         self.menu_slid_out_x = 0
         self.is_opened = False
         self.continue_infinite_scroll_when_unfocused = True
@@ -309,6 +320,7 @@ class ContainerWithSlidingMenu(Widget):
                 sdl.SDL_SetRenderDrawColor(self.renderer,
                     255, 255, 255, 255)
                 child.draw(child.x, child.y)
+
         # Draw menu:
         if len(self._children) >= 1:
             child = self._children[0]
@@ -358,6 +370,3 @@ class ContainerWithSlidingMenu(Widget):
                     announce_independent_global_shortcut)
         self.needs_relayout = True
         self.needs_redraw = True
-
-    
-

@@ -109,6 +109,8 @@ cdef class ModalDialog(Widget):
         return
 
     def close(self):
+        print("RUNNING CLOSE.")
+
         # Remove modal window if any:
         if self.modal_dlg_window is not None:
             self.modal_dlg_window.close()
@@ -138,6 +140,7 @@ cdef class ModalDialog(Widget):
                 self.parent_window.update()
             if self in self.parent_window.children:
                 if self.unset_filter:
+                    print("CLEARED MODAL FOLTER ON: " + str(self.parent_window))
                     self.parent_window.modal_filter = None
                 w = self.parent_window
                 self.parent_window.remove(self)
@@ -195,7 +198,12 @@ cdef class ModalDialog(Widget):
                 )
             self.modal_dlg_window.bring_to_front()
             self.modal_dlg_window.style = self.window_to_add.style.copy()
+            closing_was_handled = False
             def window_closed_event():
+                nonlocal closing_was_handled
+                if not closing_was_handled:
+                    closing_was_handled = True
+                    self.close()
                 if not self.modaldlg_callback_issued:
                     self.modaldlg_callback_issued = True
                     if done_callback is not None:

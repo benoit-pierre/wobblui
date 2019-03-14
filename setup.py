@@ -22,11 +22,13 @@ import sys
 if int(sys.version.split(".")[0]) < 3:
     raise RuntimeError("python2 is not supported")
 
+import setuptools
 from setuptools import setup, Extension, Command
 from setuptools.command.build_ext import build_ext
+import setuptools.command.build_py
 from setuptools.command.install import install
+import shutil
 import os
-import setuptools
 
 with open("README.md", "r") as f:
     with open("LICENSE.md", "r") as f2:
@@ -190,12 +192,34 @@ def get_requirements_and_dep_links():
                 requirements.append(package_name)
     return (requirements, dep_links)
 
+
+class BuildPyCommand(setuptools.command.build_py.build_py):
+    """ Custom build command to add in license and logo files. """
+
+    ADDITIONAL_FILES = [
+        ("../../LICENSE.md", "LICENSE.md"),
+    ]
+
+    def run(self):
+        setuptools.command.build_py.build_py.run(self)
+
+        src_dir = self.get_package_dir("wobblui")
+        build_dir = os.path.join(self.build_lib, "wobblui")
+        for f in self.ADDITIONAL_FILES:
+            shutil.copyfile(
+                os.path.join(src_dir, f[0]),
+                os.path.join(build_dir, f[1])
+            )
+
+
 if __name__ == "__main__":
     setuptools.setup(
         name="wobblui",
         version=package_version,
         cmdclass={
-            "build_ext": cythonize_build_ext_hook},
+            "build_ext": cythonize_build_ext_hook,
+            "build_py": BuildPyCommand, 
+        },
         author="Jonas Thiem",
         author_email="jonas@thiem.email",
         description="A simple, universal and " +
@@ -212,7 +236,7 @@ if __name__ == "__main__":
             "img/*.png",
             "*.pxd",
             "font/*.pxd",
-            "LICENSE.md",
+            "LICENSE.md",  # in ADDITIONAL_FILES, see above!
         ]},
         install_requires=get_requirements_and_dep_links()[0],
         dependency_links=get_requirements_and_dep_links()[1],
