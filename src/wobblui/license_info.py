@@ -39,13 +39,14 @@ def license_info():
     ))
     t = []
     with open(os.path.join(package_dir, "LICENSE.md"), "r") as f:
-        t.append(f.read())
-    for f in os.path.join(package_dir, "font", "packaged-fonts"):
+        t.append(("LICENSE.md", f.read()))
+    for f in os.listdir(os.path.join(package_dir,
+                                     "font", "packaged-fonts")):
         if "license" not in f.lower():
             continue
         with open(os.path.join(package_dir,
                                "font",
-                               "packaged-fonts"), "r"
-                  ) as f:
-            t.append(f.read())
+                               "packaged-fonts", f), "r"
+                  ) as fh:
+            t.append(("packaged-fonts/" + f, fh.read()))
     return t
