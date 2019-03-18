@@ -238,7 +238,14 @@ if __name__ == "__main__":
             "font/*.pxd",
             "LICENSE.md",  # in ADDITIONAL_FILES, see above!
         ]},
-        install_requires=get_requirements_and_dep_links()[0],
+        install_requires=[
+            entry for entry in get_requirements_and_dep_links()[0]
+            if "cython" not in entry.lower()
+        ],
+        setup_requires=[
+            entry for entry in get_requirements_and_dep_links()[0]
+            if "cython" in entry.lower()
+        ],
         dependency_links=get_requirements_and_dep_links()[1],
         long_description=long_description,
         long_description_content_type="text/markdown",
