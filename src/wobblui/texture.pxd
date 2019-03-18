@@ -35,13 +35,16 @@ ctypedef int (*_sdl_SetRenderTargetType)(
 ctypedef void* (*_sdl_GetRenderTargetType)(
     void *renderer
 ) nogil
+ctypedef void (*_sdl_DestroyTextureType)(
+    void *texture
+) nogil
 
 
 cdef class Texture:
     cdef object _texture
-    cdef size_t texture_address
+    cdef ptrdiff_t texture_address
     cdef public object renderer
-    cdef size_t renderer_address
+    cdef ptrdiff_t renderer_address
     cdef int width, height
     cdef object __weakref__
     cdef _sdl_SetRenderDrawColorType sdl_func_set_render_draw_color
