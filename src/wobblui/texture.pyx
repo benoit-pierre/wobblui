@@ -219,8 +219,7 @@ cdef class Texture:
             )
 
     def _force_unload(self):
-        import sdl2 as sdl
-        global sdl_tex_count
+        global sdl_tex_count, _sdl_DestroyTexture
         if self._texture is not None:
             try:
                 if config.get("debug_texture_references"):
@@ -299,9 +298,9 @@ cdef class RenderTarget(Texture):
             sdl.SDL_BLENDMODE_BLEND)
 
     def __dealloc__(self):
+        global _sdl_SetRenderTarget
         if self.set_as_target:
-            import sdl2 as sdl
-            sdl.SDL_SetRenderTarget(self.renderer, None)
+            _sdl_SetRenderTarget(<void*>self.renderer_address, <void*>0)
         try:
             self._force_unload()
         finally:
