@@ -105,18 +105,18 @@ cdef class SDLFontCloseJob(ThreadJob):
 
     def execute(self):
         global _sdl_close_font
-        if _sdl_close_font is None:
-            import sdl2.sdlttf as sdlttf
-            _sdl_close_font = sdlttf.TTF_CloseFont
         _sdl_close_font(self.font_ref)
         self.result_waiter.set()
 
 cdef object _sdl_open_font = None
 def get_sdl_font(str font_path, int px_size):
-    global _sdl_open_font
+    global _sdl_open_font, _sdl_close_font
     if _sdl_open_font is None:
         import sdl2.sdlttf as sdlttf
         _sdl_open_font = sdlttf.TTF_OpenFont
+    if _sdl_close_font is None:
+        import sdl2.sdlttf as sdlttf
+        _sdl_close_font = sdlttf.TTF_CloseFont
     font = _sdl_open_font(
         font_path.encode("utf-8"),
         px_size)
