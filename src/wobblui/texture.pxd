@@ -20,6 +20,9 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+from libc.stdint cimport uintptr_t
+
+
 ctypedef int (*_sdl_SetRenderDrawColorType)(void *renderer,
     unsigned char r, unsigned char g, unsigned char b, unsigned char a
 ) nogil
@@ -42,9 +45,9 @@ ctypedef void (*_sdl_DestroyTextureType)(
 
 cdef class Texture:
     cdef object _texture
-    cdef ptrdiff_t texture_address
+    cdef uintptr_t texture_address
     cdef public object renderer
-    cdef ptrdiff_t renderer_address
+    cdef uintptr_t renderer_address
     cdef int width, height
     cdef object __weakref__
     cdef _sdl_SetRenderDrawColorType sdl_func_set_render_draw_color
