@@ -52,6 +52,15 @@ cpdef void initialize_sdl():
     else:
         loginfo("NOT calling SDL_Init, already initialized")
 
+    # On android, get the native Java activity and fix the soft input mode:
+    if sdl.SDL_GetPlatform().lower() == b"android":
+        from pyjnius import autoclass
+        logdebug("Setting SOFT_INPUT_ADJUST_RESIZE")
+        python_activity = autoclass('org.kivy.android.PythonActivity')
+        window = python_activity.getWindow()
+        window.setSoftInputMode(16)  # SOFT_INPUT_ADJUST_RESIZE
+
+
 cpdef tuple sdl_version():
     import sdl2 as sdl
     v = sdl.SDL_version()
