@@ -29,7 +29,14 @@ from wobblui.gfx cimport draw_rectangle
 from wobblui.richtext cimport RichText
 from wobblui.widget cimport Widget
 
-class TextEditBase(Widget):
+
+cdef class TextEditBase(Widget):
+    cdef int minimum_lines_height, _layout_width, _layout_height
+    cdef public int selection_length, cursor_offset, multiline
+    cdef str html, text, hide_with_character
+    cdef int draw_touch_handles_without_selection
+    cdef object _user_set_color, text_object
+
     def __init__(self, text="", color=None, hide_with_character=None,
             is_multiline=False, minimum_lines_height=1):
         super().__init__(can_get_focus=True,
@@ -38,10 +45,14 @@ class TextEditBase(Widget):
         self.hide_with_character = hide_with_character
         self.type = "textentry"
         self.html = ""
+        self.text_object = None
         self.text = ""
+        self._layout_width = 0
+        self._layout_height = 0
         self.multiline = is_multiline
         self.padding_base_size = 5.0
         self.cursor_offset = 0
+        self.draw_touch_handles_without_selection = False
         self.selection_length = 0
         self.update_with_style()
         if text.find("<") >= 0 and (text.find("/>") > 0 or
@@ -72,6 +83,7 @@ class TextEditBase(Widget):
             draw_scale=self.dpi_scale)
         self.text_obj.set_text("This is a test text")
         (w, h) = self.text_obj.layout()
+        self._layout_width = 0
         self.default_width = w * 2
         self.text_obj.set_html(self.html)
         self.needs_relayout = True
@@ -80,6 +92,11 @@ class TextEditBase(Widget):
         if self.needs_relayout:
             self.relayout()
         return self._layout_height
+
+    def get_text_width(self):
+        if self.needs_relayout:
+            self.relayout()
+        return self._layout_width
 
     def get_default_cursor(self):
         return "text"
@@ -243,16 +260,12 @@ class TextEditBase(Widget):
         if self._known_mouse_pos == end_pos:
             return
         self._known_mouse_pos = end_pos
-        if self.cursor_offset != start_pos:
-            self.cursor_offset = start_pos
+        if self.cursor_offset != end_pos:
+            self.cursor_offset = end_pos
             self.needs_redraw = True
-        if self.selection_length != (end_pos - start_pos):
-            self.selection_length = (end_pos - start_pos)
+        if self.selection_length != (start_pos - end_pos):
+            self.selection_length = (start_pos - end_pos)
             self.needs_redraw = True
-
-    def on_mousedown(self, mouse_id, button, x, y):
-        if button == 1:
-            self.start_mouse_drag(x, y)
 
     def on_mouseup(self, mouse_id, button, x, y):
         self.end_mouse_drag(x, y)
@@ -271,6 +284,7 @@ class TextEditBase(Widget):
         if self.selection_length != 0:
             self.del_selection()
         self.insert_at(self.cursor_offset, text)
+        self.draw_touch_handles_without_selection = False
 
     def insert_at(self, pos, text):
         text = text.replace("\r\n", "\n").\
@@ -377,11 +391,13 @@ class TextEditBase(Widget):
         elif virtual_key == "left" or virtual_key == "up":
             self.cursor_offset = max(0, self.cursor_offset - 1)
             self.selection_length = 0
+            self.draw_touch_handles_without_selection = False
             self.needs_redraw = True
         elif virtual_key == "right" or virtual_key == "down":
             self.cursor_offset = min(len(self.text),
                 self.cursor_offset + 1)
             self.selection_length = 0
+            self.draw_touch_handles_without_selection = False
             self.needs_redraw = True
 
     def on_mousedown(self, mouse_id, button, mx, my):
@@ -393,11 +409,20 @@ class TextEditBase(Widget):
                 raise RuntimeError("not implemented")
             else:
                 # This is actually a touch long press:
-                self.select_full_word_at_cursor()
+                if mx < self.padding + self.get_text_width():
+                    # This is on the text, so select full word:
+                    self.select_full_word_at_cursor()
+                else:
+                    # This is "past" the text, so do paste selection
+                    # marker without selecting word:
+                    self.move_cursor_to_mouse(mx, my)
+                    self.selection_length = 0
+                    self.draw_touch_handles_without_selection = True
             return
         elif button == 1:
             self.move_cursor_to_mouse(mx, my)
             self.selection_length = 0
+            self.start_mouse_drag(mx, my)
             self.update()
 
     def on_doubleclick(self, mouse_id, button, x, y):
@@ -461,7 +486,8 @@ class TextEditBase(Widget):
             self.selection_length = 1
 
     def get_touch_selection_positions(self):
-        if self.selection_length <= 0:
+        if self.selection_length <= 0 and \
+                not self.draw_touch_handles_without_selection:
             return None
         (x1, y1, h1) = self.text_obj.character_index_to_offset(
             max(0, self.cursor_offset or 0))
@@ -562,7 +588,8 @@ class TextEditBase(Widget):
         if self.style.has("topbar_text_size") and self.in_topbar():
             self.text_obj.px_size = \
                 int(self.style.get("topbar_text_size"))
-        (w, self._layout_height) = self.text_obj.layout(max_width=None)
+        (self._layout_width, self._layout_height) = \
+            self.text_obj.layout(max_width=None)
 
     def get_natural_width(self):
         return self.default_width + self.padding * 2
@@ -577,7 +604,8 @@ class TextEditBase(Widget):
             (w, h) = self.text_obj.layout(max_width=None)
         return max(h, min_height) + self.padding * 2
 
-class TextEdit(TextEditBase):
+
+cdef class TextEdit(TextEditBase):
     def __init__(self, text="", color=None, hide_with_character=None,
             minimum_lines_height=3):
         super().__init__(
@@ -585,5 +613,3 @@ class TextEdit(TextEditBase):
             hide_with_character=hide_with_character,
             is_multiline=True,
             minimum_lines_height=minimum_lines_height)
-
-

@@ -51,12 +51,7 @@ cdef class Label(ScrollbarDrawingWidget):
         self.current_draw_scale = self.dpi_scale
         self.text_scale = text_scale
         font_family = self.style.get("widget_font_family")
-        self.font_px_size_override = (
-            font.px_size if font is not None else -1
-        )
-        self.font_family_override = (
-            font.font_family if font is not None else ""
-        )
+        self.set_font(font)
         if self.font_family_override != "":
             font_family = self.font_family_override
         self.px_size = self.get_intended_text_size()
@@ -80,6 +75,15 @@ cdef class Label(ScrollbarDrawingWidget):
         else:
             self.text = text
         self._user_set_color = color
+
+    def set_font(self, font):
+        self.font_px_size_override = (
+            font.px_size if font is not None else -1
+        )
+        self.font_family_override = (
+            font.font_family if font is not None else ""
+        )
+        self.font_size_refresh()
 
     def __repr__(self):
         t = self.text
@@ -197,10 +201,11 @@ cdef class Label(ScrollbarDrawingWidget):
             self.px_size = new_px_size
             self.natural_size_cache = dict()
             self.known_font_family = new_font_family
-            self.text_obj.default_font_family = new_font_family
-            # FIXME: font will not actually be updated. fix at some point
-            self.text_obj.px_size = self.px_size
-            self.text_obj.draw_scale = self.dpi_scale
+            if self.text_obj is not None:
+                self.text_obj.default_font_family = new_font_family
+                # FIXME: font will not actually be updated. fix at some point
+                self.text_obj.px_size = self.px_size
+                self.text_obj.draw_scale = self.dpi_scale
             self.current_draw_scale = self.dpi_scale
             self._layout_width = -1
             self._layout_height = -1

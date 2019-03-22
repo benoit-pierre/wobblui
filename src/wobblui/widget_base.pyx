@@ -842,7 +842,9 @@ cdef class WidgetBase:
                 not flip_selection_1_handle and
                 not flip_selection_2_handle):
             # If too close together, move them to the side:
-            if abs(selection_1_x - selection_2_x) < square_size * 1.5:
+            if abs(selection_1_x - selection_2_x) < square_size * 1.5 and \
+                    (selection_1_x != selection_2_x or
+                     selection_1_y != selection_2_y):
                 square_1_extra_offset_x -= round(square_size * 0.52)
                 square_2_extra_offset_x += round(square_size * 0.52)
         return {

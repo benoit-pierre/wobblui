@@ -38,15 +38,7 @@ class DebugTerminal(VBox):
         self.on_exit_callback = exit_callback
         self.output_max_height = limit_output_height
         self.output_label = None
-        try:
-            self.output_label = Label(
-                font=font_manager().get_font("Monospace",
-                    px_size=20
-                ))
-        except ValueError:
-            logwarning("DebugTerminal: " +
-                "failed to load monospace font for terminal")
-            self.output_label = Label()
+        self.update_label_style()
         self.output_label.set_text("> Debug Terminal")
         super().add(self.output_label, expand=True, shrink=True)
         self.bar = HBox(box_surrounding_padding=3,
@@ -77,7 +69,7 @@ class DebugTerminal(VBox):
                         return True
                     return False
 
-                # Process comands:
+                # Process commands:
                 if not hasattr(self, "interactive_console"):
                     self.interactive_console = code.InteractiveConsole()
                 try:
@@ -121,6 +113,24 @@ class DebugTerminal(VBox):
         super().add(self.bar, expand=False, shrink=False)
         self.on_stylechanged()
 
+    def update_label_style(self):
+        label_px = round(self.dpi_scale * 20.0)
+        if self.output_label is None or \
+                self._last_label_px != label_px:
+            self._last_label_px = label_px
+            try:
+                font = font_manager().get_font("Monospace",
+                    px_size=label_px
+                )
+            except ValueError:
+                logwarning("DebugTerminal: " +
+                    "failed to load monospace font for terminal")
+                font = None
+            if self.output_label is None:
+                self.output_label = Label(font=font)
+            if font is not None:
+                self.output_label.set_font(font)
+
     def on_stylechanged(self):
         try:
             super().on_stylechanged()
@@ -129,6 +139,7 @@ class DebugTerminal(VBox):
         if self.output_max_height is not None and self.output_max_height > 0:
             self.output_label.max_height =\
                 (self.output_max_height * self.dpi_scale)
+        self.update_label_style()
 
     def focus(self):
         self.console_entry.focus()
