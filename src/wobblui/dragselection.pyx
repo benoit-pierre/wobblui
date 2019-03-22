@@ -30,9 +30,6 @@ from wobblui.uiconf import config
 from wobblui.widgetman cimport get_all_windows
 
 
-touch_handles_enabled = False
-
-
 def touch_handles_platform():
     touch_handles_enabled = False
     if is_android():
@@ -45,8 +42,8 @@ def touch_handles_platform():
 
 
 def draw_drag_selection_handles(window):
-    global touch_handles_enabled
-    touch_handles_enabled = touch_handles_platform()
+    if not touch_handles_platform():
+        return
 
     for win_ref in get_all_windows():
         win = win_ref()
@@ -70,12 +67,7 @@ touch_handle_last_position = None
 
 
 def coordinates_to_widget_with_drag_handle(window, mx, my):
-    global touch_handles_enabled
-    if is_android():
-        touch_handles_enabled = True
-    if config.get("mouse_fakes_touch_events"):
-        touch_handles_enabled = True
-    if not touch_handles_enabled:
+    if not touch_handles_platform():
         return (None, False)
     best_widget = None
     best_widget_dist = None
