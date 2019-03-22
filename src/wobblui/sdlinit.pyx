@@ -56,8 +56,11 @@ cpdef void initialize_sdl():
     if sdl.SDL_GetPlatform().lower() == b"android":
         from jnius import autoclass
         logdebug("Setting SOFT_INPUT_ADJUST_RESIZE")
+        logdebug("1")
         python_activity = autoclass('org.kivy.android.PythonActivity')
+        logdebug("2")
         window = python_activity.getWindow()
+        logdebug("3")
         window.setSoftInputMode(16)  # SOFT_INPUT_ADJUST_RESIZE
 
 
