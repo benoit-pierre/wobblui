@@ -263,8 +263,10 @@ cdef class Texture:
                 "got: " + str(renderer))
         if not srf:
             raise ValueError("need valid surface! not NULL / None")
-        tex = Texture(renderer, srf.contents.w, srf.contents.h,
-            _dontcreate=True)
+        tex = Texture(
+            renderer, srf.contents.w, srf.contents.h,
+            _dontcreate=True
+        )
         sdl_tex_count += 1
         assert(tex._texture is None)
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)

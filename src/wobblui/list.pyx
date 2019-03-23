@@ -834,6 +834,7 @@ cdef class ListBase(ScrollbarDrawingWidget):
         else:
             content_height = round(len(self._entries) *\
                 self.usual_entry_height) 
+        content_height += math.ceil(self._top_extra_drawing_space)
 
         # Make sure scroll down offset is in a valid range:
         max_scroll_down = max(0, content_height - self.height)
@@ -892,19 +893,25 @@ cdef class ListBase(ScrollbarDrawingWidget):
         # Draw the upper empty area if present:
         top_area_size = math.ceil(self._top_extra_drawing_space)
         if top_area_size > 0:
-            draw_rectangle(
-                self.renderer, border_size, border_size,
-                self.width - border_size * 2,
-                top_area_size,
-                color=c)
+            visible_top_area = max(0, round(
+                top_area_size - self.scroll_y_offset
+            ))
+            if visible_top_area > 0:
+                draw_rectangle(
+                    self.renderer, border_size, border_size,
+                    self.width - border_size * 2,
+                    visible_top_area,
+                    color=c
+                )
 
         # Draw keyboard focus line if we have the focus:
         if self.focused:
             self.draw_keyboard_focus(0, 0, self.width, self.height)
 
         # Draw scroll bar:
-        self.draw_scrollbar(content_height, self.height,
-            self.scroll_y_offset)
+        self.draw_scrollbar(
+            content_height, self.height, self.scroll_y_offset
+        )
         Perf.stop(perf_id)
 
     def get_natural_width(self):

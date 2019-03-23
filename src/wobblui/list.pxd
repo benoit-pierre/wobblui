@@ -69,7 +69,8 @@ cdef class ListBase(ScrollbarDrawingWidget):
     cdef public object triggered
     cdef list _entries
     cdef int _selected_index, _hover_index
-    cdef int scroll_y_offset, _top_extra_drawing_space
+    cdef public int scroll_y_offset
+    cdef int _top_extra_drawing_space
     cdef object usual_entry_height, last_known_effective_dpi_scale
     cdef public int render_as_menu, fixed_one_line_entries
     cdef object cached_natural_width

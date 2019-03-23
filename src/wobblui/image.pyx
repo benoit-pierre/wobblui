@@ -125,7 +125,7 @@ def _internal_pil_image_to_sdl_surface(pil_image, retries=5):
             str(err_msg))
     return sdl_image
 
-cdef class RenderImage(object):
+cdef class RenderImage:
     """ A mutable image object for use in widget draw callbacks.
         This RenderImage can be created either from a PIL
         image or a disk file path. Rendering a RenderImage with
@@ -396,8 +396,8 @@ cdef class RenderImage(object):
             self._texture.set_color(self._color)
 
     def draw(self, renderer,
-                int x, int y, w=None, h=None, color=None
-            ):
+             int x, int y, w=None, h=None, color=None
+             ):
         tex = self.to_texture(renderer)
         if w is None:
             w = self._render_size[0]

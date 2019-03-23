@@ -21,12 +21,14 @@ freely, subject to the following restrictions:
 '''
 
 import html
+import math
 import time
 import weakref
 
 from wobblui.color cimport Color
 from wobblui.event cimport Event
 from wobblui.gfx cimport draw_rectangle
+from wobblui.image cimport RenderImage
 from wobblui.keyboard import register_global_shortcut,\
     shortcut_to_text
 from wobblui.list cimport ListBase, ListEntry
@@ -177,12 +179,34 @@ cdef class Menu(ListBase):
 
 
 class ContainerWithSlidingMenu(Widget):
-    def __init__(self):
+    def __init__(self,
+            top_image=None,
+            top_image_width=300,
+            top_image_minimum_padding=5,
+            extra_top_space=0):
         super().__init__(
             can_get_focus=False,
             is_container=True,
             )
-        self.menu = Menu(_internal_top_extra_drawing_space=0)
+        if not isinstance(top_image, RenderImage):
+            self.top_image = RenderImage(top_image)
+        else:
+            self.top_image = top_image
+        self.top_image_minimum_padding = top_image_minimum_padding
+        top_image_size_scaler = (
+            float(max(0, top_image_width)) /
+            max(1, self.top_image.render_size[0])
+        )
+        self.top_image_reference_width = top_image_width
+        self.extra_top_space = extra_top_space
+        self.menu = Menu(
+            _internal_top_extra_drawing_space=(
+                self.extra_top_space +
+                math.ceil(top_image_size_scaler *
+                          self.top_image.render_size[1]) +
+                round(self.top_image_minimum_padding) * 2
+            )
+        )
         self.menu_slid_out_x = 0
         self.is_opened = False
         self.continue_infinite_scroll_when_unfocused = True
@@ -328,6 +352,39 @@ class ContainerWithSlidingMenu(Widget):
             sdl.SDL_SetRenderDrawColor(self.renderer,
                 255, 255, 255, 255)
             child.draw(child.x, child.y)
+
+        # Draw top image:
+        if self.top_image is not None:
+            scroll_y_offset = 0
+            menu_width = self.width
+            if len(self._children) > 0:
+                scroll_y_offset = self._children[0].scroll_y_offset
+                menu_width = self._children[0].width
+            top_image_scaler = min(
+                (menu_width -
+                 round(self.top_image_minimum_padding) * 2) /
+                max(1, self.top_image.render_size[0]),
+                float(max(0, self.top_image_reference_width)) /
+                max(1, self.top_image.render_size[0])
+            )
+            offset_x = math.floor(
+                ((menu_width -
+                  round(self.top_image_minimum_padding) * 2) -
+                 self.top_image.render_size[0] *
+                 top_image_scaler) / 2.0
+            ) + round(self.top_image_minimum_padding)
+            if len(self._children) > 0:
+                offset_x += -self._children[0].width +\
+                    self.menu_slid_out_x
+            self.top_image.draw(
+                self.renderer,
+                offset_x,
+                -scroll_y_offset + round(self.top_image_minimum_padding),
+                max(1, self.top_image.render_size[0] *
+                       top_image_scaler),
+                max(1, self.top_image.render_size[1] *
+                       top_image_scaler)
+            )
 
     def on_relayout(self):
         self.menu.width = min(int(
