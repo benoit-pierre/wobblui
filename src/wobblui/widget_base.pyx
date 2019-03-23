@@ -1001,8 +1001,9 @@ cdef class WidgetBase:
                 self._in_touch_fake_event_processing
 
         cdef str r = str(random.random()).replace(".", "")
-        cdef str chain_id = "_pre_or_post_mouse_event_handling" + r +\
-            str(self)
+        cdef str chain_id = (
+            "_pre_or_post_mouse_event_handling" + r + str(self)
+        )
         Perf.chain(chain_id)
 
         now = time.monotonic()
@@ -1019,8 +1020,10 @@ cdef class WidgetBase:
         try:
             mouse_id = event_args[0]
         except OverflowError as e:
-            logerror("got invalid mouse id which overflows: " +
-                str(mouse_id) + " - is this a touch handling issue??")
+            logerror(
+                "got invalid mouse id which overflows: " +
+                str(mouse_id) + " - is this a touch handling issue??"
+            )
             raise e
         if event_name == "mousedown" or event_name == "mouseup":
             x = event_args[2]
@@ -1110,15 +1113,21 @@ cdef class WidgetBase:
                 self.touch_start_y = y
                 self.last_touch_x = x
                 self.last_touch_y = y
-                
+                if event_name == "touchstart":
+                    # Remember that we had a legitimate touch start
+                    self.had_touchstart_and_no_touchend_yet = True
+
                 # Schedule test for long-press click:
-                if not self.prevent_touch_long_click_due_to_gesture:
+                if not self.prevent_touch_long_click_due_to_gesture and \
+                        event_name == "touchstart":
                     self.long_click_callback_id += 1
                     curr_id = self.long_click_callback_id
                     self_ref = weakref.ref(self)
                     self.have_long_click_callback = True
-                    schedule(self.return_long_click_test_closure(curr_id),
-                        config.get("touch_longclick_time"))
+                    schedule(
+                        self.return_long_click_test_closure(curr_id),
+                        config.get("touch_longclick_time")
+                    )
             elif event_name.startswith("touch"):
                 self.last_touch_x = x
                 self.last_touch_y = y
@@ -1126,10 +1135,10 @@ cdef class WidgetBase:
             if event_name == "touchmove" or \
                     event_name == "touchend":
                 self.touch_max_ever_distance = max(
-                    self.touch_max_ever_distance, float(
-                    math.sqrt(math.pow(
-                    x - self.touch_start_x, 2) +
-                    math.pow(y - self.touch_start_y, 2))))
+                    self.touch_max_ever_distance, float(math.sqrt(
+                        math.pow(x - self.touch_start_x, 2) +
+                        math.pow(y - self.touch_start_y, 2)
+                )))
                 # Make sure moving too far stops long clicks:
                 if self.touch_max_ever_distance > 7 * self.dpi_scale \
                         and self.have_long_click_callback:
@@ -1146,8 +1155,9 @@ cdef class WidgetBase:
                     self.touch_start_y = None
             # Update infinite scroll emulation:
             if event_name.startswith("touch"):
-                self.schedule_infinite_scroll_check(x, y,
-                    stop_event=(event_name == "touchend"))
+                self.schedule_infinite_scroll_check(
+                    x, y, stop_event=(event_name == "touchend")
+                )
 
         Perf.chain(chain_id, "touchstate_update_done")
 
@@ -1169,12 +1179,14 @@ cdef class WidgetBase:
             # If our own widget doesn't handle touch, fire the
             # fake clicks here:
             touch_fake_clicked = False
-            fake_clicks_for_event = \
-                ((not self.has_native_touch_support or
-                self.fake_mouse_even_with_native_touch_support)
-                and event_name == "touchend" and
+            fake_clicks_for_event = (
+                (not self.has_native_touch_support or
+                 self.fake_mouse_even_with_native_touch_support) and
+                event_name == "touchend" and
                 orig_touch_start_x != None and
-                orig_touch_start_y != None)
+                orig_touch_start_y != None and
+                self.had_touchstart_and_no_touchend_yet
+            )
             if fake_clicks_for_event and \
                     self.touch_max_ever_distance <\
                     40.0 * self.dpi_scale and \
@@ -1263,6 +1275,10 @@ cdef class WidgetBase:
                 self.touch_scrolling = False
             if event_name == "touchmove" or event_name == "touchend":
                 self.multitouch_end_avoid_scroll_hack = False
+
+        # Remember if we handled the "touchend":
+        if event_name == "touchend" and is_post:
+            self.had_touchstart_and_no_touchend_yet = False
 
         Perf.chain(chain_id, "fakemouse_events_done")
 

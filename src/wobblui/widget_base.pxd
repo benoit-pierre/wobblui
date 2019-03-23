@@ -64,6 +64,7 @@ cdef class WidgetBase:
     cdef public double touch_max_ever_distance
     cdef public double touch_start_time
     cdef public int last_touch_x, last_touch_y, touch_scrolling
+    cdef public int had_touchstart_and_no_touchend_yet
     cdef public int long_click_callback_id, have_long_click_callback
     cdef public int prevent_touch_long_click_due_to_gesture
     cdef public int multitouch_gesture_reported_in_progress

@@ -33,7 +33,7 @@ from wobblui.widget cimport Widget
 cdef class TextEditBase(Widget):
     cdef int minimum_lines_height, _layout_width, _layout_height
     cdef public int selection_length, cursor_offset, multiline
-    cdef str html, text, hide_with_character
+    cdef str html, _text, hide_with_character
     cdef int draw_touch_handles_without_selection
     cdef object _user_set_color, text_object
 
@@ -46,7 +46,7 @@ cdef class TextEditBase(Widget):
         self.type = "textentry"
         self.html = ""
         self.text_object = None
-        self.text = ""
+        self._text = ""
         self._layout_width = 0
         self._layout_height = 0
         self.multiline = is_multiline
@@ -62,6 +62,14 @@ cdef class TextEditBase(Widget):
         else:
             self.set_text(text)
         self._user_set_color = color
+
+    @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, v):
+        self._text = v
 
     def can_cutcopy(self):
         return (self.hide_with_character is None)
