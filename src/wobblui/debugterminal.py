@@ -114,7 +114,7 @@ class DebugTerminal(VBox):
         self.on_stylechanged()
 
     def update_label_style(self):
-        label_px = round(self.dpi_scale * 20.0)
+        label_px = 20
         if self.output_label is None or \
                 self._last_label_px != label_px:
             self._last_label_px = label_px
