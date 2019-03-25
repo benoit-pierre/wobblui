@@ -98,7 +98,7 @@ cdef class Label(ScrollbarDrawingWidget):
     def get_intended_text_size(self):
         if self.font_px_size_override > 0:
             return round(self.font_px_size_override *
-                self.dpi_scale * self.text_scale)
+                         self.text_scale)
         if self.style == None:
             return 12
         px_size = round(self.style.get("widget_text_size") *\
