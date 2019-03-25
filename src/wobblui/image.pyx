@@ -21,7 +21,9 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import cython
 import io
+from libc.stdint cimport uintptr_t
 import os
 import PIL.Image
 import PIL.ImageDraw
@@ -39,6 +41,12 @@ from wobblui.texture cimport Texture
 from wobblui.widget cimport Widget
 
 sdlimage_initialized = False
+
+ctypedef void* (*_sdl_FreeSurfaceType)(
+    void *srf
+) nogil
+cdef _sdl_FreeSurfaceType _sdl_FreeSurface = NULL
+
 
 cpdef str stock_image(name):
     p = os.path.join(os.path.abspath(os.path.dirname(__file__)),
@@ -144,7 +152,15 @@ cdef class RenderImage:
     """
 
     def __init__(self, object pil_image, render_low_res=False):
+        global _sdl_FreeSurface
         initialize_sdl()
+        if not _sdl_FreeSurface:
+            import sdl2 as sdl
+            _sdl_FreeSurface = <_sdl_FreeSurfaceType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_FreeSurface)
+                ))
+            )
         if type(pil_image) == str:
             pil_image = PIL.Image.open(pil_image)
         self.surface = None
@@ -362,10 +378,16 @@ cdef class RenderImage:
         return byteobj.getvalue()
 
     def __dealloc__(self):
-        if self.surface is not None:
-            import sdl2 as sdl
-            sdl.SDL_FreeSurface(self.surface)
-        self.surface = None
+        global _sdl_FreeSurface
+        try:
+            if self.surface is not None:
+                _sdl_FreeSurface(
+                    <void*><uintptr_t>int(ctypes.addressof(self.surface.contents))
+                )
+        except (NameError, TypeError):
+            pass  # probably unloading, ignore error
+        finally:
+            self.surface = None
 
     def to_texture(self, renderer):
         if renderer is None:
