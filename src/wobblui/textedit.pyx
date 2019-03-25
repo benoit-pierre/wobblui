@@ -36,6 +36,7 @@ cdef class TextEditBase(Widget):
     cdef str html, _text, hide_with_character
     cdef int draw_touch_handles_without_selection
     cdef object _user_set_color, text_object
+    cdef int scroll_x_offset, scroll_y_offset
 
     def __init__(self, text="", color=None, hide_with_character=None,
             is_multiline=False, minimum_lines_height=1):
@@ -45,6 +46,8 @@ cdef class TextEditBase(Widget):
         self.hide_with_character = hide_with_character
         self.type = "textentry"
         self.html = ""
+        self.scroll_x_offset = 0
+        self.scroll_y_offset = 0
         self.text_object = None
         self._text = ""
         self._layout_width = 0
@@ -181,7 +184,10 @@ cdef class TextEditBase(Widget):
         super().update_window()
         self.needs_redraw = True
 
-    def mouse_offset_to_cursor_offset(self, x, y):
+    def mouse_offset_to_cursor_offset(self, int x, int y):
+        cdef int is_last_line, first_of_line, c, x1, x2, h
+        x += self.scroll_x_offset
+        y += self.scroll_y_offset
         first_of_line = True
         c = 0
         while c < len(self.text):
@@ -292,7 +298,36 @@ cdef class TextEditBase(Widget):
         if self.selection_length != 0:
             self.del_selection()
         self.insert_at(self.cursor_offset, text)
+        self.scroll_to_cursor()
         self.draw_touch_handles_without_selection = False
+
+    def scroll_to_cursor(self):
+        cdef int x, y, h
+        if self.cursor_offset is None or \
+                self.cursor_offset < 0:
+            return
+        (x, y, h) = self.text_obj.character_index_to_offset(
+            max(0, self.cursor_offset or 0)
+        )
+        reference_lower_point = y + max(0, round(h) - 2)
+        if x >= self.width - self.padding * 2 + self.scroll_x_offset:
+            excess_x = (x - (
+                self.width - self.padding * 2 + self.scroll_x_offset
+            )) + 1
+            self.scroll_x_offset += round(excess_x)
+        if reference_lower_point >= (self.height - self.padding * 2 +
+                                     self.scroll_y_offset):
+            excess_y = (
+                reference_lower_point -
+                (self.height - self.padding * 2 + self.scroll_y_offset)
+            ) + 1
+            self.scroll_y_offset += round(excess_y)
+        if x <= self.scroll_x_offset:
+            underrun_x = (self.scroll_x_offset - x) + 1
+            self.scroll_x_offset -= round(underrun_x)
+        if y < self.scroll_y_offset:
+            underrun_y = (self.scroll_y_offset - y)
+            self.scroll_y_offset -= round(underrun_y)
 
     def insert_at(self, pos, text):
         text = text.replace("\r\n", "\n").\
@@ -400,12 +435,14 @@ cdef class TextEditBase(Widget):
             self.cursor_offset = max(0, self.cursor_offset - 1)
             self.selection_length = 0
             self.draw_touch_handles_without_selection = False
+            self.scroll_to_cursor()
             self.needs_redraw = True
         elif virtual_key == "right" or virtual_key == "down":
             self.cursor_offset = min(len(self.text),
                 self.cursor_offset + 1)
             self.selection_length = 0
             self.draw_touch_handles_without_selection = False
+            self.scroll_to_cursor()
             self.needs_redraw = True
 
     def on_mousedown(self, mouse_id, button, mx, my):
@@ -544,7 +581,8 @@ cdef class TextEditBase(Widget):
             if self.style != None and self.style.has("selected_bg"):
                 c = Color(self.style.get("selected_bg"))
             draw_rectangle(self.renderer,
-                x1 + self.padding, y1 + self.padding,
+                x1 + self.padding - self.scroll_x_offset,
+                y1 + self.padding - self.scroll_y_offset,
                 max(1, x2 - x1),
                 max(1, max(h1, h2)),
                 color=c)
@@ -552,8 +590,8 @@ cdef class TextEditBase(Widget):
         # Draw text:
         for fragment in self.text_obj.fragments:
             fragment.draw(self.renderer,
-                fragment.x + self.padding,
-                fragment.y + self.padding,
+                fragment.x + self.padding - self.scroll_x_offset,
+                fragment.y + self.padding - self.scroll_y_offset,
                 color=self.color)
 
         # Redraw padding area (in case text is clipped
@@ -570,8 +608,9 @@ cdef class TextEditBase(Widget):
         (x, y, h) = self.text_obj.character_index_to_offset(
             max(0, self.cursor_offset or 0))
         draw_rectangle(self.renderer,
-            x + self.padding,
-            y + self.padding, max(1, round(1.0 * self.dpi_scale)),
+            x + self.padding - self.scroll_x_offset,
+            y + self.padding - self.scroll_y_offset,
+            max(1, round(1.0 * self.dpi_scale)),
             max(5, h), color=self.color)
 
         # Draw border:
