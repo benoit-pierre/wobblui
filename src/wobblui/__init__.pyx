@@ -239,6 +239,15 @@ cpdef event_loop(app_cleanup_callback=None):
                 announced_sleepy_state = False
                 logdebug("core loop: NOT SLEEPY -> " +
                          "entered <200ms responsive state.")
+            if config.get("debug_core_event_loop") is True:
+                logdebug("event_loop(): state: " +
+                    str((
+                        "sleep_amount", sleep_amount,
+                        "had_jobs", had_jobs,
+                        "max_sleep", max_sleep,
+                        "font_no_sleep_counter", font_no_sleep_counter
+                    ))
+                )
 
             # Process events:
             result = do_event_processing(ui_active=True)
