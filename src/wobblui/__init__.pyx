@@ -192,14 +192,20 @@ def stuck_check():
             last_alive_time = time.monotonic() + 30.0
 
 
-def event_loop(app_cleanup_callback=None):
-    global stuck_thread, last_alive_time
+cdef int announced_sleepy_state = False
+
+
+cpdef event_loop(app_cleanup_callback=None):
+    global stuck_thread, last_alive_time, announced_sleepy_state
+
+    cdef int had_jobs, event_loop_ms, font_no_sleep_counter
+    cdef double sleep_amount
+
     if stuck_thread is None:
         stuck_thread = threading.Thread(target=stuck_check, daemon=True)
         stuck_thread.start()
     last_alive_time = time.monotonic()
-    cdef int had_jobs
-    cdef int event_loop_ms = 10
+    event_loop_ms = 10
     try:
         font_no_sleep_counter = 0
         while True:
@@ -223,6 +229,16 @@ def event_loop(app_cleanup_callback=None):
                     logwarning("Bogus sleep value: " + str(sleep_amount) +
                         " - too large??")
                 time.sleep(sleep_amount)
+
+            # Announce sleepy state so it can be debugged:
+            if sleep_amount > 0.45 and not announced_sleepy_state:
+                announced_sleepy_state = True
+                logdebug("core loop: SLEEPY -> " +
+                         "entered >450ms wait sleepy state.")
+            elif sleep_amount < 0.2 and announced_sleepy_state:
+                announced_sleepy_state = False
+                logdebug("core loop: NOT SLEEPY -> " +
+                         "entered <200ms responsive state.")
 
             # Process events:
             result = do_event_processing(ui_active=True)
@@ -252,8 +268,14 @@ def event_loop(app_cleanup_callback=None):
                 max_sleep = maximum_sleep_time()
                 if event_loop_ms < 500:
                     event_loop_ms = min(
-                        event_loop_ms + 1,
+                        event_loop_ms + 3,
                         500)
+                    if event_loop_ms > 150:
+                        # We hit this code path in higher intervals/slower,
+                        # so increase interval even faster:
+                        event_loop_ms = min(
+                            event_loop_ms + 10,
+                            500)
     except (SystemExit, KeyboardInterrupt) as e:
         loginfo("APP SHUTDOWN INITIATED. CLEANING UP...")
         
