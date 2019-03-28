@@ -76,7 +76,7 @@ cpdef void initialize_sdl():
         loginfo("Calling SDL_Init")
         sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER|
                      sdl.SDL_INIT_EVENTS|sdl.SDL_INIT_HAPTIC|
-                     SDL_INIT_GAMECONTROLLER)
+                     sdl.SDL_INIT_GAMECONTROLLER)
         sdl.SDL_SetHintWithPriority(
             b"SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"1",
             sdl.SDL_HINT_OVERRIDE,
