@@ -24,10 +24,10 @@ import ctypes
 
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
+
 def android_fix_softinput_mode():
     from android.runnable import run_on_ui_thread
     from jnius import autoclass
-    logdebug("Setting SOFT_INPUT_ADJUST_RESIZE")
     @run_on_ui_thread
     def do_it():
         python_activity = \
@@ -35,6 +35,7 @@ def android_fix_softinput_mode():
         window = python_activity.getWindow()
         window.setSoftInputMode(16)  # SOFT_INPUT_ADJUST_RESIZE
     do_it()
+
 
 sdl_init_done = False
 cpdef void initialize_sdl():
@@ -66,6 +67,7 @@ cpdef void initialize_sdl():
 
     # On android, get the native Java activity and fix the soft input mode:
     if sdl.SDL_GetPlatform().lower() == b"android":
+        logdebug("Setting initial SOFT_INPUT_ADJUST_RESIZE")
         android_fix_softinput_mode()
 
 
