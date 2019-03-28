@@ -39,6 +39,10 @@ cpdef void initialize_sdl():
         sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(b"SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH", b"1",
         sdl.SDL_HINT_OVERRIDE)
+    sdl.SDL_SetHintWithPriority(
+        b"SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"1",
+        sdl.SDL_HINT_OVERRIDE,
+    )
     sdl.SDL_SetHintWithPriority(b"SDL_ANDROID_TRAP_BACK_BUTTON", b"1",
         sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(b"SDL_TIMER_RESOLUTION", b"0",
