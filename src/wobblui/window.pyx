@@ -22,9 +22,8 @@ freely, subject to the following restrictions:
 
 import ctypes
 import math
+import os
 import platform
-import sdl2 as sdl
-import sdl2.sdlttf as sdlttf
 import weakref
 
 from wobblui.color cimport Color
@@ -38,12 +37,11 @@ from wobblui.style import AppStyle, AppStyleBright, AppStyleDark
 cimport wobblui.texture
 from wobblui.uiconf import config
 from wobblui.widget_base cimport WidgetBase
-from wobblui.widgetman import all_widgets, all_windows
+from wobblui.widgetman import get_all_widgets, get_all_windows
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 cpdef get_focused_window():
-    global all_windows
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or not w.focused:
             continue
@@ -53,13 +51,13 @@ cpdef get_focused_window():
 cpdef apply_style_to_all_windows(object style):
     style = style.copy()
     new_w_refs = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None:
             continue
         new_w_refs.append(w_ref)
         w.style = style
-    all_windows[:] = new_w_refs
+    get_all_windows()[:] = new_w_refs
     trigger_global_style_changed()
 
 cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
@@ -68,7 +66,7 @@ cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
         "firing stylechanged() on all widgets...")
     styles_seen = dict()
     new_w_refs = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None:
             continue
@@ -79,15 +77,14 @@ cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
         # Assign new copy of the style, to make sure the window and all
         # widgets realize it changed:
         w.style = styles_seen[w.style]
-    all_windows[:] = new_w_refs
+    get_all_windows()[:] = new_w_refs
     trigger_global_style_changed()
 
 cpdef get_window_by_sdl_id(sdl_id):
-    global all_windows
     result = None
     seen = set()
     new_refs = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or w.sdl_window_id != int(sdl_id):
             if w != None:
@@ -103,19 +100,19 @@ cpdef get_window_by_sdl_id(sdl_id):
                 str(w))
         seen.add(str(id(w)))
         new_refs.append(w_ref)
-    all_windows[:] = new_refs
+    get_all_windows()[:] = new_refs
     return result
 
 cpdef trigger_global_style_changed():
     new_refs = []
     collected_widgets = []
-    for w_ref in all_widgets:
+    for w_ref in get_all_widgets():
         w = w_ref()
         if w is None:
             continue
         collected_widgets.append(w)
         new_refs.append(w_ref)
-    all_widgets[:] = new_refs
+    get_all_widgets()[:] = new_refs
     for w in collected_widgets:
         w.stylechanged()
 
@@ -126,10 +123,10 @@ cdef class Window(WidgetBase):
             title="Untitled",
             width=640, height=480,
             style=None,
+            fullscreen=False,
             stay_alive_without_ref=False,
             keep_application_running_while_open=True,
             ):
-        global all_windows
         self._renderer = None
         self.type = "window"
         initialize_sdl()
@@ -142,6 +139,7 @@ cdef class Window(WidgetBase):
         self._hidden = False
         self._width = width
         self._height = height
+        self._fullscreen = fullscreen
         self.keep_application_running = keep_application_running_while_open
         self.hiding = Event("hiding", owner=self)
         self.shown = Event("shown", owner=self)
@@ -156,6 +154,7 @@ cdef class Window(WidgetBase):
         
         # Now that SDL window is open, we can access screen geometry:
         if self._sdl_window != None:
+            import sdl2 as sdl
             scale = self.screen_based_scale()
             # Correct our initial size if not on android:
             if abs(scale - 1.0) > 0.1 and not is_android():
@@ -167,9 +166,17 @@ cdef class Window(WidgetBase):
 
         self.last_known_dpi_scale = None
         self.schedule_global_dpi_scale_update = False
-        all_windows.append(weakref.ref(self))
+        get_all_windows().append(weakref.ref(self))
         if stay_alive_without_ref:
             keep_alive_window_refs.append(self)
+
+    @property
+    def fullscreen(self):
+        if is_android():
+            return (os.environ.get(
+                    "P4A_IS_WINDOWED", "false"
+            ).lower().strip() in {"0", "false", "no", "off"})
+        return self._fullscreen
 
     def screen_based_scale(self):
         scale = 1.0
@@ -244,6 +251,7 @@ cdef class Window(WidgetBase):
             if child.parent == self:
                 child.internal_override_parent(None)
         self._children = []
+        self._context_menu = None
         assert(len(self.children) == 0)
         self._renderer = old_renderer
         self.update()
@@ -279,22 +287,22 @@ cdef class Window(WidgetBase):
             self.internal_render_target = None
         logdebug("Renderer loss processed.")
 
+    def bring_to_front(self):
+        import sdl2 as sdl
+        if self._sdl_window is None or not self._sdl_window:
+            return
+        sdl.SDL_RaiseWindow(self._sdl_window)
+
     def ensure_renderer(self):
+        import sdl2 as sdl
         if self._sdl_window is None or not self._sdl_window:
             return
         if self._renderer is None:
-            if config.get("software_renderer") or \
-                    not is_android():
-                # Sadly, I've observed render errors on Windows, and bad
-                # GPU memory leaks leading to crashes on Linux. The software
-                # backend has been fine in all of these cases.
-                # In summary, it appears SDL's GPU backend (or the drivers)
-                # is too buggy to be worth the risk if not REALLY needed.
+            if config.get("software_renderer"):
                 self._renderer = \
                     sdl.SDL_CreateRenderer(self._sdl_window, -1,
                         sdl.SDL_RENDERER_SOFTWARE)
             else:
-                # On Android, enable GPU backend since it's vital for perf:
                 self._renderer = \
                     sdl.SDL_CreateRenderer(self._sdl_window, -1,
                         sdl.SDL_RENDERER_ACCELERATED)
@@ -310,20 +318,67 @@ cdef class Window(WidgetBase):
             self.needs_redraw = True
         return (self._renderer is not None)
 
+    @property
+    def context_menu(self):
+        return self._context_menu
+
+    def close_context_menu(self):
+        self.context_menu.internal_override_parent(None)
+        self._context_menu = None
+        self.needs_redraw = True
+
+    def open_context_menu(self, menu, xpos, ypos, autofocus=True):
+        self._context_menu = menu
+        menu.internal_override_parent(self)
+        self.needs_redraw = True
+        self.context_menu.width = self.context_menu.get_desired_width()
+        self.context_menu.height = self.context_menu.get_desired_height(
+            given_width=self.context_menu.width
+        )
+        self.context_menu.needs_redraw = True
+        def close_menu():
+            self.close_context_menu()
+        if autofocus:
+            self.context_menu.focus()
+            try:
+                self.context_menu.unfocus.register(close_menu)
+            except AttributeError:
+                pass
+        try:
+            self.context_menu.triggered.register(close_menu)
+        except AttributeError:
+            pass
+        self.context_menu.x = xpos
+        self.context_menu.y = ypos
+
     def internal_app_reopen(self):
+        import sdl2 as sdl
         if self.is_closed:
             return
         unhide = False
         if self._sdl_window is None:
             if platform.system().lower() == "windows":
                 ctypes.windll.shcore.SetProcessDpiAwareness(2)
+            wwidth = self.next_reopen_width
+            wheight = self.next_reopen_height
+            fullscreen_flag = 0
+            if self.fullscreen:
+                # Make sure window size is not too large to cause error
+                # (since it's ignored when fullscreen but can still cause
+                # an error when too large according to SDL2 docs)
+                wwidth = 100
+                wheight = 100
+                if is_android():
+                    fullscreen_flag = sdl.SDL_WINDOW_FULLSCREEN
+                else:
+                    fullscreen_flag = sdl.SDL_WINDOW_FULLSCREEN_DESKTOP
             self._sdl_window = sdl.SDL_CreateWindow(
                 self._title.encode("utf-8", "replace"),
                 sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED,
-                self.next_reopen_width,
-                self.next_reopen_height, sdl.SDL_WINDOW_SHOWN |
-                sdl.SDL_WINDOW_RESIZABLE |
-                sdl.SDL_WINDOW_ALLOW_HIGHDPI)
+                wwidth, wheight,
+                sdl.SDL_WINDOW_SHOWN | sdl.SDL_WINDOW_RESIZABLE |
+                sdl.SDL_WINDOW_ALLOW_HIGHDPI | fullscreen_flag
+            )
             unhide = True
             if self._renderer != None:
                 self.on_renderer_to_be_destroyed()
@@ -363,6 +418,7 @@ cdef class Window(WidgetBase):
             self._sdl_window = None
 
     def handle_sdlw_close(self, forced=False):
+        import sdl2 as sdl
         if self._sdl_window is None:
             return
         self.next_reopen_width = self._width
@@ -464,6 +520,7 @@ cdef class Window(WidgetBase):
                 return (self._last_sdl_coordinates_x,
                     self._last_sdl_coordinates_y)
             return (0, 0)
+        import sdl2 as sdl
         x = ctypes.c_int32()
         y = ctypes.c_int32()
         sdl.SDL_GetWindowPosition(self._sdl_window,
@@ -478,6 +535,7 @@ cdef class Window(WidgetBase):
     def containing_screen_dimensions(self):
         if self._sdl_window is None:
             return (0, 0)
+        import sdl2 as sdl
         screen_mode = sdl.SDL_DisplayMode()
         result = sdl.SDL_GetCurrentDisplayMode(self.screen_index,
             ctypes.byref(screen_mode))
@@ -490,6 +548,7 @@ cdef class Window(WidgetBase):
     def screen_index(self):
         if self._sdl_window is None:
             return 0
+        import sdl2 as sdl
         return sdl.SDL_GetWindowDisplayIndex(self._sdl_window)
 
     def get_sdl_incorrect_scaling_correction_factor(self):
@@ -501,6 +560,7 @@ cdef class Window(WidgetBase):
             this internally to correct things, so you don't need to bother
             to do this manually.
         """
+        import sdl2 as sdl
 
         w = ctypes.c_int32()
         h = ctypes.c_int32()
@@ -525,6 +585,7 @@ cdef class Window(WidgetBase):
     def update_to_real_sdlw_size(self):
         if self._sdl_window is None:
             return
+        import sdl2 as sdl
         w = ctypes.c_int32()
         h = ctypes.c_int32()
         sdl.SDL_GetWindowSize(self._sdl_window, ctypes.byref(w),
@@ -571,6 +632,7 @@ cdef class Window(WidgetBase):
     def sdl_window_id(self):
         if self._sdl_window is None:
             return None
+        import sdl2 as sdl
         return int(sdl.SDL_GetWindowID(self._sdl_window))
 
     @property
@@ -611,7 +673,7 @@ cdef class Window(WidgetBase):
 
     def _internal_on_resized(self, internal_data=None):
         self.needs_relayout = True
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not hasattr(w, "parent_window") or \
                     w.parent_window != self:
@@ -655,9 +717,17 @@ cdef class Window(WidgetBase):
             self.needs_redraw = True
 
     def get_children_in_strict_mouse_event_order(self):
-        return list(reversed(self._children))
+        r = list(reversed(self.get_children()))
+        return r
+
+    def get_children(self):
+        r = list(self._children)
+        if self.context_menu is not None:
+            r += [self.context_menu]
+        return list(r)
 
     def _internal_on_post_redraw(self, internal_data=None):
+        import sdl2 as sdl
         if self.renderer is None:
             return
         elif self.needs_redraw:

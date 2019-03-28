@@ -20,6 +20,7 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 cdef class FontManager:
+    cdef int next_limit_cache_counter
     cdef public int cache_size
     cdef public object font_by_sizedpistyle_cache,\
         font_by_sizedpistyle_cache_times,\

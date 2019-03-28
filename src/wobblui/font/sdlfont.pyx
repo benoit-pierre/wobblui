@@ -24,10 +24,11 @@ import ctypes
 import cython
 import queue
 from queue import Queue
-import sdl2.sdlttf as sdlttf
 import threading
 
 from wobblui.sdlinit import initialize_sdl
+
+
 
 cdef int shutdown_in_progress = False
 cpdef void stop_queue_for_process_shutdown():
@@ -55,10 +56,10 @@ ctypedef int (*_sdl_TextSize_utf8_type)(
     void* font, char* text,
     int* resultw, int* resulth) nogil
 cdef _sdl_TextSize_utf8_type _sdl_TextSize_utf8 = NULL
-
 cdef tuple _get_font_size_fast_unthreaded(object sdl_font, char* text):
     global _sdl_TextSize_utf8
     if not _sdl_TextSize_utf8:
+        import sdl2.sdlttf as sdlttf
         _sdl_TextSize_utf8 = <_sdl_TextSize_utf8_type>(
             cython.operator.dereference(<size_t*>(
             <size_t>ctypes.addressof(sdlttf.TTF_SizeUTF8))))
@@ -78,6 +79,7 @@ cdef tuple _get_font_size_fast_unthreaded(object sdl_font, char* text):
             h = 0
     return (w, h)
 
+
 cdef class SDLFontSizeJob(ThreadJob):
     cdef object sdl_font
     cdef bytes text
@@ -92,6 +94,8 @@ cdef class SDLFontSizeJob(ThreadJob):
         self.result = _get_font_size_fast_unthreaded(self.sdl_font, t)
         self.result_waiter.set()
 
+
+cdef object _sdl_close_font = None
 cdef class SDLFontCloseJob(ThreadJob):
     cdef object font_ref
 
@@ -100,14 +104,24 @@ cdef class SDLFontCloseJob(ThreadJob):
         self.font_ref = sdl_ttf_font_ref
 
     def execute(self):
-        sdlttf.TTF_CloseFont(self.font_ref)
+        global _sdl_close_font
+        _sdl_close_font(self.font_ref)
         self.result_waiter.set()
 
+cdef object _sdl_open_font = None
 def get_sdl_font(str font_path, int px_size):
-    font = sdlttf.TTF_OpenFont(
+    global _sdl_open_font, _sdl_close_font
+    if _sdl_open_font is None:
+        import sdl2.sdlttf as sdlttf
+        _sdl_open_font = sdlttf.TTF_OpenFont
+    if _sdl_close_font is None:
+        import sdl2.sdlttf as sdlttf
+        _sdl_close_font = sdlttf.TTF_CloseFont
+    font = _sdl_open_font(
         font_path.encode("utf-8"),
         px_size)
     if font is None:
+        import sdl2.sdlttf as sdlttf
         error_msg = sdlttf.TTF_GetError()
         raise ValueError("couldn't load TTF " +
             "font: " + str(error_msg))
@@ -184,6 +198,7 @@ cpdef SDLFontWrapper get_thread_safe_sdl_font(path, px_size):
     if not ttf_was_initialized:
         ttf_was_initialized = True
         initialize_sdl()
+        import sdl2.sdlttf as sdlttf
         sdlttf.TTF_Init()
     load_job = SDLFontLoadJob(path, round(px_size))
     if is_main_thread():

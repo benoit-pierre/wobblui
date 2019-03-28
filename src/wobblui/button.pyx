@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -23,22 +24,22 @@ import html
 import math
 import os
 import PIL.Image
-import sdl2 as sdl
 
-from wobblui.color import Color
-from wobblui.event import ForceDisabledDummyEvent, Event
-from wobblui.gfx import draw_rectangle, pop_render_clip, push_render_clip
-from wobblui.image import RenderImage, stock_image
-from wobblui.richtext import RichText
-from wobblui.texture import Texture
+from wobblui.color cimport Color
+from wobblui.event cimport ForceDisabledDummyEvent, Event
+from wobblui.gfx cimport draw_rectangle, pop_render_clip, push_render_clip
+from wobblui.image cimport RenderImage, stock_image
+from wobblui.richtext cimport RichText
+from wobblui.texture cimport Texture
 from wobblui.uiconf import config
-from wobblui.widget import Widget
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.widget cimport Widget
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 class Button(Widget):
     def __init__(self,
             text="",
             with_surrounding_frame=True,
+            with_outer_padding=True,
             clickable=True,
             image_placement="left",
             text_scale=1.0,
@@ -47,7 +48,8 @@ class Button(Widget):
             ):
         super().__init__(is_container=False,
             can_get_focus=clickable)
-        if clickable:
+        self.clickable = (clickable is True)
+        if self.clickable:
             self.triggered = Event(
                 "triggered",
                 owner=self,
@@ -56,6 +58,10 @@ class Button(Widget):
             self.triggered = ForceDisabledDummyEvent(
                 "triggered", owner=self)
         self.with_surrounding_frame = (with_surrounding_frame is True)
+        self.with_surrounding_frame_size = 2.0
+        self.inner_text_padding_x = 6.0
+        self.inner_text_padding_y = 2.0
+        self.with_surrounding_frame_all_sides = True
         self._image_draw_scaledown = 1.0
         self.hovered = False
         self.image_placement = image_placement
@@ -77,8 +83,10 @@ class Button(Widget):
         self._html = ""
         self.extra_image_render_func = None
         self.border = 5.0
+        if not with_outer_padding:
+            self.border = 0.0
         if with_surrounding_frame:
-            self.border = 15.0
+            self.border += self.with_surrounding_frame_size
         if len(text) > 0:
             self.set_text(text)
 
@@ -113,6 +121,8 @@ class Button(Widget):
         self.extra_image_render_func = func
 
     def on_keydown(self, key, physical_key, modifiers):
+        if not self.clickable or self.disabled:
+            return
         if key == "return" or key == "space":
             if not self.hovered:
                 self.hovered = True
@@ -122,6 +132,8 @@ class Button(Widget):
             self.triggered()
 
     def on_click(self, mouse_id, button, x, y):
+        if not self.clickable or self.disabled:
+            return
         if not self.hovered:
             self.hovered = True
             self.force_redraw_and_blocking_show()
@@ -174,6 +186,9 @@ class Button(Widget):
         self.update_font_object()
 
     def update_font_object(self):
+        if len(self._html) == 0:
+            self.contained_richtext_obj = None
+            return
         font_family = self.font_family
         px_size = round(self.style.get("widget_text_size") *
             self.text_scale)
@@ -234,13 +249,16 @@ class Button(Widget):
 
     def on_mouseenter(self):
         self.hovered = True
-        self.needs_redraw = True
+        if self.clickable and not self.disabled:
+            self.needs_redraw = True
 
     def on_mouseleave(self):
         self.hovered = False
-        self.needs_redraw = True
+        if self.clickable and not self.disabled:
+            self.needs_redraw = True
 
     def do_redraw(self):
+        import sdl2 as sdl
         if self.renderer is None:
             return
         self.update_texture_color()
@@ -249,12 +267,19 @@ class Button(Widget):
             if self.style is not None:
                 c = Color(self.style.get("button_bg"))
                 if self.style.has("button_bg_hover") and \
-                        self.hovered and not self.disabled:
+                        self.hovered and not self.disabled and \
+                        self.clickable:
                     c = Color(self.style.get("button_bg_hover"))
             if self.override_bg_color != None:
                 c = self.override_bg_color
-            fill_border = round(self.border_size * 0.3)
-            draw_rectangle(self.renderer, fill_border, fill_border,
+            fill_border = max(0, round(
+                (self.border -
+                self.with_surrounding_frame_size) *
+                self.dpi_scale
+            ))
+            draw_rectangle(self.renderer,
+                fill_border,
+                fill_border,
                 self.width - fill_border * 2,
                 self.height - fill_border * 2,
                 color=c)
@@ -263,20 +288,55 @@ class Button(Widget):
                     self.style.has("button_border"):
                 border_color = Color(self.style.get("button_border"))
             if border_color is not None:
+                if self.with_surrounding_frame_all_sides:
+                    # Top border:
+                    draw_rectangle(self.renderer,
+                        fill_border,
+                        round(max(0, fill_border)),
+                        self.width - fill_border * 2,
+                        max(1, round(self.with_surrounding_frame_size *
+                                     self.dpi_scale)),
+                        color=border_color)
+                    # Left border:
+                    draw_rectangle(self.renderer,
+                        round(max(0, fill_border)),
+                        round(fill_border),
+                        max(1, round(self.with_surrounding_frame_size *
+                                     self.dpi_scale)),
+                        self.height - fill_border * 2,
+                        color=border_color)
+                # Bottom border:
                 draw_rectangle(self.renderer,
-                    fill_border, self.height - max(1, fill_border) * 2,
-                    self.width - fill_border * 2,
-                    max(1, fill_border),
-                    color=border_color)
-                draw_rectangle(self.renderer,
-                    self.width - max(1, fill_border) * 2,
                     fill_border,
-                    max(1, fill_border),
-                    self.height - fill_border * 2,
+                    round(self.height - max(0, fill_border) - max(1, round(
+                          self.with_surrounding_frame_size * self.dpi_scale))
+                         ),
+                    self.width - max(0, fill_border) * 2,
+                    max(1, round(self.with_surrounding_frame_size *
+                                 self.dpi_scale)),
+                    color=border_color)
+                # Right border:
+                draw_rectangle(self.renderer,
+                    round(self.width - max(0, fill_border) - max(1, round(
+                             self.with_surrounding_frame_size *
+                             self.dpi_scale
+                         ))),
+                    max(0, fill_border),
+                    max(1, round(self.with_surrounding_frame_size) *
+                                 self.dpi_scale),
+                    self.height - max(0, fill_border) * 2,
                     color=border_color)
         offset_x = round(self.border_size)
         full_available_size_x = round(self.width - (self.border_size * 2))
+        if self.contained_richtext_obj is not None:
+            full_available_size_x -= round(
+                self.inner_text_padding_x * self.dpi_scale * 2
+            )
         full_available_size_y = round(self.height - (self.border_size * 2))
+        if self.contained_richtext_obj is not None:
+            full_available_size_y -= round(
+                self.inner_text_padding_y * self.dpi_scale * 2
+            )
         if full_available_size_x <= 0 or full_available_size_y <= 0:
             return
         used_up_size_x = (self.text_layout_width or 0)
@@ -325,12 +385,20 @@ class Button(Widget):
             sdl.SDL_SetRenderDrawColor(self.renderer, 255, 255, 255, 255)
             if self.with_surrounding_frame:
                 push_render_clip(self.renderer,
-                    fill_border, fill_border,
-                    self.width - fill_border * 2,
-                    self.height - fill_border * 2)
+                    fill_border + self.inner_text_padding_x * self.dpi_scale,
+                    fill_border + self.inner_text_padding_y * self.dpi_scale,
+                    self.width - fill_border * 2 - round(
+                        self.inner_text_padding_x * 2 * self.dpi_scale
+                    ),
+                    self.height - fill_border * 2 - round(
+                        self.inner_text_padding_y * 2 * self.dpi_scale
+                    )
+                )
             try:
                 self.contained_richtext_obj.draw(
-                    self.renderer, offset_x,
+                    self.renderer,
+                    offset_x + round(self.inner_text_padding_x *
+                                     self.dpi_scale),
                     round(self.height / 2.0 - self.text_layout_height / 2.0),
                     color=c, draw_scale=self.dpi_scale)
             finally:
@@ -352,7 +420,8 @@ class Button(Widget):
                 self.border_size * 2))
         if self.contained_richtext_obj != None:
             my_h = max(my_h, self.text_layout_height +
-                round(self.border_size * 2))
+                round(self.border_size * 2) +
+                round(self.inner_text_padding_y * self.dpi_scale) * 2)
         return my_h
 
     def get_natural_width(self):
@@ -364,8 +433,9 @@ class Button(Widget):
                 self.contained_richtext_obj != None:
             # Add in-between spacing:
             my_w += round(self.border_size * 0.7)
-        if self.contained_richtext_obj != None:
-            my_w += round(self.text_layout_width)
+        if self.contained_richtext_obj is not None:
+            my_w += round(self.text_layout_width) +\
+                round(self.inner_text_padding_x * self.dpi_scale) * 2
         return my_w
 
 class ImageButton(Button):
@@ -383,7 +453,7 @@ class ImageButton(Button):
             color = self.style.get("widget_text")
             if self.style.has("widget_text_saturated"):
                 color = Color(self.style.get("widget_text_saturated"))
-            if self.disabled and style.has("widget_disabled_text"):
+            if self.disabled and self.style.has("widget_disabled_text"):
                 color = Color(self.style.get("widget_disabled_text"))
         assert(isinstance(color, Color))
         self.set_image_color(color)

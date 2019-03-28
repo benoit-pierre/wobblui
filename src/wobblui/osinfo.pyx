@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -19,25 +20,23 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.keyboard import get_all_active_text_widgets
-from wobblui.osinfo import is_android
-from wobblui.uiconf import config
+from wobblui.sdlinit import initialize_sdl
 
-touch_handles_enabled = False
+cdef extern from "oscheck.h":
+    cdef bint COMPILED_WITH_ANDROID_NDK
 
-def draw_drag_selection_handles(window):
-    global touch_handles_enabled
-    if is_android():
-        touch_handles_enabled = True
-    if config.get("mouse_fakes_touch_events"):
-        touch_handles_enabled = True
-    if not touch_handles_enabled:
-        return
-    for w in get_all_active_text_widgets():
-        if not hasattr(w, "parent_window"):
-            continue
-        if w.parent_window != window:
-            continue
-        w.draw_touch_selection_handles_if_any(
-            w.parent_window.width, w.parent_window.height)
-
+cached_is_android = None
+cpdef is_android():
+    global cached_is_android
+    if cached_is_android != None:
+        return cached_is_android
+    initialize_sdl()
+    try:
+        import sdl2 as sdl
+        cached_is_android = (sdl.SDL_GetPlatform().decode(
+            "utf-8", "replace").lower() == "android")
+    except ImportError:
+        # No SDL2. So we need to rely on other clues.
+        cached_is_android = (COMPILED_WITH_ANDROID_NDK == 1)
+    return cached_is_android
+ 

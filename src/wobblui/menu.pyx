@@ -20,19 +20,22 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-import sdl2 as sdl
+import html
+import math
 import time
 import weakref
 
 from wobblui.color cimport Color
 from wobblui.event cimport Event
 from wobblui.gfx cimport draw_rectangle
+from wobblui.image cimport RenderImage
 from wobblui.keyboard import register_global_shortcut,\
     shortcut_to_text
 from wobblui.list cimport ListBase, ListEntry
-from wobblui.timer import schedule
+from wobblui.timer cimport schedule
 from wobblui.widget cimport Widget
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
 
 cdef class MenuSeparator(ListEntry):
     cdef double padding_horizontal, padding_vertical
@@ -93,16 +96,23 @@ cdef class MenuSeparator(ListEntry):
         self._height = round(
             self.padding_vertical * dpi_scale) * 2 +\
             max(1, round(self.line_thickness * dpi_scale))
-    
+
 
 cdef class Menu(ListBase):
     cdef public object callback_funcs, defocus_on_trigger
 
-    def __init__(self, unfocus_on_trigger=True,
-            fixed_one_line_entries=False):
-        super().__init__(render_as_menu=True,
+    def __init__(self,
+            unfocus_on_trigger=True,
+            fixed_one_line_entries=False,
+            _internal_top_extra_drawing_space=0,
+            ):
+        super().__init__(
+            render_as_menu=True,
             triggered_by_single_click=True,
-            fixed_one_line_entries=fixed_one_line_entries)
+            fixed_one_line_entries=fixed_one_line_entries,
+            _internal_top_extra_drawing_space=\
+                _internal_top_extra_drawing_space,
+            )
         self.callback_funcs = []
         self.defocus_on_trigger = unfocus_on_trigger
 
@@ -129,17 +139,37 @@ cdef class Menu(ListBase):
         self.needs_relayout = True
 
     def add(self, text, func_callback=None,
-            global_shortcut_func=None,
-            global_shortcut=[]):
+            shortcut=[],
+            independent_global_shortcut_func=None,
+            announce_independent_global_shortcut=[]):
+        self.add_html(
+            html.escape(text),
+            func_callback=func_callback, shortcut=shortcut,
+            independent_global_shortcut_func=\
+                independent_global_shortcut_func,
+            announce_independent_global_shortcut=\
+                announce_independent_global_shortcut
+        )
+
+    def add_html(self, entry_html, func_callback=None,
+            shortcut=[],
+            independent_global_shortcut_func=None,
+            announce_independent_global_shortcut=[]):
         side_text = None
-        if len(global_shortcut) > 0:
-            side_text = shortcut_to_text(global_shortcut)
-        super().add(text, side_text=side_text)
+        if len(announce_independent_global_shortcut) > 0:
+            side_text = shortcut_to_text(announce_independent_global_shortcut)
+        elif len(shortcut) > 0:
+            side_text = shortcut_to_text(shortcut)
+        super().add_html(entry_html, side_html=(
+            html.escape(side_text) if side_text is not None else None
+        ))
         self.callback_funcs.append(func_callback)
-        if len(global_shortcut) > 0 and \
-                global_shortcut_func != None:
-            register_global_shortcut(global_shortcut,
-                global_shortcut_func, self)
+        if len(announce_independent_global_shortcut) > 0 and \
+                independent_global_shortcut_func != None:
+            register_global_shortcut(
+                announce_independent_global_shortcut,
+                independent_global_shortcut_func, self
+            )
 
     def on_keydown(self, virtual_key, physical_key, modifiers):
         if virtual_key == "escape":
@@ -147,11 +177,36 @@ cdef class Menu(ListBase):
             return True
         return super().on_keydown(virtual_key, physical_key, modifiers)
 
+
 class ContainerWithSlidingMenu(Widget):
-    def __init__(self):
-        super().__init__(can_get_focus=False,
-            is_container=True)
-        self.menu = Menu()
+    def __init__(self,
+            top_image=None,
+            top_image_width=300,
+            top_image_minimum_padding=5,
+            extra_top_space=0):
+        super().__init__(
+            can_get_focus=False,
+            is_container=True,
+            )
+        if not isinstance(top_image, RenderImage):
+            self.top_image = RenderImage(top_image)
+        else:
+            self.top_image = top_image
+        self.top_image_minimum_padding = top_image_minimum_padding
+        top_image_size_scaler = (
+            float(max(0, top_image_width)) /
+            max(1, self.top_image.render_size[0])
+        )
+        self.top_image_reference_width = top_image_width
+        self.extra_top_space = extra_top_space
+        self.menu = Menu(
+            _internal_top_extra_drawing_space=(
+                self.extra_top_space +
+                math.ceil(top_image_size_scaler *
+                          self.top_image.render_size[1]) +
+                round(self.top_image_minimum_padding) * 2
+            )
+        )
         self.menu_slid_out_x = 0
         self.is_opened = False
         self.continue_infinite_scroll_when_unfocused = True
@@ -280,6 +335,8 @@ class ContainerWithSlidingMenu(Widget):
         self.needs_redraw = True
 
     def on_redraw(self):
+        import sdl2 as sdl
+
         # Draw actual children behind menu, if any:
         if len(self._children) >= 2:
             for child in self._children[1:]:
@@ -287,6 +344,7 @@ class ContainerWithSlidingMenu(Widget):
                 sdl.SDL_SetRenderDrawColor(self.renderer,
                     255, 255, 255, 255)
                 child.draw(child.x, child.y)
+
         # Draw menu:
         if len(self._children) >= 1:
             child = self._children[0]
@@ -294,6 +352,39 @@ class ContainerWithSlidingMenu(Widget):
             sdl.SDL_SetRenderDrawColor(self.renderer,
                 255, 255, 255, 255)
             child.draw(child.x, child.y)
+
+        # Draw top image:
+        if self.top_image is not None:
+            scroll_y_offset = 0
+            menu_width = self.width
+            if len(self._children) > 0:
+                scroll_y_offset = self._children[0].scroll_y_offset
+                menu_width = self._children[0].width
+            top_image_scaler = min(
+                (menu_width -
+                 round(self.top_image_minimum_padding) * 2) /
+                max(1, self.top_image.render_size[0]),
+                float(max(0, self.top_image_reference_width)) /
+                max(1, self.top_image.render_size[0])
+            )
+            offset_x = math.floor(
+                ((menu_width -
+                  round(self.top_image_minimum_padding) * 2) -
+                 self.top_image.render_size[0] *
+                 top_image_scaler) / 2.0
+            ) + round(self.top_image_minimum_padding)
+            if len(self._children) > 0:
+                offset_x += -self._children[0].width +\
+                    self.menu_slid_out_x
+            self.top_image.draw(
+                self.renderer,
+                offset_x,
+                -scroll_y_offset + round(self.top_image_minimum_padding),
+                max(1, self.top_image.render_size[0] *
+                       top_image_scaler),
+                max(1, self.top_image.render_size[1] *
+                       top_image_scaler)
+            )
 
     def on_relayout(self):
         self.menu.width = min(int(
@@ -313,14 +404,16 @@ class ContainerWithSlidingMenu(Widget):
             self._children[1].height = self.height
 
     def add(self, obj_or_text, func_callback=None,
-            global_shortcut_func=None,
-            global_shortcut=[]):
+            shortcut=[],
+            independent_global_shortcut_func=None,
+            announce_independent_global_shortcut=[]):
         if not isinstance(obj_or_text, str) and \
                 func_callback != None or \
-                len(global_shortcut) > 0:
+                len(announce_independent_global_shortcut) > 0 or \
+                len(shortcut) > 0:
             raise ValueError("the provided value is not a string " +
                 "and therefore can't be added as menu entry, " +
-                "but function callback and/or global shortcut " +
+                "but function callback and/or a shortcut " +
                 "for a menu entry were specified") 
         if not isinstance(obj_or_text, str):
             if len(self._children) >= 2:
@@ -328,10 +421,9 @@ class ContainerWithSlidingMenu(Widget):
             super().add(obj_or_text)
         else:
             self.menu.add(obj_or_text, func_callback=func_callback,
-                global_shortcut_func=global_shortcut_func,
-                global_shortcut=global_shortcut)
+                independent_global_shortcut_func=\
+                    independent_global_shortcut_func,
+                announce_independent_global_shortcut=\
+                    announce_independent_global_shortcut)
         self.needs_relayout = True
         self.needs_redraw = True
-
-    
-

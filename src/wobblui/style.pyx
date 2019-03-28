@@ -20,10 +20,9 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-import sdl2 as sdl
-
-class AppStyle(object):
+class AppStyle:
     def __init__(self):
+        import sdl2 as sdl
         self._dpi_scale_base = 1.0
         self._dpi_scale = 1.0
         self.is_android = (sdl.SDL_GetPlatform().decode(
@@ -120,12 +119,13 @@ class AppStyleBright(AppStyle):
         self.set("button_bg", "#e3e2e2")
         self.set("button_bg_hover", "#dad9d9")
         self.set("button_border", "#e3c2c2")
-        self.set("topbar_bg", "#e6e0f0")
+        self.set("topbar_bg", "#e6e0e3")
+        self.set("topbar_border", "#e8cecd")
         self.set("widget_disabled_bg", "#aaa")
         self.set("inner_widget_bg", "#f0f0f0")
-        self.set("inner_widget_alternating_bg", "#e6e6ef")
+        self.set("inner_widget_alternating_bg", "#efe6e6")
         self.set("inner_widget_bg_hover", "#e0e0e0")
-        self.set("inner_widget_alternating_bg_hover", "#c6c6cf")
+        self.set("inner_widget_alternating_bg_hover", "#cfc6c6")
         self.set("widget_text", "#222121")
         self.set("widget_text_hover", "#424141")
         self.set("widget_text_saturated", "#000")
@@ -135,12 +135,13 @@ class AppStyleBright(AppStyle):
         self.set("hover_bg", "#4af")
         self.set("focus_border", "#c7a")
         self.set("selected_text", "#000")
-        self.set("scrollbar_knob_fg", "#ea3")
+        self.set("scrollbar_knob_fg", "#ee8888")
         self.set("touch_selection_drag_handles", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
         self.set("topbar_text_size", 23)
- 
+        self.set("modal_dialog_bg", "#ccc")
+
 class AppStyleDark(AppStyle):
     def __init__(self):
         super().__init__()
@@ -148,8 +149,9 @@ class AppStyleDark(AppStyle):
         self.set("button_bg", "#444")
         self.set("button_bg_hover", "#353535")
         self.set("button_border", "#555")
-        self.set("topbar_bg", "#333333")
-        self.set("widget_disabled_bg", "#333")
+        self.set("topbar_bg", "#232222")
+        self.set("topbar_border", "#333")
+        self.set("widget_disabled_bg", "#343333")
         self.set("inner_widget_bg", "#111")
         self.set("inner_widget_alternating_bg", "#1f1e1e")
         self.set("inner_widget_bg_hover", "#222020")
@@ -157,14 +159,15 @@ class AppStyleDark(AppStyle):
         self.set("widget_text", "#e0e0e0")
         self.set("widget_text_hover", "#b0b0b0")
         self.set("widget_text_saturated", "#fff")
-        self.set("widget_disabled_text", "#665")
+        self.set("widget_disabled_text", "#888088")
         self.set("border", "#000")
         self.set("selected_bg", "#7ae")
         self.set("hover_bg", "#4af")
         self.set("focus_border", "#a9b")
         self.set("selected_text", "#112")
-        self.set("scrollbar_knob_fg", "#ea3")
+        self.set("scrollbar_knob_fg", "#cc9099")
         self.set("touch_selection_drag_handles", "#ea3")
         self.set("widget_font_family", "Tex Gyre Heros")
         self.set("widget_text_size", 18)
         self.set("topbar_text_size", 23)
+        self.set("modal_dialog_bg", "#000")

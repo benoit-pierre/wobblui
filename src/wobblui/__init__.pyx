@@ -23,12 +23,18 @@ freely, subject to the following restrictions:
 import copy
 import ctypes
 import math
-import sdl2 as sdl
 import sys
 import threading
 import time
 import traceback
 
+
+from wobblui.dragselection cimport (
+    reposition_hover_menu,
+    touch_handles_take_touch_start,
+    touch_handles_take_touch_move,
+    touch_handles_take_touch_end,
+)
 cimport wobblui.font.sdlfont as sdlfont
 from wobblui.keyboard import internal_update_text_events,\
     get_active_text_widget, get_modifiers, \
@@ -41,23 +47,23 @@ from wobblui.mouse import cursors_seen_during_mousemove,\
 from wobblui.osinfo import is_android
 from wobblui.perf cimport CPerf as Perf
 from wobblui.sdlinit cimport sdl_version
-from wobblui.timer import internal_trigger_check,\
+from wobblui.timer cimport internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
-from wobblui.widgetman import all_widgets, all_windows
+from wobblui.widgetman cimport get_all_widgets, get_all_windows
 from wobblui.window cimport get_focused_window,\
     get_window_by_sdl_id
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
+
 cdef long long sdl_touch_mouseid = 4294967295
-if hasattr(sdl, "SDL_TOUCH_MOUSEID"):
-    sdl_touch_mouseid = sdl.SDL_TOUCH_MOUSEID
 
 cdef int MULTITOUCH_DEBUG = 0
 
+
 cdef redraw_windows(int layout_only=False):
     cdef int i
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or w.hidden or w.is_closed:
             continue
@@ -65,6 +71,8 @@ cdef redraw_windows(int layout_only=False):
             relayout_perf = Perf.start("redraw_windows_relayout")
             w.update_to_real_sdlw_size()
             w.do_scheduled_dpi_scale_update()
+            if w.needs_relayout or w.needs_redraw:
+                reposition_hover_menu(w)
             i = 0
             while i < 20:
                 if not w.relayout_if_necessary():
@@ -76,7 +84,7 @@ cdef redraw_windows(int layout_only=False):
                     "relayout() loop !!! affected window: " +
                     str(w) + ", all widgets that need relayouting: " +
                     str([widget for widget in [
-                        wi_ref() for wi_ref in all_widgets] if \
+                        wi_ref() for wi_ref in get_all_widgets()] if \
                         widget != None and widget.needs_relayout and \
                         ((hasattr(widget, "parent_window") and
                         widget.parent_window) == w or widget == w)]))
@@ -87,7 +95,9 @@ cdef redraw_windows(int layout_only=False):
             logerror("*** ERROR HANDLING WINDOW ***")
             logerror(str(traceback.format_exc()))
 
+
 def sdl_vkey_map(int key):
+    import sdl2 as sdl
     if key >= sdl.SDLK_0 and key <= sdl.SDLK_9:
         return chr(ord("0") + (key - sdl.SDLK_0))
     elif key >= sdl.SDLK_a and key <= sdl.SDLK_z:
@@ -127,7 +137,9 @@ def sdl_vkey_map(int key):
         return "pageup"
     return str("keycode-" + str(key))
 
+
 def sdl_key_map(int key):
+    import sdl2 as sdl
     if key >= sdl.SDL_SCANCODE_0 and key <= sdl.SDL_SCANCODE_9:
         return chr(ord("0") + (key - sdl.SDL_SCANCODE_0))
     elif key >= sdl.SDL_SCANCODE_A and key <= sdl.SDL_SCANCODE_Z:
@@ -159,6 +171,7 @@ def sdl_key_map(int key):
         return "pageup"
     return str("scancode-" + str(key))
 
+
 stuck_thread = None
 last_alive_time = None
 def stuck_check():
@@ -178,14 +191,21 @@ def stuck_check():
             # Make sure we don't fire this again right away:
             last_alive_time = time.monotonic() + 30.0
 
-def event_loop(app_cleanup_callback=None):
-    global stuck_thread, last_alive_time
+
+cdef int announced_sleepy_state = False
+
+
+cpdef event_loop(app_cleanup_callback=None):
+    global stuck_thread, last_alive_time, announced_sleepy_state
+
+    cdef int had_jobs, event_loop_ms, font_no_sleep_counter
+    cdef double sleep_amount
+
     if stuck_thread is None:
         stuck_thread = threading.Thread(target=stuck_check, daemon=True)
         stuck_thread.start()
     last_alive_time = time.monotonic()
-    cdef int had_jobs
-    cdef int event_loop_ms = 10
+    event_loop_ms = 10
     try:
         font_no_sleep_counter = 0
         while True:
@@ -210,11 +230,30 @@ def event_loop(app_cleanup_callback=None):
                         " - too large??")
                 time.sleep(sleep_amount)
 
+            # Announce sleepy state so it can be debugged:
+            if sleep_amount > 0.45 and not announced_sleepy_state:
+                announced_sleepy_state = True
+                logdebug("core loop: SLEEPY -> " +
+                         "entered >450ms wait sleepy state.")
+            elif sleep_amount < 0.2 and announced_sleepy_state:
+                announced_sleepy_state = False
+                logdebug("core loop: NOT SLEEPY -> " +
+                         "entered <200ms responsive state.")
+            if config.get("debug_core_event_loop") is True:
+                logdebug("event_loop(): state: " +
+                    str((
+                        "sleep_amount", sleep_amount,
+                        "had_jobs", had_jobs,
+                        "max_sleep", max_sleep,
+                        "font_no_sleep_counter", font_no_sleep_counter
+                    ))
+                )
+
             # Process events:
             result = do_event_processing(ui_active=True)
             if result == "appquit":
                 try:
-                    for w_ref in all_windows:
+                    for w_ref in get_all_windows():
                         w = w_ref()
                         if w is not None and not w.is_closed:
                             w.close()
@@ -238,20 +277,26 @@ def event_loop(app_cleanup_callback=None):
                 max_sleep = maximum_sleep_time()
                 if event_loop_ms < 500:
                     event_loop_ms = min(
-                        event_loop_ms + 1,
+                        event_loop_ms + 3,
                         500)
+                    if event_loop_ms > 150:
+                        # We hit this code path in higher intervals/slower,
+                        # so increase interval even faster:
+                        event_loop_ms = min(
+                            event_loop_ms + 10,
+                            500)
     except (SystemExit, KeyboardInterrupt) as e:
         loginfo("APP SHUTDOWN INITIATED. CLEANING UP...")
         
         # Close windows quickly to make it feel fast:
         try:
-            for w_ref in all_windows:
+            for w_ref in get_all_windows():
                 w = w_ref()
                 if w is not None and not w.is_closed:
                     w.close()
-        except Exception as e:
+        except Exception as inner_e:
             print("Unexpected window close exception: " +
-                str(e)
+                str(inner_e)
             )
 
         sdlfont.stop_queue_for_process_shutdown()
@@ -266,7 +311,9 @@ def event_loop(app_cleanup_callback=None):
         time.sleep(0.05)
         raise e
 
+
 def sdl_event_name(event):
+    import sdl2 as sdl
     cdef int ev_no = event.type
     if ev_no == sdl.SDL_MOUSEBUTTONDOWN:
         return "mousebuttondown"
@@ -309,7 +356,9 @@ def sdl_event_name(event):
                 str(event.window.event)
     return "unknown-" + str(ev_no)
 
+
 def debug_describe_event(event):
+    import sdl2 as sdl
     cdef str t = sdl_event_name(event)
     if event.type == sdl.SDL_MOUSEBUTTONDOWN or \
             event.type == sdl.SDL_MOUSEBUTTONUP:
@@ -327,14 +376,17 @@ def debug_describe_event(event):
             ",y:" + str(event.wheel.y) + ")"
     return t
 
+
 def do_event_processing_if_on_main_thread(ui_active=True):
     if threading.current_thread() != threading.main_thread():
         return
     do_event_processing(ui_active=ui_active)
 
+
 _last_clean_shortcuts_ts = None
 def do_event_processing(int ui_active=True):
     global _last_clean_shortcuts_ts, last_alive_time
+    import sdl2 as sdl
     if threading.current_thread() != threading.main_thread():
         raise RuntimeError("UI events can't be processed " +
             "from another thread")
@@ -343,6 +395,7 @@ def do_event_processing(int ui_active=True):
         _last_clean_shortcuts_ts = time.monotonic()
     if _last_clean_shortcuts_ts + 1.0 < time.monotonic():
         clean_global_shortcuts()
+        _last_clean_shortcuts_ts = time.monotonic()
 
     if config.get("debug_core_event_loop") is True:
         logdebug("do_event_processing(): fetching SDL " +
@@ -435,11 +488,15 @@ def do_event_processing(int ui_active=True):
             "at " + str(time.monotonic()))
     return True
 
-def _process_mouse_click_event(event,
-        force_no_widget_can_receive_new_input=False):
+
+def _process_mouse_click_event(
+        event,
+        force_no_widget_can_receive_new_input=False
+        ):
     global capture_enabled, touch_pressed, \
         mouse_ids_button_ids_pressed,\
         multitouch_gesutre_active
+    import sdl2 as sdl
     _debug_mouse_fakes_touch = (
         config.get("mouse_fakes_touch_events") is True)
 
@@ -487,8 +544,11 @@ def _process_mouse_click_event(event,
                 return
             touch_pressed = True
             Perf.chain("mouseevent", "callback_prep")
-            w.touchstart(
-                int(event.button.x), int(event.button.y))
+            if not touch_handles_take_touch_start(
+                    w, int(event.button.x), int(event.button.y)
+                    ):
+                w.touchstart(
+                    int(event.button.x), int(event.button.y))
         else:
             mouse_ids_button_ids_pressed.add(
                 (int(event.button.which),
@@ -499,7 +559,7 @@ def _process_mouse_click_event(event,
                 int(event.button.x), int(event.button.y),
                 internal_data=[int(event.button.x),
                 int(event.button.y)])
-            Perf.chain('mouseevent', "callback")
+        Perf.chain('mouseevent', "callback")
         if not capture_enabled:
             if config.get("capture_debug"):
                 logdebug("wobblui.py: debug: mouse capture engage")
@@ -515,10 +575,13 @@ def _process_mouse_click_event(event,
             if multitouch_gesture_active:
                 return
             Perf.chain("mouseevent", "callback_prep")
-            w.touchend(
-                int(event.button.x), int(event.button.y),
-                internal_data=[int(event.button.x),
-                int(event.button.y)])
+            if not touch_handles_take_touch_end(
+                    w, int(event.button.x), int(event.button.y)
+                    ):
+                w.touchend(
+                    int(event.button.x), int(event.button.y),
+                    internal_data=[int(event.button.x),
+                    int(event.button.y)])
             Perf.chain("mouseevent", "callback")
         else:
             if force_no_widget_can_receive_new_input and \
@@ -548,6 +611,7 @@ def _process_mouse_click_event(event,
 def _process_key_event(event,
         int trigger_shortcuts=True,
         int force_no_widget_can_receive_new_input=False):
+    import sdl2 as sdl
     virtual_key = sdl_vkey_map(event.key.keysym.sym)
     physical_key = sdl_key_map(event.key.keysym.scancode)
     shift = ((event.key.keysym.mod & sdl.KMOD_RSHIFT) != 0) or \
@@ -588,6 +652,7 @@ def _process_key_event(event,
         trigger_exit_callback()
 
 def loading_screen_fix():
+    import sdl2 as sdl
     if sdl.SDL_GetPlatform().decode(
             "utf-8", "replace").lower() == "android":
         from android.loadingscreen import hide_loading_screen
@@ -605,7 +670,7 @@ active_touch_device = None
 
 def finger_coordinates_to_window_coordinates(
         touch_device_id, finger_x, finger_y):
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w is None or not hasattr(w, "_sdl_window") or \
                 w._sdl_window is None:
@@ -623,6 +688,7 @@ def update_multitouch():
         last_single_finger_sdl_windowid
     global multitouch_gesture_active, active_touch_device, \
         last_multitouch_finger_coordinates
+    import sdl2 as sdl
     if active_touch_device is None:
         multitouch_gesture_active = False
         return
@@ -647,7 +713,7 @@ def update_multitouch():
                 touch_pressed = False
         # End multitouch gesture:
         last_multitouch_finger_coordinates = None
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w != None:
                 if w.multitouch_gesture_reported_in_progress:
@@ -729,10 +795,13 @@ def update_multitouch():
         last_single_finger_xpos = main_finger_x
         last_single_finger_ypos = main_finger_y
         w = get_window_by_sdl_id(last_single_finger_sdl_windowid)
-        w.touchmove(float(main_finger_x),
-                    float(main_finger_y),
-                    internal_data=[float(main_finger_x),
-                        float(main_finger_y)])
+        if not touch_handles_take_touch_move(
+                w, float(main_finger_x), float(main_finger_y)
+                ):
+            w.touchmove(float(main_finger_x),
+                        float(main_finger_y),
+                        internal_data=[float(main_finger_x),
+                            float(main_finger_y)])
 
     # If no finger moved from last time, don't report anything:
     if last_multitouch_finger_coordinates == finger_positions:
@@ -747,7 +816,7 @@ def update_multitouch():
     if MULTITOUCH_DEBUG:
         logdebug("multitouch reporting loop with" +
             " screen index: " + str(touch_event_screen_index))
-    for w_ref in all_widgets:
+    for w_ref in get_all_widgets():
         w = w_ref()
         if w == None or (hasattr(w, "parent_window") and
                 (w.parent_window is None or
@@ -784,6 +853,7 @@ def _handle_event(event):
         last_single_finger_ypos, multitouch_gesture_active,\
         last_single_finger_sdl_windowid
     global active_touch_device
+    import sdl2 as sdl
     cdef int x, y
     cdef str text
     cdef int _debug_mouse_fakes_touch = (
@@ -844,10 +914,13 @@ def _handle_event(event):
                         event.button.which == sdl_touch_mouseid:
                     # Don't handle this, multitouch update will do so.
                     return
-                w.touchmove(float(event.motion.x),
-                    float(event.motion.y),
-                    internal_data=[float(event.motion.x),
-                        float(event.motion.y)])
+                if not touch_handles_take_touch_move(
+                        w, float(event.motion.x), float(event.motion.y)
+                        ):
+                    w.touchmove(float(event.motion.x),
+                        float(event.motion.y),
+                        internal_data=[float(event.motion.x),
+                            float(event.motion.y)])
         else:
             reset_cursors_seen_during_mousemove()
             w.mousemove(int(event.motion.which),
@@ -925,7 +998,7 @@ def _handle_event(event):
                     w.unfocus()
                 w.handle_sdlw_close()
             app_is_gone = True
-            for w_ref in all_windows:
+            for w_ref in get_all_windows():
                 w = w_ref()
                 if w != None and not w.is_closed and \
                         w.keep_application_running:
@@ -957,7 +1030,7 @@ def _handle_event(event):
                 "recreate_renderer_when_in_background")
             if dump_renderers:
                 logdebug("ANDROID IN BACKGROUND. DUMP ALL WINDOW RENDERERS.")
-                for w_ref in all_windows:
+                for w_ref in get_all_windows():
                     w = w_ref()
                     if w != None:
                         if w.focused:
@@ -968,7 +1041,7 @@ def _handle_event(event):
                     "PER CONFIG OPTION. (not recommended)")
     elif (event.type == sdl.SDL_APP_WILLENTERFOREGROUND):
         logdebug("APP RESUME EVENT")
-        for w_ref in all_windows:
+        for w_ref in get_all_windows():
             w = w_ref()
             if w != None and not w.is_closed:
                 w.internal_app_reopen()

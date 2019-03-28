@@ -22,8 +22,6 @@ freely, subject to the following restrictions:
 
 import ctypes
 import functools
-import sdl2 as sdl
-import sdl2.sdlttf as sdlttf
 import threading
 import time
 
@@ -42,7 +40,7 @@ render_size_cache = KeyValueCache(size=500)
 rendered_words_cache = KeyValueCache(size=50,
     destroy_func=lambda x: x._force_unload())
 
-_reuse_draw_rect = sdl.SDL_Rect()
+
 cdef class Font(object):
     cdef public int italic, bold
     cdef public double px_size
@@ -102,13 +100,14 @@ cdef class Font(object):
     def draw_at(self, renderer, str text, int x, int y, color=Color.black()):
         if len(text) == 0:
             return
-        global _reuse_draw_rect
         tex = self.get_cached_rendered_texture(renderer, text)
         tex.set_color(color)
         tex.draw(x, y)
 
     def get_cached_rendered_texture(self, renderer, str text):
         global rendered_words_cache
+        import sdl2 as sdl
+        import sdl2.sdlttf as sdlttf
         cdef str key = str((self.font_family, self.italic, self.bold,
             self.px_size, str(ctypes.addressof(
                 renderer.contents)))) + "_" + text
@@ -233,6 +232,7 @@ cdef class Font(object):
         self.mutex.release()
         return result
 
+
 cdef class FontManager(object):
     """ MEMBERS ARE IN font/manager.pxd """
 
@@ -245,6 +245,7 @@ cdef class FontManager(object):
         self.avg_letter_width_cache = dict()
         self.cache_size = 20
         self.mutex = threading.Lock()
+        self.next_limit_cache_counter = 0
 
     def _limit_cache(self):
         if len(self.font_by_sizedpistyle_cache.values()) <= \
@@ -318,24 +319,22 @@ cdef class FontManager(object):
         actual_px_size = ((display_dpi / 96.0) *
             (unified_draw_scale /
             float(DRAW_SCALE_GRANULARITY_FACTOR))) * px_size
+        key = (unified_draw_scale, display_dpi, style)
 
-        self.font_by_sizedpistyle_cache_times[
-            (unified_draw_scale, display_dpi, style)] =\
+        self.font_by_sizedpistyle_cache_times[key] =\
             time.monotonic()
-        if not (unified_draw_scale, display_dpi,
-                style) in \
-                self.font_by_sizedpistyle_cache:
+        if key not in self.font_by_sizedpistyle_cache:
             f = Font(name, actual_px_size,
                 italic=italic,
                 bold=bold)
             f.ensure_availability()
-            self.font_by_sizedpistyle_cache[(
-                unified_draw_scale, display_dpi, style
-                )] = f
-            self._limit_cache()
-        return self.font_by_sizedpistyle_cache[(
-            unified_draw_scale, display_dpi,
-            style)]
+            self.font_by_sizedpistyle_cache[key] = f
+            self.next_limit_cache_counter += 1
+            if self.next_limit_cache_counter > 10:
+                self.next_limit_cache_counter = 0
+                self._limit_cache()
+        return self.font_by_sizedpistyle_cache[key]
+
 
 cdef object font_manager_singleton = None
 cdef FontManager c_font_manager():
@@ -344,6 +343,6 @@ cdef FontManager c_font_manager():
         font_manager_singleton = FontManager()
     return font_manager_singleton
 
+
 def font_manager():
     return c_font_manager()
-

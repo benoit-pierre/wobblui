@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -20,16 +21,23 @@ freely, subject to the following restrictions:
 '''
 
 import html
-import sdl2 as sdl
 
 from wobblui.clipboard import set_clipboard_text,\
     get_clipboard_text
-from wobblui.color import Color
-from wobblui.gfx import draw_rectangle
-from wobblui.richtext import RichText
-from wobblui.widget import Widget
+from wobblui.color cimport Color
+from wobblui.gfx cimport draw_rectangle
+from wobblui.richtext cimport RichText
+from wobblui.widget cimport Widget
 
-class TextEditBase(Widget):
+
+cdef class TextEditBase(Widget):
+    cdef int minimum_lines_height, _layout_width, _layout_height
+    cdef public int selection_length, cursor_offset, multiline
+    cdef str html, _text, hide_with_character
+    cdef int draw_touch_handles_without_selection
+    cdef object _user_set_color, text_object
+    cdef int scroll_x_offset, scroll_y_offset
+
     def __init__(self, text="", color=None, hide_with_character=None,
             is_multiline=False, minimum_lines_height=1):
         super().__init__(can_get_focus=True,
@@ -38,10 +46,16 @@ class TextEditBase(Widget):
         self.hide_with_character = hide_with_character
         self.type = "textentry"
         self.html = ""
-        self.text = ""
+        self.scroll_x_offset = 0
+        self.scroll_y_offset = 0
+        self.text_object = None
+        self._text = ""
+        self._layout_width = 0
+        self._layout_height = 0
         self.multiline = is_multiline
         self.padding_base_size = 5.0
         self.cursor_offset = 0
+        self.draw_touch_handles_without_selection = False
         self.selection_length = 0
         self.update_with_style()
         if text.find("<") >= 0 and (text.find("/>") > 0 or
@@ -51,6 +65,17 @@ class TextEditBase(Widget):
         else:
             self.set_text(text)
         self._user_set_color = color
+
+    @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, v):
+        self._text = v
+
+    def can_cutcopy(self):
+        return (self.hide_with_character is None)
 
     @property
     def padding(self):
@@ -69,9 +94,20 @@ class TextEditBase(Widget):
             draw_scale=self.dpi_scale)
         self.text_obj.set_text("This is a test text")
         (w, h) = self.text_obj.layout()
+        self._layout_width = 0
         self.default_width = w * 2
         self.text_obj.set_html(self.html)
         self.needs_relayout = True
+
+    def get_text_height(self):
+        if self.needs_relayout:
+            self.relayout()
+        return self._layout_height
+
+    def get_text_width(self):
+        if self.needs_relayout:
+            self.relayout()
+        return self._layout_width
 
     def get_default_cursor(self):
         return "text"
@@ -148,17 +184,29 @@ class TextEditBase(Widget):
         super().update_window()
         self.needs_redraw = True
 
-    def mouse_offset_to_cursor_offset(self, x, y):
+    def mouse_offset_to_cursor_offset(self, int x, int y):
+        cdef int is_last_line, first_of_line, c, x1, x2, h
+        x += self.scroll_x_offset
+        y += self.scroll_y_offset
         first_of_line = True
         c = 0
         while c < len(self.text):
             # Get coordinates around this character:
             (x1, y1, h) = self.text_obj.character_index_to_offset(c)
             (x2, y2, h) = self.text_obj.character_index_to_offset(c + 1)
+            x1 = round(x1)
+            x2 = round(x2)
+            if x1 == x2:
+                x2 += 1  # make sure to differentiate them
+            is_last_line = False
             if y1 + h * 1.2 < y:
-                # Skip if in some above, irrelevant line
-                c += 1
-                continue
+                # Skip if we're in some above, irrelevant line...
+                if y1 + h * 1.1 >= self.padding + self.get_text_height():
+                    # ... unless this is the last line.
+                    is_last_line = True
+                else:
+                    c += 1
+                    continue
 
             # See if this is the beginning of the line:
             first_of_line = False
@@ -187,17 +235,18 @@ class TextEditBase(Widget):
             # See if we want to place cursor before or after character:
             x1 += self.padding
             x2 += self.padding
-            if x >= x1 and x < x2 and (y >= y1 and y <= y1 + h):
-                if abs(x1 - x) < abs(x2 - x):
-                    # Left-side of letter
+            if (y >= y1 and y <= y1 + h) or is_last_line:
+                if x >= x1 and x <= x2:
+                    if abs(x1 - x) < abs(x2 - x):
+                        # Left-side of letter
+                        return c
+                    else:
+                        # Right side of letter
+                        return c + 1
+                if x < x1 and first_of_line:
                     return c
-                else:
-                    # Right side of letter
+                if x > x2 and last_of_line:
                     return c + 1
-            if x < x1 and first_of_line:
-                return c
-            if x > x2 and last_of_line:
-                return c + 1
             c += 1
         return 0
 
@@ -219,22 +268,18 @@ class TextEditBase(Widget):
                 not self._mouse_dragging:
             return
         start_pos = self.mouse_offset_to_cursor_offset(
-            self._mouse_drag_x, self._mouse_drag_y)
-        end_pos = self.mouse_offset_to_cursor_offset(
-            x, y)
+            self._mouse_drag_x, self._mouse_drag_y
+        )
+        end_pos = self.mouse_offset_to_cursor_offset(x, y)
         if self._known_mouse_pos == end_pos:
             return
         self._known_mouse_pos = end_pos
-        if self.cursor_offset != start_pos:
-            self.cursor_offset = start_pos
+        if self.cursor_offset != end_pos:
+            self.cursor_offset = end_pos
             self.needs_redraw = True
-        if self.selection_length != (end_pos - start_pos):
-            self.selection_length = (end_pos - start_pos)
+        if self.selection_length != (start_pos - end_pos):
+            self.selection_length = (start_pos - end_pos)
             self.needs_redraw = True
-
-    def on_mousedown(self, mouse_id, button, x, y):
-        if button == 1:
-            self.start_mouse_drag(x, y)
 
     def on_mouseup(self, mouse_id, button, x, y):
         self.end_mouse_drag(x, y)
@@ -253,6 +298,36 @@ class TextEditBase(Widget):
         if self.selection_length != 0:
             self.del_selection()
         self.insert_at(self.cursor_offset, text)
+        self.scroll_to_cursor()
+        self.draw_touch_handles_without_selection = False
+
+    def scroll_to_cursor(self):
+        cdef int x, y, h
+        if self.cursor_offset is None or \
+                self.cursor_offset < 0:
+            return
+        (x, y, h) = self.text_obj.character_index_to_offset(
+            max(0, self.cursor_offset or 0)
+        )
+        reference_lower_point = y + max(0, round(h) - 2)
+        if x >= self.width - self.padding * 2 + self.scroll_x_offset:
+            excess_x = (x - (
+                self.width - self.padding * 2 + self.scroll_x_offset
+            )) + 1
+            self.scroll_x_offset += round(excess_x)
+        if reference_lower_point >= (self.height - self.padding * 2 +
+                                     self.scroll_y_offset):
+            excess_y = (
+                reference_lower_point -
+                (self.height - self.padding * 2 + self.scroll_y_offset)
+            ) + 1
+            self.scroll_y_offset += round(excess_y)
+        if x <= self.scroll_x_offset:
+            underrun_x = (self.scroll_x_offset - x) + 1
+            self.scroll_x_offset -= round(underrun_x)
+        if y < self.scroll_y_offset:
+            underrun_y = (self.scroll_y_offset - y)
+            self.scroll_y_offset -= round(underrun_y)
 
     def insert_at(self, pos, text):
         text = text.replace("\r\n", "\n").\
@@ -297,29 +372,39 @@ class TextEditBase(Widget):
         self.selection_length = len(self.text)
         self.needs_redraw = True
 
+    def do_copy(self):
+        if self.selection_length > 0:
+            set_clipboard_text(
+                self.text[self.cursor_offset:
+                    self.cursor_offset + self.selection_length])
+        elif self.selection_length < 0:
+            set_clipboard_text(
+                self.text[
+                    self.cursor_offset + self.selection_length:
+                    self.cursor_offset])
+
+    def do_cut(self):
+        self.do_copy()
+        self.del_selection()
+
+    def do_paste(self):
+        insert_text = get_clipboard_text()
+        if len(insert_text) == 0:
+            return
+        self.del_selection()
+        self.insert_at(
+            self.cursor_offset, insert_text)
+
     def on_keydown(self, virtual_key, physical_key, modifiers):
         if "ctrl" in modifiers:
-            if virtual_key == "c" or virtual_key == "x":
-                if self.selection_length > 0:
-                    set_clipboard_text(
-                        self.text[self.cursor_offset:
-                            self.cursor_offset + self.selection_length])
-                elif self.selection_length < 0:
-                    set_clipboard_text(
-                        self.text[
-                            self.cursor_offset + self.selection_length:
-                            self.cursor_offset])
-                if virtual_key == "x" and self.selection_length != 0:
-                    self.del_selection()
+            if virtual_key == "c":
+                self.do_copy()
+            elif virtual_key == "x":
+                self.do_cut()
             elif virtual_key == "a":
                 self.select_all()
             elif virtual_key == "v":
-                insert_text = get_clipboard_text()
-                if len(insert_text) == 0:
-                    return
-                self.del_selection()
-                self.insert_at(
-                    self.cursor_offset, insert_text)
+                self.do_paste()
         elif "shift" in modifiers:
             if virtual_key == "left" or virtual_key == "up":
                 self.cursor_offset = max(0, self.cursor_offset - 1)
@@ -349,11 +434,15 @@ class TextEditBase(Widget):
         elif virtual_key == "left" or virtual_key == "up":
             self.cursor_offset = max(0, self.cursor_offset - 1)
             self.selection_length = 0
+            self.draw_touch_handles_without_selection = False
+            self.scroll_to_cursor()
             self.needs_redraw = True
         elif virtual_key == "right" or virtual_key == "down":
             self.cursor_offset = min(len(self.text),
                 self.cursor_offset + 1)
             self.selection_length = 0
+            self.draw_touch_handles_without_selection = False
+            self.scroll_to_cursor()
             self.needs_redraw = True
 
     def on_mousedown(self, mouse_id, button, mx, my):
@@ -365,11 +454,20 @@ class TextEditBase(Widget):
                 raise RuntimeError("not implemented")
             else:
                 # This is actually a touch long press:
-                self.select_full_word_at_cursor()
+                if mx < self.padding + self.get_text_width():
+                    # This is on the text, so select full word:
+                    self.select_full_word_at_cursor()
+                else:
+                    # This is "past" the text, so do paste selection
+                    # marker without selecting word:
+                    self.move_cursor_to_mouse(mx, my)
+                    self.selection_length = 0
+                    self.draw_touch_handles_without_selection = True
             return
         elif button == 1:
             self.move_cursor_to_mouse(mx, my)
             self.selection_length = 0
+            self.start_mouse_drag(mx, my)
             self.update()
 
     def on_doubleclick(self, mouse_id, button, x, y):
@@ -377,9 +475,10 @@ class TextEditBase(Widget):
         self.select_full_word_at_cursor()
 
     def move_cursor_to_mouse(self, mx, my):
-        self.cursor_offset = max(0, min(len(self.text) - 1,
-            self.mouse_offset_to_cursor_offset(
-                mx, my)))
+        self.cursor_offset = max(0, min(
+            len(self.text),
+            self.mouse_offset_to_cursor_offset(mx, my)
+        ))
 
     def select_full_word_at_cursor(self):
         word_start = max(0, self.cursor_offset)
@@ -396,13 +495,25 @@ class TextEditBase(Widget):
         self.selection_length = (word_end - word_start)
         self.update()
 
+    def current_touch_handle_height(self, first_one):
+        positions = self.get_touch_selection_positions()
+        if positions is None:
+            return 0.0
+        if first_one:
+            return positions[2]
+        else:
+            return positions[5]
+
     def move_touch_selection_handle(self,
-            first_one, target_x, target_y, target_h):
+            first_one, target_x, target_y
+            ):
         if self.selection_length <= 0:
             return None
+        offset_y = round(self.current_touch_handle_height(first_one) * 0.5)
         if first_one:
             new_pos = self.mouse_offset_to_cursor_offset(
-                x, y)
+                target_x, target_y + offset_y
+            )
             if new_pos >= 0:
                 move_diff = (new_pos - self.cursor_offset)
                 self.cursor_offset += move_diff
@@ -410,7 +521,8 @@ class TextEditBase(Widget):
                     self.selection_length - move_diff
         else:
             new_pos = self.mouse_offset_to_cursor_offset(
-                x, y)
+                target_x, target_y + offset_y
+            )
             if new_pos >= 0:
                 move_diff = (new_pos - (self.cursor_offset
                     + self.selection_length))
@@ -419,7 +531,8 @@ class TextEditBase(Widget):
             self.selection_length = 1
 
     def get_touch_selection_positions(self):
-        if self.selection_length <= 0:
+        if self.selection_length <= 0 and \
+                not self.draw_touch_handles_without_selection:
             return None
         (x1, y1, h1) = self.text_obj.character_index_to_offset(
             max(0, self.cursor_offset or 0))
@@ -468,7 +581,8 @@ class TextEditBase(Widget):
             if self.style != None and self.style.has("selected_bg"):
                 c = Color(self.style.get("selected_bg"))
             draw_rectangle(self.renderer,
-                x1 + self.padding, y1 + self.padding,
+                x1 + self.padding - self.scroll_x_offset,
+                y1 + self.padding - self.scroll_y_offset,
                 max(1, x2 - x1),
                 max(1, max(h1, h2)),
                 color=c)
@@ -476,8 +590,8 @@ class TextEditBase(Widget):
         # Draw text:
         for fragment in self.text_obj.fragments:
             fragment.draw(self.renderer,
-                fragment.x + self.padding,
-                fragment.y + self.padding,
+                fragment.x + self.padding - self.scroll_x_offset,
+                fragment.y + self.padding - self.scroll_y_offset,
                 color=self.color)
 
         # Redraw padding area (in case text is clipped
@@ -494,8 +608,9 @@ class TextEditBase(Widget):
         (x, y, h) = self.text_obj.character_index_to_offset(
             max(0, self.cursor_offset or 0))
         draw_rectangle(self.renderer,
-            x + self.padding,
-            y + self.padding, max(1, round(1.0 * self.dpi_scale)),
+            x + self.padding - self.scroll_x_offset,
+            y + self.padding - self.scroll_y_offset,
+            max(1, round(1.0 * self.dpi_scale)),
             max(5, h), color=self.color)
 
         # Draw border:
@@ -520,7 +635,8 @@ class TextEditBase(Widget):
         if self.style.has("topbar_text_size") and self.in_topbar():
             self.text_obj.px_size = \
                 int(self.style.get("topbar_text_size"))
-        (w, self._layout_height) = self.text_obj.layout(max_width=None)
+        (self._layout_width, self._layout_height) = \
+            self.text_obj.layout(max_width=None)
 
     def get_natural_width(self):
         return self.default_width + self.padding * 2
@@ -535,7 +651,8 @@ class TextEditBase(Widget):
             (w, h) = self.text_obj.layout(max_width=None)
         return max(h, min_height) + self.padding * 2
 
-class TextEdit(TextEditBase):
+
+cdef class TextEdit(TextEditBase):
     def __init__(self, text="", color=None, hide_with_character=None,
             minimum_lines_height=3):
         super().__init__(
@@ -543,5 +660,3 @@ class TextEdit(TextEditBase):
             hide_with_character=hide_with_character,
             is_multiline=True,
             minimum_lines_height=minimum_lines_height)
-
-

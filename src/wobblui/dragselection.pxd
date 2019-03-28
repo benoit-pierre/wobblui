@@ -1,6 +1,7 @@
+#cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -19,16 +20,11 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.sdlinit import initialize_sdl
 
-cached_is_android = None
-def is_android():
-    global cached_is_android
-    if cached_is_android != None:
-        return cached_is_android
-    initialize_sdl()
-    import sdl2 as sdl
-    cached_is_android = (sdl.SDL_GetPlatform().decode(
-        "utf-8", "replace").lower() == "android")
-    return cached_is_android
- 
+cdef void reposition_hover_menu(window)
+
+cdef int touch_handles_take_touch_start(window, mx, my)
+
+cdef int touch_handles_take_touch_move(window, mx, my)
+
+cdef int touch_handles_take_touch_end(window, mx, my)

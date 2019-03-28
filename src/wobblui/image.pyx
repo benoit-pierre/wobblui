@@ -21,14 +21,13 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import cython
 import io
+from libc.stdint cimport uintptr_t
 import os
 import PIL.Image
 import PIL.ImageDraw
 import platform
-import sdl2 as sdl
-import sdl2.sdlimage as sdlimage
-import sdl2.sdlttf as sdlttf
 import subprocess
 import sys
 import tempfile
@@ -43,6 +42,12 @@ from wobblui.widget cimport Widget
 
 sdlimage_initialized = False
 
+ctypedef void* (*_sdl_FreeSurfaceType)(
+    void *srf
+) nogil
+cdef _sdl_FreeSurfaceType _sdl_FreeSurface = NULL
+
+
 cpdef str stock_image(name):
     p = os.path.join(os.path.abspath(os.path.dirname(__file__)),
         "img", name)
@@ -54,6 +59,7 @@ cpdef str stock_image(name):
     return p
 
 def _internal_sdl_surface_to_pil_image(sdl_surface):
+    import sdl2 as sdl
     (fd, fpath) = tempfile.mkstemp(
         prefix="wobblui-srf-to-pil-", suffix=".bmp"
     )
@@ -76,6 +82,9 @@ def _internal_sdl_surface_to_pil_image(sdl_surface):
 def _internal_pil_image_to_sdl_surface(pil_image, retries=5):
     global sdlimage_initialized
     initialize_sdl()
+    import sdl2 as sdl
+    import sdl2.sdlimage as sdlimage
+
     if not sdlimage_initialized:
         sdlimage_initialized = True
         if not platform.system().lower() == "windows":
@@ -124,7 +133,7 @@ def _internal_pil_image_to_sdl_surface(pil_image, retries=5):
             str(err_msg))
     return sdl_image
 
-cdef class RenderImage(object):
+cdef class RenderImage:
     """ A mutable image object for use in widget draw callbacks.
         This RenderImage can be created either from a PIL
         image or a disk file path. Rendering a RenderImage with
@@ -143,7 +152,15 @@ cdef class RenderImage(object):
     """
 
     def __init__(self, object pil_image, render_low_res=False):
+        global _sdl_FreeSurface
         initialize_sdl()
+        if not _sdl_FreeSurface:
+            import sdl2 as sdl
+            _sdl_FreeSurface = <_sdl_FreeSurfaceType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_FreeSurface)
+                ))
+            )
         if type(pil_image) == str:
             pil_image = PIL.Image.open(pil_image)
         self.surface = None
@@ -204,6 +221,7 @@ cdef class RenderImage(object):
             x, y, w, h, color=Color.black(),
             alpha=1.0, filled=True
             ):
+        import sdl2 as sdl
         if self.render_low_res:
             raise TypeError("cannot modify low-res rendered image")
         if not filled:
@@ -280,6 +298,8 @@ cdef class RenderImage(object):
             color=Color.black(),
             alpha=1.0
             ):
+        import sdl2 as sdl
+        import sdl2.ttf as sdlttf
         if self.render_low_res:
             raise TypeError("cannot modify low-res rendered image")
         try:
@@ -313,6 +333,7 @@ cdef class RenderImage(object):
     def _draw_srf_onto_image(self,
             surface, x, y, alpha=1.0, color=Color.white()
             ):
+        import sdl2 as sdl
         if self.render_low_res:
             raise TypeError("cannot modify low-res rendered image")
         alpha = max(0, min(255, round(255.0 * alpha)))
@@ -357,9 +378,16 @@ cdef class RenderImage(object):
         return byteobj.getvalue()
 
     def __dealloc__(self):
-        if self.surface is not None:
-            sdl.SDL_FreeSurface(self.surface)
-        self.surface = None
+        global _sdl_FreeSurface
+        try:
+            if self.surface is not None:
+                _sdl_FreeSurface(
+                    <void*><uintptr_t>int(ctypes.addressof(self.surface.contents))
+                )
+        except (NameError, TypeError):
+            pass  # probably unloading, ignore error
+        finally:
+            self.surface = None
 
     def to_texture(self, renderer):
         if renderer is None:
@@ -390,8 +418,8 @@ cdef class RenderImage(object):
             self._texture.set_color(self._color)
 
     def draw(self, renderer,
-                int x, int y, w=None, h=None, color=None
-            ):
+             int x, int y, w=None, h=None, color=None
+             ):
         tex = self.to_texture(renderer)
         if w is None:
             w = self._render_size[0]
@@ -467,6 +495,7 @@ class ImageWidget(Widget):
         super().update_renderer()
 
     def on_redraw(self):
+        import sdl2 as sdl
         if self.renderer is None:
             return
         if self.render_image is None:

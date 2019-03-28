@@ -1,3 +1,4 @@
+#cython: language_level=3
 
 '''
 wobblui - Copyright 2018 wobblui team, see AUTHORS.md
@@ -24,10 +25,15 @@ import time
 import traceback
 import uuid
 
-from wobblui.perf import Perf
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+from wobblui.perf cimport CPerf as Perf
+from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
-class ScheduledEvent(object):
+cdef class ScheduledEvent(object):
+    cdef str identifier
+    cdef object func
+    cdef public object time
+    cdef public int earlier_if_idle
+
     def __init__(self, func, time, earlier_if_idle=False):
         self.identifier = str(uuid.uuid4())
         self.func = func
@@ -63,7 +69,7 @@ class ScheduledEvent(object):
 
 scheduled_events = set()
 
-def maximum_sleep_time():
+cpdef maximum_sleep_time():
     global scheduled_events
     sleep_time = None
     trigger_events = set()
@@ -76,7 +82,7 @@ def maximum_sleep_time():
         sleep_time = min(sleep_time, max(0.1, until))
     return sleep_time
 
-def internal_trigger_check(idle=False):
+cpdef internal_trigger_check(idle=False):
     global scheduled_events
     trigger_perf_id = Perf.start("timer_trigger")
     trigger_events = set()
@@ -88,11 +94,10 @@ def internal_trigger_check(idle=False):
     for event in trigger_events:
         event()
     Perf.stop(trigger_perf_id, debug="events triggered: " +
-        str(len(trigger_events)) + ", functions: " +
-        str([str(event.func) for event in trigger_events]),
+        str(len(trigger_events)),
         expected_max_duration=0.005)
 
-def schedule(func, delay, earlier_if_idle=False):
+cpdef schedule(func, delay, earlier_if_idle=False):
     global scheduled_events
     scheduled_events.add(ScheduledEvent(
         func, time.monotonic() + delay,

@@ -25,7 +25,6 @@ import ctypes
 import functools
 import math
 import random
-import sdl2 as sdl
 import sys
 import time
 import traceback
@@ -41,8 +40,9 @@ from wobblui.perf cimport CPerf as Perf
 from wobblui.texture cimport RenderTarget
 from wobblui.timer import schedule
 from wobblui.uiconf import config
-from wobblui.widgetman import add_widget, all_widgets, \
-    get_widget_id, get_add_id, tab_sort
+from wobblui.widgetman cimport add_widget, get_all_widgets, \
+    get_widget_id, get_add_id
+from wobblui.widgetman import focus_tab_index_sort
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
 # Helper function to move coordinates outside of widget:
@@ -94,6 +94,7 @@ cdef class WidgetBase:
         self.last_mouse_click_with_time = dict()  # for double clicks
         self.last_touch_was_inside = False
         self.last_touch_was_pressed = False
+        self.multitouch_end_avoid_scroll_hack = False
         self.generate_double_click_for_touches =\
             generate_double_click_for_touches
         self._x = 0
@@ -369,7 +370,8 @@ cdef class WidgetBase:
             overall_w=overall_w, overall_h=overall_h)
 
     def move_touch_selection_handle(self,
-            left_one, target_x, target_y, target_h):
+            left_one, target_x, target_y
+            ):
         """ Needs to be implemented by concrete widgets. """
         pass
 
@@ -578,6 +580,9 @@ cdef class WidgetBase:
     def _internal_on_multitouchend(self, internal_data=None):
         self.prevent_touch_long_click_due_to_gesture = False
         self.multitouch_two_finger_distance = 0.0
+        self.multitouch_end_avoid_scroll_hack = True
+        self.multitouch_end_avoid_scroll_hack_timeout =\
+            time.monotonic() + 1.0
 
     def _internal_on_touchstart(self, int x, int y, internal_data=None):
         self._post_mouse_event_handling("touchstart",
@@ -837,7 +842,9 @@ cdef class WidgetBase:
                 not flip_selection_1_handle and
                 not flip_selection_2_handle):
             # If too close together, move them to the side:
-            if abs(selection_1_x - selection_2_x) < square_size * 1.5:
+            if abs(selection_1_x - selection_2_x) < square_size * 1.5 and \
+                    (selection_1_x != selection_2_x or
+                     selection_1_y != selection_2_y):
                 square_1_extra_offset_x -= round(square_size * 0.52)
                 square_2_extra_offset_x += round(square_size * 0.52)
         return {
@@ -981,14 +988,22 @@ cdef class WidgetBase:
         # firing / propagate. Inform all children that are inside the
         # mouse bounds and propagate the event:
 
+        # Remove multitouch prevent scroll hack state if it has expired:
+        if self.multitouch_end_avoid_scroll_hack and (
+                self.multitouch_end_avoid_scroll_hack_timeout <
+                time.monotonic()
+                ):
+            self.multitouch_end_avoid_scroll_hack = False
+
         # If this is a mouse move, remember whether it was fake touch:
         if is_post and event_name == "mousemove":
             self.last_mouse_move_was_fake_touch =\
                 self._in_touch_fake_event_processing
 
         cdef str r = str(random.random()).replace(".", "")
-        cdef str chain_id = "_pre_or_post_mouse_event_handling" + r +\
-            str(self)
+        cdef str chain_id = (
+            "_pre_or_post_mouse_event_handling" + r + str(self)
+        )
         Perf.chain(chain_id)
 
         now = time.monotonic()
@@ -1005,8 +1020,10 @@ cdef class WidgetBase:
         try:
             mouse_id = event_args[0]
         except OverflowError as e:
-            logerror("got invalid mouse id which overflows: " +
-                str(mouse_id) + " - is this a touch handling issue??")
+            logerror(
+                "got invalid mouse id which overflows: " +
+                str(mouse_id) + " - is this a touch handling issue??"
+            )
             raise e
         if event_name == "mousedown" or event_name == "mouseup":
             x = event_args[2]
@@ -1096,15 +1113,21 @@ cdef class WidgetBase:
                 self.touch_start_y = y
                 self.last_touch_x = x
                 self.last_touch_y = y
-                
+                if event_name == "touchstart":
+                    # Remember that we had a legitimate touch start
+                    self.had_touchstart_and_no_touchend_yet = True
+
                 # Schedule test for long-press click:
-                if not self.prevent_touch_long_click_due_to_gesture:
+                if not self.prevent_touch_long_click_due_to_gesture and \
+                        event_name == "touchstart":
                     self.long_click_callback_id += 1
                     curr_id = self.long_click_callback_id
                     self_ref = weakref.ref(self)
                     self.have_long_click_callback = True
-                    schedule(self.return_long_click_test_closure(curr_id),
-                        config.get("touch_longclick_time"))
+                    schedule(
+                        self.return_long_click_test_closure(curr_id),
+                        config.get("touch_longclick_time")
+                    )
             elif event_name.startswith("touch"):
                 self.last_touch_x = x
                 self.last_touch_y = y
@@ -1112,10 +1135,10 @@ cdef class WidgetBase:
             if event_name == "touchmove" or \
                     event_name == "touchend":
                 self.touch_max_ever_distance = max(
-                    self.touch_max_ever_distance, float(
-                    math.sqrt(math.pow(
-                    x - self.touch_start_x, 2) +
-                    math.pow(y - self.touch_start_y, 2))))
+                    self.touch_max_ever_distance, float(math.sqrt(
+                        math.pow(x - self.touch_start_x, 2) +
+                        math.pow(y - self.touch_start_y, 2)
+                )))
                 # Make sure moving too far stops long clicks:
                 if self.touch_max_ever_distance > 7 * self.dpi_scale \
                         and self.have_long_click_callback:
@@ -1132,8 +1155,9 @@ cdef class WidgetBase:
                     self.touch_start_y = None
             # Update infinite scroll emulation:
             if event_name.startswith("touch"):
-                self.schedule_infinite_scroll_check(x, y,
-                    stop_event=(event_name == "touchend"))
+                self.schedule_infinite_scroll_check(
+                    x, y, stop_event=(event_name == "touchend")
+                )
 
         Perf.chain(chain_id, "touchstate_update_done")
 
@@ -1155,12 +1179,14 @@ cdef class WidgetBase:
             # If our own widget doesn't handle touch, fire the
             # fake clicks here:
             touch_fake_clicked = False
-            fake_clicks_for_event = \
-                ((not self.has_native_touch_support or
-                self.fake_mouse_even_with_native_touch_support)
-                and event_name == "touchend" and
+            fake_clicks_for_event = (
+                (not self.has_native_touch_support or
+                 self.fake_mouse_even_with_native_touch_support) and
+                event_name == "touchend" and
                 orig_touch_start_x != None and
-                orig_touch_start_y != None)
+                orig_touch_start_y != None and
+                self.had_touchstart_and_no_touchend_yet
+            )
             if fake_clicks_for_event and \
                     self.touch_max_ever_distance <\
                     40.0 * self.dpi_scale and \
@@ -1228,21 +1254,31 @@ cdef class WidgetBase:
                     (self.touch_max_ever_distance >
                     20.0 * self.dpi_scale and \
                     self.touch_start_time + 0.7 > now)):
-                self.touch_scrolling = True
                 self.consider_mouse_click_focus(hit_check_x,
                     hit_check_y)
-                scalar = 0.019
-                self._prevent_mouse_event_propagate = True
-                old_value = self._in_touch_fake_event_processing
-                try:
-                    self._in_touch_fake_event_processing = True
-                    self.mousewheel(0,
-                        diff_x * scalar, diff_y * scalar,
-                        internal_data=[
-                        orig_touch_start_x, orig_touch_start_y])
-                finally:
-                    self._in_touch_fake_event_processing = old_value
-                    self._prevent_mouse_event_propagate = False
+                if event_name != "touchend" and \
+                        not self.multitouch_end_avoid_scroll_hack:
+                    self.touch_scrolling = True
+                    scalar = 0.019
+                    self._prevent_mouse_event_propagate = True
+                    old_value = self._in_touch_fake_event_processing
+                    try:
+                        self._in_touch_fake_event_processing = True
+                        self.mousewheel(0,
+                            diff_x * scalar, diff_y * scalar,
+                            internal_data=[
+                            orig_touch_start_x, orig_touch_start_y])
+                    finally:
+                        self._in_touch_fake_event_processing = old_value
+                        self._prevent_mouse_event_propagate = False
+            if event_name == "touchend":
+                self.touch_scrolling = False
+            if event_name == "touchmove" or event_name == "touchend":
+                self.multitouch_end_avoid_scroll_hack = False
+
+        # Remember if we handled the "touchend":
+        if event_name == "touchend" and is_post:
+            self.had_touchstart_and_no_touchend_yet = False
 
         Perf.chain(chain_id, "fakemouse_events_done")
 
@@ -1518,6 +1554,7 @@ cdef class WidgetBase:
         return 64
 
     def draw_children(self):
+        import sdl2 as sdl
         for child in self.children:
             child.redraw_if_necessary()
             sdl.SDL_SetRenderDrawColor(self.renderer,
@@ -1640,13 +1677,12 @@ cdef class WidgetBase:
 
     @staticmethod
     def focus_candidates(group_widget):
-        global all_widgets
         assert(group_widget != None)
         group_widgets = group_widget
         if type(group_widgets) != list:
             group_widgets = [group_widgets]
         candidates = []
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not w.focusable:
                 continue
@@ -1665,7 +1701,7 @@ cdef class WidgetBase:
                     group_widget.focusable:
                 candidates.append(group_widget)
         sorted_candidates = sorted(candidates,
-            key=functools.cmp_to_key(tab_sort))
+            key=functools.cmp_to_key(focus_tab_index_sort))
         return sorted_candidates
 
     def size_change(self, int w, int h):
@@ -1677,8 +1713,7 @@ cdef class WidgetBase:
 
     @staticmethod
     def get_focused_widget(group_widget):
-        global all_widgets
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not w.focused or \
                     not w.shares_focus_group(group_widget) or \
@@ -1689,8 +1724,7 @@ cdef class WidgetBase:
 
     @staticmethod
     def get_focused_widget_by_window(window):
-        global all_widgets
-        for w_ref in all_widgets:
+        for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not w.focused \
                     or not w.focusable \
@@ -1777,8 +1811,7 @@ cdef class WidgetBase:
         if self.focused:
             return
         def unfocus_focused():
-            global all_widgets
-            for w_ref in all_widgets:
+            for w_ref in get_all_widgets():
                 w = w_ref()
                 if w is None or w is self or \
                         not w.shares_focus_group(self):
@@ -1791,7 +1824,7 @@ cdef class WidgetBase:
             # See if a child can be focused:
             def try_children_focus(w):
                 tab_index_sorted = sorted(w.children,
-                    key=functools.cmp_to_key(tab_sort))
+                    key=functools.cmp_to_key(focus_tab_index_sort))
                 for child in tab_index_sorted:
                     if child.disabled:
                         continue
@@ -1913,34 +1946,89 @@ cdef class WidgetBase:
             self.remove(child)
 
     def internal_override_parent(self, parent):
-        old_renderer = self.get_renderer()
         if self._parent == parent:
             return
+
+        # Do parent swap:
+        old_renderer = self.get_renderer()
+        old_parent_window = None
+        if hasattr(self, "parent_window"):
+            old_parent_window = self.parent_window
         prev_style = self.get_style()
         prev_dpi = self.dpi_scale
         old_parent = self._parent
         self._parent = parent
+        parent_window_changed = False
+        if hasattr(self, "parent_window"):
+            parent_window_changed = True
+
         self.needs_redraw = True
-        if self.mouse_reported_as_entered:
-            self.mouse_reported_as_entered = False
-            self.mouseleave()
-        self.parentchanged()
-        if prev_style != self.get_style() or \
-                abs(prev_dpi - self.dpi_scale) > 0.01:
-            def recursive_style_event(item):
-                item.stylechanged()
-                for child in item.children:
-                    recursive_style_event(child)
-            recursive_style_event(self)
+        # Make sure mouse is treated as outside by widget:
+        try:
+            if self.mouse_reported_as_entered:
+                self.mouse_reported_as_entered = False
+                self.mouseleave()
+        except Exception:
+            logerror(
+                "error in internal_override_parent() "
+                "when unsetting mouse status!"
+            )
+            logerror(str(traceback.format_exc()))
+        # Fire actual parent changed event:
+        assert(self.parentchanged is not None)
+        try:
+            self.parentchanged()
+        except Exception:
+            logerror(
+                "error in {} internal_override_parent() "
+                "in direct parentchanged() callback!".format(
+                str(self)
+                )
+            )
+            logerror(str(traceback.format_exc()))
+        # Fire necessary events if renderer changes (e.g. on window change):
         if self.get_renderer() != old_renderer:
             if config.get("debug_texture_references"):
-                logdebug("WidgetBase.internal_override_parent: " +
-                    "recursive renderer_update() call")
+                logdebug(
+                    "WidgetBase.internal_override_parent: "
+                    "recursive renderer_update() call"
+                )
             def recursive_update_event(item):
                 item.renderer_update()
                 for child in item.children:
                     recursive_update_event(child)
             recursive_update_event(self)
+        # Fire descending parentchanged() if parent window changed:
+        if parent_window_changed:
+            def recursive_trigger_pchanged(item):
+                try:
+                    item.parentchanged()
+                except Exception:
+                    logerror(
+                        "error in internal_override_parent() "
+                        "in recursive parentchanged() callback!"
+                    )
+                    logerror(str(traceback.format_exc()))
+                for child in item.children:
+                    recursive_trigger_pchanged(child)
+            for child in self.children:
+                recursive_trigger_pchanged(child)
+        # File style changed if our DPI changed (can happen with
+        # parent window change):
+        if prev_style != self.get_style() or \
+                abs(prev_dpi - self.dpi_scale) > 0.01:
+            def recursive_style_event(item):
+                try:
+                    item.stylechanged()
+                except Exception as e:
+                    logerror(
+                        "error in internal_override_parent() "
+                        "when calling stylechanged() on child!"
+                    )
+                    logerror(str(traceback.format_exc()))
+                for child in item.children:
+                    recursive_style_event(child)
+            recursive_style_event(self)
 
     @property
     def parent(self):
@@ -1948,7 +2036,7 @@ cdef class WidgetBase:
 
     @property
     def children(self):
-        return copy.copy(self.get_children())
+        return list(self.get_children())
 
     def get_children(self):
         return self._children

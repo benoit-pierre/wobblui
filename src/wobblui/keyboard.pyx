@@ -1,6 +1,7 @@
+#cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -20,14 +21,15 @@ freely, subject to the following restrictions:
 '''
 
 import functools
-import sdl2 as sdl
 import weakref
 
-from wobblui.widgetman import all_windows
+from wobblui.sdlinit import android_fix_softinput_mode
+from wobblui.widgetman import get_all_windows
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
 exit_callbacks = list()
 registered_shortcuts = list()
+
 
 def sanitize_shortcut_keys(shortcut_keys):
     new_keys = []
@@ -43,6 +45,7 @@ def sanitize_shortcut_keys(shortcut_keys):
         if not key in new_keys:
             new_keys.append(key)
     return new_keys
+
 
 def shortcut_to_text(keys):
     if type(keys) == str:
@@ -110,6 +113,7 @@ def shortcut_to_text(keys):
         pretty_keys.append(key)
     return " + ".join(pretty_keys)
 
+
 def register_global_shortcut(shortcut, func, connected_widget):
     global registered_shortcuts
     if func is None:
@@ -128,6 +132,7 @@ def register_global_shortcut(shortcut, func, connected_widget):
     registered_shortcuts.append([
         shortcut_parts, func, connected_widget_ref])
 
+
 def clean_global_shortcuts():
     global registered_shortcuts
 
@@ -145,6 +150,7 @@ def clean_global_shortcuts():
         new_registered_shortcuts.append(shortcut)
     registered_shortcuts = new_registered_shortcuts
 
+
 def shortcut_is_active(shortcut):
     if shortcut[2] is None:
         return True
@@ -158,6 +164,7 @@ def shortcut_is_active(shortcut):
         # Shortcut attached to closed window. --> nope
         return False
     return True
+
 
 def get_matching_shortcuts(keys):
     global registered_shortcuts
@@ -210,9 +217,11 @@ def get_matching_shortcuts(keys):
             matching.append(shortcut)
     return matching
 
+
 virtual_keys_pressed = set()
 keys_active_widget_aware = set()
 physical_keys_pressed = set()
+
 
 def internal_update_keystate_keydown(vkey, pkey,
         trigger_shortcuts=True,
@@ -230,6 +239,7 @@ def internal_update_keystate_keydown(vkey, pkey,
             if shortcut[1] != None:
                 shortcut[1]()
 
+
 def internal_update_keystate_keyup(vkey, pkey):
     global virtual_keys_pressed, physical_keys_pressed,\
         virtual_keys_active_widget_aware,\
@@ -243,8 +253,10 @@ def internal_update_keystate_keyup(vkey, pkey):
     # keypress, and should get an according key up event:
     return widget_key_aware
 
+
 def get_modifiers():
     """ Get currently pressed modifier keys. """
+    import sdl2 as sdl
     result = set()
     sdl_modstate = sdl.SDL_GetModState()
     if ((sdl_modstate & sdl.KMOD_LSHIFT) != 0 or
@@ -258,21 +270,24 @@ def get_modifiers():
         result.add("alt")
     return result
 
+
 # All widgets that have focus in their respective window and take text input:
 current_text_events_widgets = []
+
 
 # Current state of text input:
 text_input_suspended = True
 
-def internal_update_text_events():
+
+cpdef internal_update_text_events():
     global current_text_events_widgets, \
-        all_windows,\
         text_input_suspended
+    import sdl2 as sdl
 
     # Throw out all widgets that have lost keyboard focus or lost
     # their parent window:
     seen_windows = []
-    for w_ref in all_windows:
+    for w_ref in get_all_windows():
         w = w_ref()
         if w != None:
             seen_windows.append(w)
@@ -295,6 +310,10 @@ def internal_update_text_events():
     if len(current_text_events_active_widgets) > 0 and \
             text_input_suspended:
         logdebug("Focus went to text widget, starting text input...")
+        if sdl.SDL_GetPlatform().lower() == b"android":
+            # Because android is silly and seems to reset this all
+            # day long, re-inforce softinput mode:
+            android_fix_softinput_mode()
         sdl.SDL_StartTextInput()
         text_input_suspended = False
     elif len(current_text_events_active_widgets) == 0 and \
@@ -304,6 +323,7 @@ def internal_update_text_events():
         text_input_suspended = True
 
     return current_text_events_active_widgets
+
 
 def enable_text_events(widget):
     global current_text_events_widgets
@@ -316,22 +336,27 @@ def enable_text_events(widget):
     current_text_events_widgets.append(widget)
     internal_update_text_events()
 
-def get_active_text_widget():
+
+cpdef get_active_text_widget():
     widgets = internal_update_text_events()
     if len(widgets) == 0:
         return None
     return widgets[0]
 
-def get_all_active_text_widgets():
+
+cpdef get_all_active_text_widgets():
     return internal_update_text_events()
+
 
 def push_exit_callback(callback):
     global exit_callbacks
     exit_callbacks.append(callback)
 
+
 def pop_exit_callback():
     global exit_callbacks
     exit_callbacks = exit_callbacks[:-1]
+
 
 def trigger_exit_callback():
     global exit_callbacks
@@ -342,6 +367,7 @@ def trigger_exit_callback():
     finally:
         if not result is False:
             pop_exit_callback()
+
 
 def clear_exit_callbacks():
     global exit_callbacks

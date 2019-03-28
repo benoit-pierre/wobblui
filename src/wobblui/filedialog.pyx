@@ -26,14 +26,15 @@ import os
 import platform
 import time
 
-from wobblui.box import HBox, VBox
+from wobblui.box cimport HBox, VBox
 from wobblui.button import Button, ImageButton
 from wobblui.color cimport Color
 from wobblui.gfx cimport draw_rectangle
 from wobblui.image cimport stock_image
 from wobblui.label import Label
 from wobblui.list import List
-from wobblui.osinfo import is_android
+from wobblui.modal cimport ModalDialog
+from wobblui.osinfo cimport is_android
 from wobblui.textentry import TextEntry
 from wobblui.timer import schedule
 from wobblui.topbar import Topbar
@@ -46,15 +47,15 @@ CHOSEN_NOTHING=-1
 
 class _FileOrDirChooserDialogContents(Widget):
     def __init__(self,
-            window,
             choose_dir=False,
             confirm_text=None,
             title=None,
             can_choose_nothing=False,
             cancel_text="Cancel",
-            choose_nonexisting=False, outer_padding=2.0,
-            is_dedicated_window=False,
-            start_directory=None, file_filter="*"):
+            choose_nonexisting=False,
+            start_directory=None,
+            file_filter="*",
+            done_callback=None):
         if confirm_text == None:
             if choose_dir:
                 confirm_text = "Choose Folder"
@@ -66,12 +67,10 @@ class _FileOrDirChooserDialogContents(Widget):
                 "dialog initializing " +
                 "with start_directory=" + str(start_directory))
         self.choose_dir = choose_dir
-        self.window_to_add = window
         self.show_hidden = False
-        self.active = False
+        self.done_callback = done_callback
         super().__init__(is_container=True,
             can_get_focus=False)
-        self.outer_padding = outer_padding
         self.start_directory = start_directory
         self.listing_data = None
         self.listing_path = None
@@ -143,21 +142,12 @@ class _FileOrDirChooserDialogContents(Widget):
         except (OSError, PermissionError):
             return False
 
-    def stop_run(self):
-        self.active = False
-        self.window_to_add.resized.unregister(self.update)
-        self.window_to_add.remove(self)
-        self.window_to_add.modal_filter = None
-        self.window_to_add.focus_update()
-
     def abort_dialog(self):
-        self.stop_run()
-        self.run_callback(None)
+        self.done_callback(None)
 
     def select_item(self, no_target=False):
         if no_target:
-            self.stop_run()
-            self.run_callback(CHOSEN_NOTHING)
+            self.done_callback(CHOSEN_NOTHING)
             return
         item_index = self.contents_list.selected_index
         if self.listing_data is None or \
@@ -178,8 +168,7 @@ class _FileOrDirChooserDialogContents(Widget):
                     ending = self.file_filter[1:]
                 if not result.endswith(ending):
                     result += ending
-                self.stop_run()
-                self.run_callback(result)
+                self.done_callback(result)
             return
         info = self.listing_data[item_index]
         if info[1]:
@@ -192,13 +181,14 @@ class _FileOrDirChooserDialogContents(Widget):
             result = os.path.normpath(os.path.abspath(
                 os.path.join(self.current_path,
                 info[0].replace(os.path.sep, ""))))
-            self.stop_run()
-            self.run_callback(result)
+            self.done_callback(result)
 
-    def run(self, done_callback):
+    def on_parentchanged(self):
+        if self.parent_window is None:
+            return
         if self.debug:
             logdebug("wobblui.filedialog " + str(id(self)) +
-                ": run() called")
+                ": initializing")
         def filter_func(widget):
             if not widget.has_as_parent(self) and \
                     widget != self:
@@ -212,15 +202,6 @@ class _FileOrDirChooserDialogContents(Widget):
             logdebug("wobblui.filedialog " + str(id(self)) + ": " +
                 "dialog start path is now: " +
                 str(self.current_path))
-        self.window_to_add.add(self)
-        self.active = True
-        self.width = self.parent_window.width
-        self.height = self.parent_window.height
-        self.x = 0
-        self.y = 0
-        self.run_callback = done_callback
-        self.window_to_add.set_modal_filter(filter_func)
-        self.window_to_add.resized.register(self.update)
         self.refresh()
         self.contents_list.focus()
 
@@ -314,28 +295,19 @@ class _FileOrDirChooserDialogContents(Widget):
             self.needs_relayout = True
 
     def on_relayout(self):
-        if self.active:
-            self.x = 0
-            self.y = 0
-            self.width = self.parent_window.width
-            self.height = self.parent_window.height
-        outer_padding = max(0, round(self.outer_padding * self.dpi_scale))
         inner_padding = max(2, round(5.0 * self.dpi_scale))
-        total_padding = outer_padding + inner_padding
         child = self._children[0]
-        child.x = total_padding
-        child.y = total_padding
-        child.width = max(1, round(self.width - total_padding * 2))
-        child.height = max(1, round(self.height - total_padding * 2))
+        child.x = inner_padding
+        child.y = inner_padding
+        child.width = max(1, round(self.width - inner_padding * 2))
+        child.height = max(1, round(self.height - inner_padding * 2))
 
     def on_redraw(self):
-        outer_padding = max(0, round(self.outer_padding * self.dpi_scale))
         border_c = Color.black()
         if self.style != None:
             border_c = Color(self.style.get("window_bg"))
-        draw_rectangle(self.renderer, outer_padding, outer_padding,
-            self.width - outer_padding * 2,
-            self.height - outer_padding * 2, color=border_c)
+        draw_rectangle(self.renderer, 0, 0,
+                       self.width, self.height, color=border_c)
         self.draw_children()
 
     def suggest_start_dir(self):
@@ -358,98 +330,65 @@ class _FileOrDirChooserDialogContents(Widget):
             return "/"
 
     def get_natural_width(self):
-        return round(200 * self.dpi_scale)
-
-    def get_natural_height(self, given_width=None):
         return round(600 * self.dpi_scale)
 
-class FileOrDirChooserDialog(_FileOrDirChooserDialogContents):
+    def get_natural_height(self, given_width=None):
+        return round(800 * self.dpi_scale)
+
+
+cdef class FileOrDirChooserDialog(ModalDialog):
+    cdef dict file_browser_args
+    cdef int callback_issued
+
     def __init__(self, window, **kwargs):
-        self.window_to_add = window
+        super().__init__(window)
+        self.file_browser_args = dict(kwargs)
         self.callback_issued = False
-        self.file_browser_window = None
-        self.spawn_window_on_run = False
-        self.separate_window_init_args = None
-        if is_android() or kwargs.get("window_spawned", False):
-            # Regularly initialize in current active window:
-            if "window_spawned" in kwargs:
-                del(kwargs["window_spawned"])
-            super().__init__(window, **kwargs)
-            return
-        # For desktop, wait for run() to spawn separate window.
-        self.spawn_window_on_run = True
-        self.separate_window_init_args = ([window], kwargs)
-        return
 
     def run(self, done_callback):
-        if self.spawn_window_on_run:
-            # Add self to parent to block input:
-            def filter_func(widget):
-                if widget.has_as_parent(self.window_to_add):
-                    return False
-                return True
-            self.window_to_add.set_modal_filter(filter_func)
-
-            # Create window:
-            self.filebrowser_window = Window(
-                stay_alive_without_ref=True,
-                keep_application_running_while_open=False,
-            )
-            if len(self.separate_window_init_args[0]) > 0:
-                self.separate_window_init_args[0][0] =\
-                    self.filebrowser_window
-            self.separate_window_init_args[1]["window_spawned"] = True
-            actual_browser = FileOrDirChooserDialog(
-                *(self.separate_window_init_args[0]),
-                **(self.separate_window_init_args[1])
-            )
-            def window_closed_event():
+        # Initialize in current active window:
+        def file_browser_done(result):
+            try:
+                self.close()
+            finally:
                 if not self.callback_issued:
                     self.callback_issued = True
                     if done_callback is not None:
-                        self.window_to_add.modal_filter = None
-                        done_callback(None)
-            self.filebrowser_window.closing.register(window_closed_event)
-            def file_browser_done(result):
-                if not self.callback_issued:
-                    self.callback_issued = True
-                    try:
-                        self.filebrowser_window.close()
-                    finally:
-                        if done_callback is not None:
-                            self.window_to_add.modal_filter = None
-                            done_callback(result)
-                else:
-                    self.filebrowser_window.close()
-            result = actual_browser.run(file_browser_done)
-            return
-        else:
-            super().run(done_callback)
+                        done_callback(result)
+        self.file_browser_args["done_callback"] = file_browser_done
+        child = _FileOrDirChooserDialogContents(**self.file_browser_args)
+        super().run(child, done_callback)
+
 
 class FileChooserDialog(FileOrDirChooserDialog):
-    def __init__(self, window, confirm_text=None,
+    def __init__(self,
+            window,
+            confirm_text=None,
             title=None,
             can_choose_nothing=False,
-            choose_nonexisting=False, outer_padding=15.0,
+            choose_nonexisting=False,
             start_directory=None,
-            file_filter="*"):
+            file_filter="*"
+            ):
         super().__init__(window, choose_dir=False,
             confirm_text=confirm_text,
             choose_nonexisting=choose_nonexisting,
-            outer_padding=outer_padding,
             start_directory=start_directory,
             title=title,
             can_choose_nothing=can_choose_nothing,
-            file_filter=file_filter)
+            file_filter=file_filter
+            )
+
 
 class DirectoryChooserDialog(FileOrDirChooserDialog):
-    def __init__(self, window, confirm_text="Select",
-            outer_padding=15.0, start_directory=None):
+    def __init__(self,
+            window,
+            confirm_text="Select",
+            start_directory=None
+            ):
         super().__init__(window, choose_dir=False,
             confirm_text=confirm_text,
             choose_nonexisting=False,
             can_choose_nothing=False,
-            outer_padding=outer_padding,
-            start_directory=start_directory)
-
-
+            start_directory=start_directory
+            )

@@ -20,9 +20,13 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-cpdef draw_rectangle(renderer, int x, int y, int w, int h,
-        color=*,
-        int filled=*, unfilled_border_thickness=*)
+cpdef draw_rectangle(
+    renderer, int x, int y, int w, int h,
+    object color=*,
+    int filled=*,
+    double unfilled_border_thickness=*,
+    double alpha=*
+)
 
 cpdef clear_renderer_gfx(renderer)
 

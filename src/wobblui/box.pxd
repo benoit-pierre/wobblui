@@ -20,28 +20,35 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from wobblui.widget_base cimport WidgetBase
-from wobblui.style import AppStyle
-
-cdef class Window(WidgetBase):
-    cdef object mouse_position_cache, _renderer, _style
-    cdef public object _sdl_window  # accessed by multitouch code
-    cdef int _hidden, _fullscreen
-    cdef public int keep_application_running
-    cdef object _context_menu
-    cdef public object hiding, shown, closing, destroyed
-    cdef public object modal_filter
-    cdef public int is_closed
-    cdef str _title
-    cdef int next_reopen_width, next_reopen_height
-    cdef object last_known_dpi_scale, schedule_global_dpi_scale_update
-
-cpdef apply_style_to_all_windows(object style)
-
-cpdef get_focused_window()
-
-cpdef change_dpi_scale_on_all_windows(new_dpi_scale)
-
-cpdef get_window_by_sdl_id(sdl_id)
+from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
+from wobblui.widget cimport Widget
 
 
+cdef class BoxSpacer(Widget):
+    pass
+
+
+cdef class Box(ScrollbarDrawingWidget):
+    cdef int default_expand_on_secondary_axis
+    cdef public int horizontal
+    cdef dict expand_info, shrink_info
+    cdef int item_padding, border, box_surrounding_padding
+    cdef object bg_color
+    cdef int actual_layout_height, actual_layout_width, scroll_offset_y
+    cdef object _background_image
+    cdef int _background_image_keep_aspect
+
+
+cdef class VBox(Box):
+    pass
+
+
+cdef class HBox(Box):
+    pass
+
+
+cdef class CenterBox(Widget):
+    cdef int content_padding, child_minimum_width
+    cdef int child_fixed_width, child_fixed_height
+    cdef int expand_vertically, expand_horizontally
+    cdef object bg_color

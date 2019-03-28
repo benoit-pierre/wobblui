@@ -21,10 +21,21 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
-import sdl2 as sdl
-import sdl2.sdlttf as sdlttf
 
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
+
+
+def android_fix_softinput_mode():
+    from android.runnable import run_on_ui_thread
+    from jnius import autoclass
+    @run_on_ui_thread
+    def do_it():
+        python_activity = \
+            autoclass('org.kivy.android.PythonActivity').mActivity
+        window = python_activity.getWindow()
+        window.setSoftInputMode(16)  # SOFT_INPUT_ADJUST_RESIZE
+    do_it()
+
 
 sdl_init_done = False
 cpdef void initialize_sdl():
@@ -33,10 +44,9 @@ cpdef void initialize_sdl():
         return
     sdl_init_done = True
 
+    import sdl2 as sdl
+
     loginfo("Setting SDL2 settings")
-    sdl.SDL_SetHintWithPriority(b"SDL_HINT_ORIENTATIONS",
-        b"LandscapeLeft LandscapeRight Portrait PortraitUpsideDown",
-        sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(b"SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH", b"1",
         sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(
@@ -50,7 +60,7 @@ cpdef void initialize_sdl():
     sdl.SDL_SetHintWithPriority(b"SDL_RENDER_BATCHING", b"1",
         sdl.SDL_HINT_OVERRIDE)
     sdl.SDL_SetHintWithPriority(
-        b"SDL_HINT_RENDER_SCALE_QUALITY", b"2",
+        b"SDL_HINT_RENDER_SCALE_QUALITY", b"1",
         sdl.SDL_HINT_OVERRIDE)
     subsystems = sdl.SDL_WasInit(sdl.SDL_INIT_EVERYTHING)
     if not (subsystems & sdl.SDL_INIT_VIDEO):
@@ -59,7 +69,14 @@ cpdef void initialize_sdl():
     else:
         loginfo("NOT calling SDL_Init, already initialized")
 
+    # On android, get the native Java activity and fix the soft input mode:
+    if sdl.SDL_GetPlatform().lower() == b"android":
+        logdebug("Setting initial SOFT_INPUT_ADJUST_RESIZE")
+        android_fix_softinput_mode()
+
+
 cpdef tuple sdl_version():
+    import sdl2 as sdl
     v = sdl.SDL_version()
     sdl.SDL_GetVersion(ctypes.byref(v))
     return (int(v.major), int(v.minor), int(v.patch))

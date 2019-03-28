@@ -23,7 +23,6 @@ freely, subject to the following restrictions:
 import copy
 import html
 import math
-import sdl2 as sdl
 
 from wobblui.color cimport Color
 from wobblui.event cimport Event
@@ -37,6 +36,7 @@ from wobblui.texture cimport RenderTarget
 from wobblui.uiconf import config
 from wobblui.widget cimport Widget
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
 
 cdef class ListEntry:
     def __init__(self, html, style,
@@ -218,7 +218,6 @@ cdef class ListEntry:
 
         tex = self._cached_render_tex
         if tex is None:
-            old_t = sdl.SDL_GetRenderTarget(renderer)
             self._cached_render_tex = RenderTarget(
                 renderer, round(self.width), round(self.height))
             self._cached_render_tex.set_as_rendertarget()
@@ -227,7 +226,6 @@ cdef class ListEntry:
                 draw_hover=draw_hover,
                 draw_soft_hover=draw_soft_hover,
                 draw_keyboard_focus=draw_keyboard_focus)
-            sdl.SDL_RenderPresent(renderer)
             self._cached_render_tex.unset_as_rendertarget()
             tex = self._cached_render_tex
         tex.draw(x, y, w=round(self.width), h=round(self.height))
@@ -437,8 +435,10 @@ cdef class ListEntry:
         self.textoffset_x = 0
         self.textoffset_y = 0
         self.iconoffset_x = 0
-        if self.side_icon_or_space_left:
+        if not self.side_icon_or_space_left:
             self.iconoffset_x += max_width_without_icon
+        else:
+            self.iconoffset_x += padding
         self.iconoffset_y = 0
         if self.extra_html_as_subtitle_obj != None:
             (subtitle_w, subtitle_h) = \
@@ -530,7 +530,9 @@ cdef class ListEntry:
         # Make entry large enough to cover icon:
         if self.side_icon is not None:
             self._height = math.ceil(max(self._height,
-                self.side_icon_height + padding * 2))
+                self.side_icon_height * self.effective_dpi_scale +
+                padding * 2)
+            )
             self.iconoffset_y = round(
                 (self._height -
                 self.side_icon_height * self.effective_dpi_scale) * 0.5
@@ -541,29 +543,35 @@ cdef class ListEntry:
             self.subtitle_x += round(
                 self.side_icon_or_space_width *
                 self.effective_dpi_scale
-            )
+            ) + padding_side_icon
             self.extra_html_at_right_x += \
                 round(self.side_icon_or_space_width *
                     self.effective_dpi_scale
-                )
+                ) + padding_side_icon
             self.textoffset_x += round(
                 self.side_icon_or_space_width *
                 self.effective_dpi_scale
-            )
+            ) + padding_side_icon
         elif self.side_icon is not None:
             self.iconoffset_x = max_width_without_icon + padding_side_icon
 
+
 cdef class ListBase(ScrollbarDrawingWidget):
-    def __init__(self, render_as_menu=False,
+    def __init__(self,
+            render_as_menu=False,
             fixed_one_line_entries=False,
-            triggered_by_single_click=False):
-        super().__init__(is_container=False, can_get_focus=True,
-            generate_double_click_for_touches=(
-            not triggered_by_single_click))
+            triggered_by_single_click=False,
+            _internal_top_extra_drawing_space=0,
+            ):
+        super().__init__(
+            is_container=False,
+            can_get_focus=True,
+            generate_double_click_for_touches=\
+                not triggered_by_single_click,
+            )
         self.needs_relayout = True
         self.triggered = Event("triggered", owner=self)
-        self.triggered_by_single_click =\
-            triggered_by_single_click
+        self.triggered_by_single_click = triggered_by_single_click
         self._entries = []
         self._selected_index = -1
         self._hover_index = -1
@@ -574,10 +582,12 @@ cdef class ListBase(ScrollbarDrawingWidget):
         self.fixed_one_line_entries = fixed_one_line_entries
         self.update_style_info()
         self.cached_natural_width = None
+        self._top_extra_drawing_space = _internal_top_extra_drawing_space
 
     def _internal_on_unfocus(self, internal_data=None):
         super()._internal_on_unfocus(
-            internal_data=internal_data)
+            internal_data=internal_data
+        )
         self._hover_index = -1
 
     def renderer_update(self):
@@ -591,8 +601,10 @@ cdef class ListBase(ScrollbarDrawingWidget):
 
     def update_style_info(self):
         self.cached_natural_width = None
-        entry = ListEntry("", self.style,
-            override_dpi_scale=self.dpi_scale)
+        entry = ListEntry(
+            "", self.style,
+            override_dpi_scale=self.dpi_scale
+        )
         self.usual_entry_height = entry.height
         if self.usual_entry_height <= 0:
             raise RuntimeError("got invalid zero height for entry")
@@ -759,7 +771,8 @@ cdef class ListBase(ScrollbarDrawingWidget):
 
         if x < 0 or x >= self.width:
             return -1
-        if y < 0 or y >= self.height:
+        if y < math.ceil(self._top_extra_drawing_space) or\
+                y >= self.height:
             return -1
 
         if self.fixed_one_line_entries:
@@ -771,9 +784,11 @@ cdef class ListBase(ScrollbarDrawingWidget):
         for entry in self._entries:
             entry_id += 1
             if entry.y_offset is None:
-                raise RuntimeError("order issue: " +
+                raise RuntimeError(
+                    "order issue: " +
                     "relayouting appears not to have set y_offset " +
-                    "on list entry: " + str(entry))
+                    "on list entry: " + str(entry)
+                )
             if entry.y_offset < y + round(self.scroll_y_offset) and \
                     entry.y_offset + entry.height >\
                     y + round(self.scroll_y_offset):
@@ -786,7 +801,7 @@ cdef class ListBase(ScrollbarDrawingWidget):
         border_size = max(1, round(1.0 * self.dpi_scale))
         if not self.render_as_menu:
             border_size = 0
-        cy = 0
+        cy = math.ceil(self._top_extra_drawing_space)
         for entry in self._entries:
             entry.override_dpi_scale = self.dpi_scale
             entry.style = self.style
@@ -819,6 +834,7 @@ cdef class ListBase(ScrollbarDrawingWidget):
         else:
             content_height = round(len(self._entries) *\
                 self.usual_entry_height) 
+        content_height += math.ceil(self._top_extra_drawing_space)
 
         # Make sure scroll down offset is in a valid range:
         max_scroll_down = max(0, content_height - self.height)
@@ -874,13 +890,28 @@ cdef class ListBase(ScrollbarDrawingWidget):
                     self.scroll_y_offset:
                 break
 
+        # Draw the upper empty area if present:
+        top_area_size = math.ceil(self._top_extra_drawing_space)
+        if top_area_size > 0:
+            visible_top_area = max(0, round(
+                top_area_size - self.scroll_y_offset
+            ))
+            if visible_top_area > 0:
+                draw_rectangle(
+                    self.renderer, border_size, border_size,
+                    self.width - border_size * 2,
+                    visible_top_area,
+                    color=c
+                )
+
         # Draw keyboard focus line if we have the focus:
         if self.focused:
             self.draw_keyboard_focus(0, 0, self.width, self.height)
 
         # Draw scroll bar:
-        self.draw_scrollbar(content_height, self.height,
-            self.scroll_y_offset)
+        self.draw_scrollbar(
+            content_height, self.height, self.scroll_y_offset
+        )
         Perf.stop(perf_id)
 
     def get_natural_width(self):
@@ -902,10 +933,12 @@ cdef class ListBase(ScrollbarDrawingWidget):
         if not self.render_as_menu:
             border_size = 0
         if self.fixed_one_line_entries:
-            return max(12 * self.dpi_scale,
-                round(self.usual_entry_height *\
-                len(self._entries))) + border_size * 2
-        h = 0
+            return math.ceil(self._top_extra_drawing_space *
+                             self.dpi_scale) +\
+                max(12 * self.dpi_scale,
+                    round(self.usual_entry_height *
+                          len(self._entries))) + border_size * 2
+        h = math.ceil(self._top_extra_drawing_space)
         if given_width != None:
             h = 0
             entry_width = given_width - round(border_size * 2)
@@ -991,6 +1024,8 @@ cdef class ListBase(ScrollbarDrawingWidget):
         self.add_html(
             html.escape(text), side_html=side_text,
             subtitle_html=subtitle,
+            side_icon=side_icon,
+            side_icon_width=side_icon_width,
             side_icon_to_left=side_icon_to_left,
             side_icon_with_text_color=side_icon_with_text_color,
         )
@@ -1022,11 +1057,18 @@ cdef class ListBase(ScrollbarDrawingWidget):
             side_icon=side_icon,
             side_icon_with_text_color=side_icon_with_text_color,
             ))
-        
-cdef class List(ListBase):
-    def __init__(self, fixed_one_line_entries=False,
-            triggered_by_single_click=False):
-        super().__init__(render_as_menu=False,
-            fixed_one_line_entries=fixed_one_line_entries,
-            triggered_by_single_click=triggered_by_single_click)
 
+
+cdef class List(ListBase):
+    def __init__(self,
+            fixed_one_line_entries=False,
+            triggered_by_single_click=False,
+            _internal_top_extra_drawing_space=0,
+            ):
+        super().__init__(
+            render_as_menu=False,
+            fixed_one_line_entries=fixed_one_line_entries,
+            triggered_by_single_click=triggered_by_single_click,
+            _internal_top_extra_drawing_space=\
+                _internal_top_extra_drawing_space
+            )

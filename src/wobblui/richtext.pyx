@@ -24,19 +24,48 @@ import copy
 import ctypes
 import html
 import math
-import sdl2 as sdl
 import string
 import sys
 import threading
 import time
 
+import nettools.cssparse as cssparse
+import nettools.htmlparse as htmlparse
+
 from wobblui.color cimport Color
-import wobblui.cssparse as cssparse
 cimport wobblui.debug as debug
 import nettools.htmlparse as htmlparse
 from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
+
+def html_element_text_color(element):
+    if type(element) == str:
+        parse_result = htmlparse.parse(element)
+        if len(parse_result) == 0:
+            return None
+        element = parse_result[0]
+    if element.node_type != "element":
+        return None
+    for node_attr in element.attributes:
+        if node_attr.lower() == "style":
+            values = cssparse.parse_css_inline_attributes(
+                cssparse.extract_string_without_comments(
+                    element.attributes[node_attr]
+                )
+            )
+            for attr in values:
+                if attr.name.lower() == "color":
+                    color = cssparse.parse_css_color(attr.value)
+                    if color != None:
+                        return color
+        if node_attr.lower() == "color":
+            color = cssparse.parse_css_color(element.attributes[node_attr])
+            if color != None:
+                return color
+    return None
+
 
 class TagInfo(object):
     def __init__(self, tag_name, is_block=False):
@@ -91,7 +120,7 @@ cdef class RichTextObj:
         return copy.copy(self)
 
     def character_index_to_offset(self, c):
-        if c == 0:
+        if c <= 0:
             (w, h) = self.get_font().render_size(" ")
             w = 0
         else:
@@ -221,6 +250,7 @@ cdef class RichTextFragment(RichTextObj):
         return t
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
+        import sdl2 as sdl
         if len(self.text.strip()) == 0:
             return
         perf_id = Perf.start("fragment draw part 1")
@@ -250,14 +280,19 @@ cdef class RichTextFragment(RichTextObj):
 
     def get_width_up_to_length(self, int index):
         self.update_cache()
-        index = max(0, min(index, len(self.text)))
+        if index < 0:
+            index = 0
+        if index > len(self.text):
+            index = len(self.text)
         if index in self._width_cache:
             return self._width_cache[index]
         cdef str text_part = self.text[:index]
-        font = font_manager().get_font(self.font_family,
+        font = font_manager().get_font(
+            self.font_family,
             bold=self.bold, italic=self.italic,
             px_size=self.px_size,
-            draw_scale=self._draw_scale)
+            draw_scale=self._draw_scale
+        )
         cdef int w, h
         (w, h) = font.render_size(text_part)
         self._width_cache[index] = w
@@ -1028,7 +1063,7 @@ cdef class RichText:
             return False
 
         def visit_item(item):
-            text_color = cssparse.element_text_color(item)
+            text_color = html_element_text_color(item)
             effective_color = text_color
             if text_color != None:
                 state["text_color_nesting"].append(text_color)
@@ -1115,7 +1150,7 @@ cdef class RichText:
                     state["at_block_end"] = False
 
         def leave_item(item):
-            text_color = cssparse.element_text_color(item)
+            text_color = html_element_text_color(item)
             if text_color != None:
                 assert(len(state["text_color_nesting"]) > 0)
                 state["text_color_nesting"] =\

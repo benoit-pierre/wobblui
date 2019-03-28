@@ -22,11 +22,13 @@ import sys
 if int(sys.version.split(".")[0]) < 3:
     raise RuntimeError("python2 is not supported")
 
-from setuptools import setup, Extension, Command
-from distutils.command.build_ext import build_ext
-from setuptools.command.install import install
-import os
 import setuptools
+from setuptools import setup, Extension, Command
+from setuptools.command.build_ext import build_ext
+import setuptools.command.build_py
+from setuptools.command.install import install
+import shutil
+import os
 
 with open("README.md", "r") as f:
     with open("LICENSE.md", "r") as f2:
@@ -47,14 +49,6 @@ with open("requirements.txt") as fh:
     dependencies = [l.strip() for l in fh.read().replace("\r\n", "\n").\
         split("\n") if len(l.strip()) > 0]
 
-class force_build_ext_install_hook(install):
-    def run(self, *args, **kwargs):
-        import subprocess, sys
-        subprocess.check_output([sys.executable,
-            "setup.py", "build_ext"],
-            cwd=os.path.dirname(__file__))
-        super().run(*args, **kwargs)
-
 class cythonize_build_ext_hook(build_ext):
     def run(self):
         from Cython.Build import cythonize
@@ -74,7 +68,7 @@ class cythonize_build_ext_hook(build_ext):
                     compiler_directives={
                         'always_allow_keywords': True,
                         'boundscheck': True,
-                        'language_level': 2,
+                        'language_level': 3,
                     }
                 )
         super().run()
@@ -198,12 +192,34 @@ def get_requirements_and_dep_links():
                 requirements.append(package_name)
     return (requirements, dep_links)
 
+
+class BuildPyCommand(setuptools.command.build_py.build_py):
+    """ Custom build command to add in license and logo files. """
+
+    ADDITIONAL_FILES = [
+        ("../../LICENSE.md", "LICENSE.md"),
+    ]
+
+    def run(self):
+        setuptools.command.build_py.build_py.run(self)
+
+        src_dir = self.get_package_dir("wobblui")
+        build_dir = os.path.join(self.build_lib, "wobblui")
+        for f in self.ADDITIONAL_FILES:
+            shutil.copyfile(
+                os.path.join(src_dir, f[0]),
+                os.path.join(build_dir, f[1])
+            )
+
+
 if __name__ == "__main__":
     setuptools.setup(
         name="wobblui",
         version=package_version,
         cmdclass={
-            "build_ext": cythonize_build_ext_hook},
+            "build_ext": cythonize_build_ext_hook,
+            "build_py": BuildPyCommand, 
+        },
         author="Jonas Thiem",
         author_email="jonas@thiem.email",
         description="A simple, universal and " +
@@ -212,16 +228,24 @@ if __name__ == "__main__":
             for p in setuptools.find_packages("src/wobblui")],
         ext_modules = extensions(),
         package_dir={'':'src'},
-        package_data={
-            "wobblui": ["font/packaged-fonts/*.ttf",
-                "font/packaged-fonts/*.otf",
-                "font/packaged-fonts/*.md",
-                "font/packaged-fonts/*.txt",
-                "img/*.png",
-                "*.pxd",
-                "font/*.pxd"]
-        },
-        install_requires=get_requirements_and_dep_links()[0],
+        package_data={"wobblui": [
+            "font/packaged-fonts/*.ttf",
+            "font/packaged-fonts/*.otf",
+            "font/packaged-fonts/*.md",
+            "font/packaged-fonts/*.txt",
+            "img/*.png",
+            "*.pxd",
+            "font/*.pxd",
+            "LICENSE.md",  # in ADDITIONAL_FILES, see above!
+        ]},
+        install_requires=[
+            entry for entry in get_requirements_and_dep_links()[0]
+            if "cython" not in entry.lower()
+        ],
+        setup_requires=[
+            entry for entry in get_requirements_and_dep_links()[0]
+            if "cython" in entry.lower()
+        ],
         dependency_links=get_requirements_and_dep_links()[1],
         long_description=long_description,
         long_description_content_type="text/markdown",

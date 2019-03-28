@@ -21,8 +21,10 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import cython
+from libc.stdint cimport uintptr_t
 import math
-import sdl2 as sdl
+import sys
 import weakref
 
 from wobblui.color import Color
@@ -44,17 +46,84 @@ def mark_textures_invalid(sdl_renderer):
         tex.internal_clean_if_renderer(sdl_renderer)
     all_textures[:] = new_refs
 
-cdef class Texture(object):
+
+cdef _sdl_RenderCopyType _sdl_RenderCopy = NULL
+cdef _sdl_SetRenderDrawColorType _sdl_SetRenderDrawColor = NULL
+cdef _sdl_RenderClearType _sdl_RenderClear = NULL
+cdef _sdl_SetRenderTargetType _sdl_SetRenderTarget = NULL
+cdef _sdl_GetRenderTargetType _sdl_GetRenderTarget = NULL
+cdef _sdl_DestroyTextureType _sdl_DestroyTexture = NULL
+cdef object texture_render_rect_1, texture_render_rect_2
+cdef uintptr_t texture_render_rect_1_addr, texture_render_rect_2_addr
+texture_render_rect_1_addr = 0
+texture_render_rect_2_addr = 0
+
+
+cdef class Texture:
     def __init__(self, object renderer, int width, int height,
             int _dontcreate=False):
         if not renderer or renderer is None:
             raise ValueError("not a valid renderer, is None or " +
                 "null pointer")
         global all_textures, sdl_tex_count
+
+        # Make sure global functions are available:
+        global _sdl_SetRenderDrawColor, _sdl_RenderCopy, _sdl_RenderClear
+        global _sdl_SetRenderTarget, _sdl_GetRenderTarget,\
+               _sdl_DestroyTexture
+        if not _sdl_SetRenderDrawColor:
+            import sdl2 as sdl
+            _sdl_SetRenderDrawColor = <_sdl_SetRenderDrawColorType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_SetRenderDrawColor)
+                ))
+            )
+        self.sdl_func_set_render_draw_color = _sdl_SetRenderDrawColor
+        if not _sdl_RenderCopy:
+            import sdl2 as sdl
+            _sdl_RenderCopy = <_sdl_RenderCopyType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_RenderCopy)
+                ))
+            )
+        self.sdl_func_render_copy = _sdl_RenderCopy
+        if not _sdl_RenderClear:
+            import sdl2 as sdl
+            _sdl_RenderClear = <_sdl_RenderClearType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_RenderClear)
+                ))
+            )
+        if not _sdl_SetRenderTarget:
+            import sdl2 as sdl
+            _sdl_SetRenderTarget = <_sdl_SetRenderTargetType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_SetRenderTarget)
+                ))
+            )
+        if not _sdl_GetRenderTarget:
+            import sdl2 as sdl
+            _sdl_GetRenderTarget = <_sdl_GetRenderTargetType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_GetRenderTarget)
+                ))
+            )
+        if not _sdl_DestroyTexture:
+            import sdl2 as sdl
+            _sdl_DestroyTexture = <_sdl_DestroyTextureType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_DestroyTexture)
+                ))
+            )
+
         self._texture = None
+        self.texture_address = 0
         self.renderer = renderer
-        self.renderer_key = str(ctypes.addressof(self.renderer.contents))
+        self.renderer_address = <uintptr_t>(
+            ctypes.addressof(self.renderer.contents)
+        )
         if not _dontcreate:
+            import sdl2 as sdl
             sdl_tex_count += 1
             self._texture = sdl.SDL_CreateTexture(
                 self.renderer,
@@ -62,8 +131,12 @@ cdef class Texture(object):
                 0,
                 width, height)
             if self._texture is None:
+                self.texture_address = 0
                 raise RuntimeError("texture creation " +
                     "unexpectedly failed!")
+            self.texture_address = <uintptr_t>(
+                ctypes.addressof(self.renderer.contents)
+            )
             sdl.SDL_SetTextureBlendMode(self._texture,
                 sdl.SDL_BLENDMODE_BLEND)
         self.width = width
@@ -71,9 +144,10 @@ cdef class Texture(object):
         all_textures.append(weakref.ref(self))
 
     def is_for_renderer(self, renderer):
-        renderer_cmp_key = str(
-            ctypes.addressof(renderer.contents))
-        if self.renderer_key != renderer_cmp_key:
+        cdef uintptr_t other_renderer_addr = <uintptr_t>(
+            ctypes.addressof(renderer.contents)
+        )
+        if self.renderer_address != other_renderer_addr:
             return False
         return True
 
@@ -81,6 +155,7 @@ cdef class Texture(object):
         return (self._texture is None)
 
     def set_color(self, o):
+        import sdl2 as sdl
         if isinstance(o, Color):
             sdl.SDL_SetTextureColorMod(
                 self._texture, o.value_red, o.value_green, o.value_blue)
@@ -98,28 +173,54 @@ cdef class Texture(object):
                 ">")
 
     def draw(self, int x, int y, w=None, h=None):
+        global texture_render_rect_1, texture_render_rect_2, \
+            texture_render_rect_1_addr, texture_render_rect_2_addr
         if (w != None and w <= 0) or (
                 h != None and h <= 0):
             return
-        if self._texture is None or self.renderer is None:
+        if self.texture_address == 0 or self.renderer_address == 0:
             raise ValueError("invalid dumped texture. " +
                 "did you observe renderer_update()??")
-        tg = sdl.SDL_Rect()
-        tg.x = round(x)
-        tg.y = round(y)
-        tg.w = max(1, round(w or self.width))
-        tg.h = max(1, round(h or self.height))
-        src = sdl.SDL_Rect()
-        src.x = 0
-        src.y = 0
-        src.w = self.width
-        src.h = self.height
-        sdl.SDL_SetRenderDrawColor(self.renderer,
-            255, 255, 255, 255)
-        sdl.SDL_RenderCopy(self.renderer, self._texture, src, tg)
+        if texture_render_rect_1_addr == 0:
+            import sdl2 as sdl
+            texture_render_rect_1 = sdl.SDL_Rect()
+            texture_render_rect_2 = sdl.SDL_Rect()
+            texture_render_rect_1_addr = <uintptr_t>(
+                ctypes.addressof(texture_render_rect_1)
+            )
+            texture_render_rect_2_addr = <uintptr_t>(
+                ctypes.addressof(texture_render_rect_2)
+            )
+        r1 = texture_render_rect_1
+        r2 = texture_render_rect_2
+        r1.x = round(x)
+        r1.y = round(y)
+        r1.w = max(1, round(w or self.width))
+        r1.h = max(1, round(h or self.height))
+        r2.x = 0
+        r2.y = 0
+        r2.w = self.width
+        r2.h = self.height
+        cdef uintptr_t renderer_address = self.renderer_address
+        cdef uintptr_t texture_address = self.texture_address
+        cdef uintptr_t r1_address = texture_render_rect_1_addr
+        cdef uintptr_t r2_address = texture_render_rect_2_addr
+        cdef _sdl_SetRenderDrawColorType setrendercolor =\
+            self.sdl_func_set_render_draw_color
+        cdef _sdl_RenderCopyType rendercopy = self.sdl_func_render_copy
+        with nogil:
+            setrendercolor(
+                <void*>renderer_address, 255, 255, 255, 255
+            )
+            rendercopy(
+                <void*>renderer_address,
+                <void*>texture_address,
+                <void*>r2_address,
+                <void*>r1_address
+            )
 
     def _force_unload(self):
-        global sdl_tex_count
+        global sdl_tex_count, _sdl_DestroyTexture
         if self._texture is not None:
             try:
                 if config.get("debug_texture_references"):
@@ -130,14 +231,14 @@ cdef class Texture(object):
                 if sdl_tex_count is not None:
                     sdl_tex_count -= 1
                 try:
-                    sdl.SDL_DestroyTexture(self._texture)
-                except (TypeError, AttributeError):
+                    _sdl_DestroyTexture(<void*>self.texture_address)
+                except (NameError, TypeError, AttributeError):
                     # Most likely, we're shutting down -> SDL already gone
-                    pass
+                    print("warning: texture unload failed. "
+                          "are some modules already unloaded?",
+                          file=sys.stderr)
                 self._texture = None
-
-    def __del__(self):
-        self._force_unload()
+                self.texture_address = 0
 
     def __dealloc__(self):
         self._force_unload()
@@ -155,21 +256,28 @@ cdef class Texture(object):
 
     @staticmethod
     def new_from_sdl_surface(renderer, srf):
+        import sdl2 as sdl
         global sdl_tex_count
         if not renderer:
             raise ValueError("need a valid renderer! not NULL / None, " +
                 "got: " + str(renderer))
         if not srf:
             raise ValueError("need valid surface! not NULL / None")
-        tex = Texture(renderer, srf.contents.w, srf.contents.h,
-            _dontcreate=True)
+        tex = Texture(
+            renderer, srf.contents.w, srf.contents.h,
+            _dontcreate=True
+        )
         sdl_tex_count += 1
         assert(tex._texture is None)
         tex._texture = sdl.SDL_CreateTextureFromSurface(renderer, srf)
+        tex.texture_address = <uintptr_t>(
+            ctypes.addressof(tex._texture.contents)
+        )
         return tex
 
 cdef class RenderTarget(Texture):
     def __init__(self, renderer, width, height):
+        import sdl2 as sdl
         global sdl_tex_count
         super().__init__(renderer, width, height, _dontcreate=True)
         self.set_as_target = False
@@ -183,21 +291,23 @@ cdef class RenderTarget(Texture):
             sdl.SDL_TEXTUREACCESS_TARGET,
             width, height)
         if self._texture is None:
+            self.texture_address = 0
             raise RuntimeError("render target creation " +
                 "unexpectedly failed!")
+        self.texture_address = <uintptr_t>(
+            ctypes.addressof(self._texture.contents)
+        )
         sdl.SDL_SetTextureBlendMode(self._texture,
             sdl.SDL_BLENDMODE_BLEND)
 
-    def __del__(self):
-        if self.set_as_target:
-            sdl.SDL_SetRenderTarget(self.renderer, None)
-        self.set_as_target = False
-        super().__del__()
-
     def __dealloc__(self):
+        global _sdl_SetRenderTarget
         if self.set_as_target:
-            sdl.SDL_SetRenderTarget(self.renderer, None)
-        self.set_as_target = False
+            _sdl_SetRenderTarget(<void*>self.renderer_address, <void*>0)
+        try:
+            self._force_unload()
+        finally:
+            self.set_as_target = False
 
     def draw(self, x, y, w=None, h=None):
         assert(x != None and y != None)
@@ -207,29 +317,56 @@ cdef class RenderTarget(Texture):
         super().draw(x, y, w=w, h=h)
 
     def set_as_rendertarget(self, clear=True):
+        global _SDL_RenderClear
+        global _sdl_SetRenderTarget, _sdl_GetRenderTarget
         if self._texture is None or self.renderer is None:
             raise ValueError("invalid render target, " +
                 "was cleaned up. did you observe renderer_update()??")
         if self.set_as_target:
             raise ValueError("this is already set as render target!")
+
+        cdef uintptr_t renderer_address = (<uintptr_t>(
+            ctypes.addressof(self.renderer.contents)
+        ))
+        cdef uintptr_t texture_address = (<uintptr_t>(
+            ctypes.addressof(self._texture.contents)
+        ))
+        cdef _sdl_SetRenderDrawColorType set_render_draw_color = NULL
+        cdef _sdl_RenderClearType render_clear = NULL
+
         self.set_as_target = True
-        self.previous_target = sdl.SDL_GetRenderTarget(self.renderer)
-        sdl.SDL_SetRenderTarget(self.renderer, self._texture)
+        self.previous_target = (<uintptr_t>_sdl_GetRenderTarget(
+            <void*>renderer_address
+        ))
+        _sdl_SetRenderTarget(<void*>renderer_address, <void*>texture_address)
         self.ever_rendered_to = True
         if clear:
-            sdl.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 0)
-            sdl.SDL_RenderClear(self.renderer)
-            sdl.SDL_SetRenderDrawColor(self.renderer, 255,
-                255,255,255)
+            set_render_draw_color = self.sdl_func_set_render_draw_color
+            render_clear = _sdl_RenderClear
+            with nogil:
+                set_render_draw_color(<void*>renderer_address, 0, 0, 0, 0)
+                render_clear(<void*>renderer_address)
+                set_render_draw_color(
+                    <void*>renderer_address, 255,
+                    255,255,255
+                )
 
     def unset_as_rendertarget(self):
+        global _sdl_SetRenderDrawColor
+        global _sdl_SetRenderTarget, _sdl_GetRenderTarget
         if self._texture is None or self.renderer is None:
             raise ValueError("invalid render target, " +
                 "was cleaned up. did you observe renderer_update()??")
         if not self.set_as_target:
             raise ValueError("this is not set as render target yet!")
         self.set_as_target = False
-        sdl.SDL_SetRenderTarget(self.renderer, self.previous_target)
-        sdl.SDL_SetRenderDrawColor(self.renderer,
-            255, 255, 255, 255)
+        cdef uintptr_t renderer_address = (<uintptr_t>(
+            ctypes.addressof(self.renderer.contents)
+        ))
+        cdef uintptr_t prevtarget_address = (<uintptr_t>(self.previous_target))
+        _sdl_SetRenderTarget(<void*>renderer_address,
+                             <void*>prevtarget_address)
+        _sdl_SetRenderDrawColor(
+            <void*>renderer_address, 255, 255, 255, 255
+        )
 
