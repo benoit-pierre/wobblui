@@ -48,11 +48,11 @@ cpdef void initialize_sdl():
 
     loginfo("Setting SDL2 settings")
     sdl.SDL_SetHintWithPriority(
-        b"SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH", b"1",
+        b"SDL_MOUSE_FOCUS_CLICKTHROUGH", b"1",
         sdl.SDL_HINT_OVERRIDE
     )
     sdl.SDL_SetHintWithPriority(
-        b"SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"1",
+        b"SDL_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"1",
         sdl.SDL_HINT_OVERRIDE,
     )
     sdl.SDL_SetHintWithPriority(
@@ -68,7 +68,7 @@ cpdef void initialize_sdl():
         sdl.SDL_HINT_OVERRIDE
     )
     sdl.SDL_SetHintWithPriority(
-        b"SDL_HINT_RENDER_SCALE_QUALITY", b"1",
+        b"SDL_RENDER_SCALE_QUALITY", b"1",
         sdl.SDL_HINT_OVERRIDE
     )
     subsystems = sdl.SDL_WasInit(sdl.SDL_INIT_EVERYTHING)
@@ -77,10 +77,6 @@ cpdef void initialize_sdl():
         sdl.SDL_Init(sdl.SDL_INIT_VIDEO|sdl.SDL_INIT_TIMER|
                      sdl.SDL_INIT_EVENTS|sdl.SDL_INIT_HAPTIC|
                      sdl.SDL_INIT_GAMECONTROLLER)
-        sdl.SDL_SetHintWithPriority(
-            b"SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"1",
-            sdl.SDL_HINT_OVERRIDE,
-        )
     else:
         loginfo("NOT calling SDL_Init, already initialized")
 
