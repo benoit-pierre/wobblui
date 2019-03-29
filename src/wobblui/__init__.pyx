@@ -880,9 +880,13 @@ def _handle_event(event):
             return
         x = int(event.wheel.x)
         y = int(event.wheel.y)
-        if event.wheel.direction == sdl.SDL_MOUSEWHEEL_FLIPPED:
-            x = -x
-            y = -y
+        try:
+            if event.wheel.direction == sdl.SDL_MOUSEWHEEL_FLIPPED:
+                x = -x
+                y = -y
+        except AttributeError:
+            # Needed to support old broken PySDL2 versions
+            pass
         w = get_window_by_sdl_id(event.button.windowID)
         if w is None or w.is_closed:
             return
