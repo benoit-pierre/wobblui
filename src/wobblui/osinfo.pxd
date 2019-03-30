@@ -21,4 +21,4 @@ freely, subject to the following restrictions:
 '''
 
 
-cpdef is_android()
+cpdef int is_android()

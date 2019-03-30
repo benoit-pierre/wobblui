@@ -22,7 +22,9 @@ freely, subject to the following restrictions:
 
 import copy
 import ctypes
+import cython
 import html
+from libc.stdint cimport uintptr_t
 import math
 import string
 import sys
@@ -38,6 +40,9 @@ import nettools.htmlparse as htmlparse
 from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
+
+cdef _sdl_SetRenderDrawColorType _sdl_SetRenderDrawColor = NULL
 
 
 def html_element_text_color(element):
@@ -250,7 +255,7 @@ cdef class RichTextFragment(RichTextObj):
         return t
 
     def draw(self, renderer, x, y, color=None, draw_scale=None):
-        import sdl2 as sdl
+        global _sdl_SetRenderDrawColor
         if len(self.text.strip()) == 0:
             return
         perf_id = Perf.start("fragment draw part 1")
@@ -266,7 +271,10 @@ cdef class RichTextFragment(RichTextObj):
         tex = font.get_cached_rendered_texture(renderer, self.text)
         Perf.stop(perf_id)
         perf_id = Perf.start("fragment draw part 3")
-        sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+        _sdl_SetRenderDrawColor(
+            <void*><uintptr_t>ctypes.addressof(renderer.contents),
+            255, 255, 255, 255
+        )
         if self.forced_text_color is None:
             tex.set_color(color)
         else:
@@ -469,7 +477,17 @@ cdef class RichText:
 
     def __init__(self, text="", font_family="Tex Gyre Heros",
             px_size=12, draw_scale=1.0):
+        global _sdl_SetRenderDrawColor
         super().__init__()
+
+        if not _sdl_SetRenderDrawColor:
+            import sdl2 as sdl
+            _sdl_SetRenderDrawColor = <_sdl_SetRenderDrawColorType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_SetRenderDrawColor)
+                ))
+            )
+
         self.default_font_family = font_family
         self._px_size = px_size
         self.draw_scale = draw_scale

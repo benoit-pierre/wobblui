@@ -20,13 +20,21 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+cdef int is_android = -1
+
 class AppStyle:
     def __init__(self):
-        import sdl2 as sdl
+        global is_android
+        if is_android == -1:
+            import sdl2 as sdl
+            is_android = (
+                sdl.SDL_GetPlatform().decode(
+                    "utf-8", "replace"
+                ).lower() == "android"
+            )
         self._dpi_scale_base = 1.0
         self._dpi_scale = 1.0
-        self.is_android = (sdl.SDL_GetPlatform().decode(
-            "utf-8", "replace").lower() == "android")
+        self.is_android = is_android
         #if self.is_android:
         #    self._dpi_scale_base = 1.2
         self.values = dict()

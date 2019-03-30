@@ -25,10 +25,10 @@ from wobblui.sdlinit import initialize_sdl
 cdef extern from "oscheck.h":
     cdef bint COMPILED_WITH_ANDROID_NDK
 
-cached_is_android = None
-cpdef is_android():
+cdef int cached_is_android = -1
+cpdef int is_android():
     global cached_is_android
-    if cached_is_android != None:
+    if cached_is_android != -1:
         return cached_is_android
     initialize_sdl()
     try:
@@ -39,4 +39,3 @@ cpdef is_android():
         # No SDL2. So we need to rely on other clues.
         cached_is_android = (COMPILED_WITH_ANDROID_NDK == 1)
     return cached_is_android
- 

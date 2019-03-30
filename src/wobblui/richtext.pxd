@@ -20,10 +20,15 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+
+ctypedef int (*_sdl_SetRenderDrawColorType)(void *renderer,
+    unsigned char r, unsigned char g, unsigned char b, unsigned char a
+) nogil
+
+
 cdef class RichText:
     cdef public str default_font_family
     cdef str _cached_text
     cdef int _px_size
     cdef public double draw_scale
     cdef public object fragments
-
