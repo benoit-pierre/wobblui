@@ -22,9 +22,12 @@ freely, subject to the following restrictions:
 
 cpdef void stop_queue_for_process_shutdown()
 
+
 cpdef int process_jobs()
 
+
 cpdef int is_main_thread()
+
 
 cdef class SDLFontWrapper:
     """ MEMBERS ARE IN font/sdlfont.pxd """
@@ -33,7 +36,9 @@ cdef class SDLFontWrapper:
     cdef public str name
     cdef public int px_size
 
-cpdef tuple get_thread_safe_render_size(sdl_ttf_font, char* text)
+
+cpdef tuple get_thread_safe_render_size(SDLFontWrapper sdl_ttf_font,
+                                        char* text)
+
 
 cpdef SDLFontWrapper get_thread_safe_sdl_font(path, px_size)
-

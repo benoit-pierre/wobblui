@@ -52,10 +52,13 @@ cdef class ThreadJob(object):
             break
         return self.result
 
+
 ctypedef int (*_sdl_TextSize_utf8_type)(
     void* font, char* text,
     int* resultw, int* resulth) nogil
 cdef _sdl_TextSize_utf8_type _sdl_TextSize_utf8 = NULL
+
+
 cdef tuple _get_font_size_fast_unthreaded(object sdl_font, char* text):
     global _sdl_TextSize_utf8
     if not _sdl_TextSize_utf8:
@@ -108,6 +111,7 @@ cdef class SDLFontCloseJob(ThreadJob):
         _sdl_close_font(self.font_ref)
         self.result_waiter.set()
 
+
 cdef object _sdl_open_font = None
 def get_sdl_font(str font_path, int px_size):
     global _sdl_open_font, _sdl_close_font
@@ -126,6 +130,7 @@ def get_sdl_font(str font_path, int px_size):
         raise ValueError("couldn't load TTF " +
             "font: " + str(error_msg))
     return SDLFontWrapper(font, name=font_path, px_size=px_size)
+
 
 cdef class SDLFontLoadJob(ThreadJob):
     cdef str font_path
@@ -150,6 +155,7 @@ cdef class SDLFontLoadJob(ThreadJob):
             pass
         self.result_waiter.set()
 
+
 cdef object job_queue = Queue()
 cpdef int process_jobs():
     global job_queue
@@ -164,10 +170,16 @@ cpdef int process_jobs():
         result.execute()
     return processed_a_job
 
+
 cpdef int is_main_thread():
     return (threading.current_thread() == threading.main_thread())
 
-cpdef tuple get_thread_safe_render_size(sdl_ttf_font, char* text):
+
+cpdef tuple get_thread_safe_render_size(SDLFontWrapper sdl_ttf_font,
+                                        char* text
+                                        ):
+    cdef bytes text_bytes
+    cdef SDLFontSizeJob size_job
     if is_main_thread():
         return _get_font_size_fast_unthreaded(sdl_ttf_font, text)
     else:
@@ -176,6 +188,7 @@ cpdef tuple get_thread_safe_render_size(sdl_ttf_font, char* text):
         job_queue.put(size_job)
         size_job.wait_for_done()
         return size_job.result
+
 
 cdef class SDLFontWrapper:
     """ MEMBERS ARE IN font/sdlfont.pxd """
@@ -192,7 +205,8 @@ cdef class SDLFontWrapper:
     def __dealloc__(self):
         job_queue.put(SDLFontCloseJob(self.font))
 
-ttf_was_initialized = False
+
+cdef int ttf_was_initialized = False
 cpdef SDLFontWrapper get_thread_safe_sdl_font(path, px_size):
     global ttf_was_initialized
     if not ttf_was_initialized:

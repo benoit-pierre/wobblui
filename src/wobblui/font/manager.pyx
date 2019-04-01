@@ -22,6 +22,7 @@ freely, subject to the following restrictions:
 
 import ctypes
 import functools
+from libc.math cimport round as cround
 import threading
 import time
 
@@ -33,7 +34,7 @@ from wobblui.sdlinit cimport initialize_sdl
 from wobblui.texture cimport Texture
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
-DRAW_SCALE_GRANULARITY_FACTOR=1000
+cdef int DRAW_SCALE_GRANULARITY_FACTOR = 1000
 
 render_size_cache = KeyValueCache(size=500)
 
@@ -139,7 +140,7 @@ cdef class Font(object):
             path = self.get_font_file_path()
             self._sdl_font = sdlfont.\
                 get_thread_safe_sdl_font(path,
-                round(self.px_size))
+                cround(self.px_size))
             result = self._sdl_font
         finally:
             self.mutex.release()
@@ -312,13 +313,16 @@ cdef class FontManager(object):
     def _load_font_info(self,
             str name, int bold, int italic, double px_size=12,
             double draw_scale=1.0, int display_dpi=96):
-        display_dpi = round(display_dpi)
-        style = (name, bold, italic, round(px_size * 10))
-        unified_draw_scale = round(draw_scale *
-            DRAW_SCALE_GRANULARITY_FACTOR)
-        actual_px_size = ((display_dpi / 96.0) *
+        style = (name, bold, italic, cround(px_size * 10))
+        unified_draw_scale = cround(
+            draw_scale *
+            DRAW_SCALE_GRANULARITY_FACTOR
+        )
+        actual_px_size = cround(
+            ((display_dpi / 96.0) *
             (unified_draw_scale /
-            float(DRAW_SCALE_GRANULARITY_FACTOR))) * px_size
+            (DRAW_SCALE_GRANULARITY_FACTOR * 1.0))) * px_size
+        )
         key = (unified_draw_scale, display_dpi, style)
 
         self.font_by_sizedpistyle_cache_times[key] =\
