@@ -52,9 +52,9 @@ cpdef void initialize_sdl():
         sdl.SDL_HINT_OVERRIDE
     )
     sdl.SDL_SetHintWithPriority(
-        b"SDL_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"0",
+        b"SDL_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"1",
         sdl.SDL_HINT_OVERRIDE,
-    )  # disable for now.
+    )
     sdl.SDL_SetHintWithPriority(
         b"SDL_ANDROID_TRAP_BACK_BUTTON", b"1",
         sdl.SDL_HINT_OVERRIDE
