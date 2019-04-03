@@ -21,6 +21,8 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import cython
+from libc.stdint cimport uintptr_t
 import math
 import weakref
 
@@ -29,6 +31,19 @@ from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
 from wobblui.uiconf import config
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
+
+
+cdef _sdl_DestroyTextureType _sdl_DestroyTexture = NULL
+
+cdef _load_function_ptrs():
+    global _sdl_DestroyTexture
+    if not _sdl_DestroyTexture:
+        import sdl2 as sdl
+        _sdl_DestroyTexture = <_sdl_DestroyTextureType>(
+            cython.operator.dereference(<uintptr_t*>(
+            <uintptr_t>ctypes.addressof(sdl.SDL_DestroyTexture)
+            ))
+        )
 
 
 _rect = None
@@ -83,6 +98,7 @@ dash_tex_wide = 32
 dashed_texture_store = dict()
 cdef get_dashed_texture(renderer, int vertical=False):
     global dashed_texture_store
+    _load_function_ptrs()
     import sdl2 as sdl
     renderer_key = str(ctypes.addressof(renderer.contents))
     if (vertical, renderer_key) in dashed_texture_store:
@@ -122,12 +138,14 @@ cdef get_dashed_texture(renderer, int vertical=False):
 
 cpdef clear_renderer_gfx(renderer):
     global dashed_texture_store
-    import sdl2 as sdl
+    _load_function_ptrs()
     renderer_key = str(ctypes.addressof(renderer.contents))
     new_dashed_store = dict()
     for entry in dashed_texture_store:
         if entry[1] == renderer_key:
-            sdl.SDL_DestroyTexture(dashed_texture_store[entry])
+            _sdl_DestroyTexture(<void*><uintptr_t>ctypes.addressof(
+                dashed_texture_store[entry].contents
+            ))
             continue
         new_dashed_store[entry] = dashed_texture_store[entry]
     dashed_texture_store = new_dashed_store
@@ -138,6 +156,7 @@ cpdef draw_dashed_line(
         object color=None,
         double dash_length=7.0,
         double thickness=3.0):
+    _load_function_ptrs()
     import sdl2 as sdl
     if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
         raise NotImplementedError("lines that aren't straight vertical or " +
@@ -269,7 +288,6 @@ cpdef draw_font(renderer, text, x, y,
         tex.draw(round(x), round(y))
 
 cpdef is_font_available(font_family, bold=False, italic=False):
-    import sdl2 as sdl
     try:
         f = font_manager().get_font(font_family, bold=bold, italic=italic)
         # intentionally unused, will cause error if no such font:

@@ -20,6 +20,12 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+
+ctypedef void (*_sdl_DestroyTextureType)(
+    void *texture
+) nogil
+
+
 cpdef draw_rectangle(
     renderer, int x, int y, int w, int h,
     object color=*,
