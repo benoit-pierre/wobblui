@@ -964,35 +964,10 @@ def _handle_event(event):
     elif event.type == sdl.SDL_TEXTINPUT:
         text = event.text.text.decode("utf-8", "replace")
         widget = get_active_text_widget()
-
-        # Helper code for workaround:
-        if text.find(" ") >= 0:
-            _HACK_oldsdl_spacebar_event_outstanding = False
-        elif _HACK_oldsdl_spacebar_event_outstanding and \
-                widget != None:
-            _HACK_oldsdl_spacebar_event_outstanding = False
-            widget.textinput(" ", get_modifiers())
-        if widget != None and text != "\n" and text != "\r\n":
+        if widget != None and text not in {"\n", "\r", "\r\n"}:
             widget.textinput(text, get_modifiers())
     elif event.type == sdl.SDL_KEYDOWN or \
             event.type == sdl.SDL_KEYUP:
-        # WORKAROUND for old SDL's missing space textinput bug:
-        if event.type == sdl.SDL_KEYDOWN and is_android() and \
-                sdl_version()[0] == 2 and sdl_version()[1] == 0 and \
-                sdl_version()[2] < 9:
-            if sdl_vkey_map(event.key.keysym.sym) == "space" and \
-                    get_active_text_widget() != None:
-                _HACK_oldsdl_spacebar_event_outstanding = True
-        elif event.type == sdl.SDL_KEYUP and is_android() and \
-                sdl_version()[0] == 2 and sdl_version()[1] == 0 and \
-                sdl_version()[2] < 9:
-            if _HACK_oldsdl_spacebar_event_outstanding and \
-                    sdl_vkey_map(event.key.keysym.sym) == "space":
-                _HACK_oldsdl_spacebar_event_outstanding = False
-                widget = get_active_text_widget()
-                if widget != None:
-                    widget.textinput(" ", get_modifiers())
-        # END OF workaround
         _process_key_event(event, trigger_shortcuts=True)
     elif event.type == sdl.SDL_WINDOWEVENT:
         if event.window.event == \
