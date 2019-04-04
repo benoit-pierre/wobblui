@@ -22,6 +22,7 @@ freely, subject to the following restrictions:
 
 import copy
 import ctypes
+from libc.stdint cimport uintptr_t
 import math
 import sys
 import threading
@@ -46,7 +47,11 @@ from wobblui.mouse import cursors_seen_during_mousemove,\
     reset_cursors_seen_during_mousemove, set_cursor
 from wobblui.osinfo import is_android
 from wobblui.perf cimport CPerf as Perf
+from wobblui.render_lock cimport can_renderer_safely_be_used,\
+    can_window_safely_use_its_renderer,\
+    _internal_set_global_renderer_lock
 from wobblui.sdlinit cimport sdl_version
+from wobblui.texture cimport do_actual_texture_unload
 from wobblui.timer cimport internal_trigger_check,\
     maximum_sleep_time
 from wobblui.uiconf import config
@@ -89,8 +94,9 @@ cdef redraw_windows(int layout_only=False):
                         ((hasattr(widget, "parent_window") and
                         widget.parent_window) == w or widget == w)]))
             Perf.stop(relayout_perf, expected_max_duration=0.010)
-            if not layout_only:
+            if not layout_only and can_window_safely_use_its_renderer(w):
                 w.redraw_if_necessary()
+            do_actual_texture_unload(w.internal_get_renderer_address())
         except Exception as e:
             logerror("*** ERROR HANDLING WINDOW ***")
             logerror(str(traceback.format_exc()))
@@ -1023,10 +1029,11 @@ def _handle_event(event):
             w = get_window_by_sdl_id(event.window.windowID)
             if w != None and w.hidden and not w.is_closed:
                 w.set_hidden(False)
-    elif (event.type == sdl.SDL_APP_DIDENTERBACKGROUND):
+    elif (event.type == sdl.SDL_APP_WILLENTERBACKGROUND):
         logdebug("APP BACKGROUND EVENT.")
         if sdl.SDL_GetPlatform().decode("utf-8", "replace").\
                 lower() == "android":
+            # Dump renderer if instructed to do so:
             dump_renderers = config.get(
                 "recreate_renderer_when_in_background")
             if dump_renderers:
@@ -1040,13 +1047,32 @@ def _handle_event(event):
             else:
                 logdebug("ANDROIND IN BACKGROUND. KEEPING RENDERERS AS " +
                     "PER CONFIG OPTION. (not recommended)")
-    elif (event.type == sdl.SDL_APP_WILLENTERFOREGROUND):
+            # Force-unfocus all windows:
+            for w_ref in get_all_windows():
+                    w = w_ref()
+                    if w != None:
+                        if w.focused:
+                            w.unfocus()
+            # Make sure that no drawing is allowed:
+            _internal_set_global_renderer_lock(1)
+    elif (event.type == sdl.SDL_APP_DIDENTERFOREGROUND):
         logdebug("APP RESUME EVENT")
+        # Allow rendering again:
+        _internal_set_global_renderer_lock(0)
+        if sdl.SDL_GetPlatform().decode("utf-8", "replace").\
+                lower() == "android":
+            # Make sure textures are all dumped, we have only one
+            # renderer:
+            do_actual_texture_unload(0)
+        # Re-create windows and their renderers:
         for w_ref in get_all_windows():
             w = w_ref()
             if w != None and not w.is_closed:
                 w.internal_app_reopen()
-    elif (event.type == sdl.SDL_APP_DIDENTERFOREGROUND):
+                renderer_address = w.internal_renderer_address()
+                if renderer_address != 0:
+                    do_actual_texture_unload(renderer_address)
+        # Make sure loading screen is gone:
         loading_screen_fix()
     return True
 

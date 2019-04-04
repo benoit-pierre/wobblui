@@ -57,10 +57,12 @@ cpdef void initialize_sdl():
     )  # legacy hint, but just to ensure we can support mouse on android
     sdl.SDL_SetHintWithPriority(
         b"SDL_MOUSE_TOUCH_EVENTS", b"0",
+        sdl.SDL_HINT_OVERRIDE,
     )  # matches the default, but just to be sure (would cause duplicate
        # taps with woblbui!)
     sdl.SDL_SetHintWithPriority(
         b"SDL_TOUCH_MOUSE_EVENTS", b"1",
+        sdl.SDL_HINT_OVERRIDE,
     )  # matches the default, but just to be sure (wobblui heavily relies on
        # SDL_TOUCH_MOUSEID!)
     sdl.SDL_SetHintWithPriority(

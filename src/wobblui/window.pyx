@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+from libc.stdint cimport uintptr_t
 import math
 import os
 import platform
@@ -35,6 +36,7 @@ from wobblui.osinfo import is_android
 from wobblui.sdlinit cimport initialize_sdl
 from wobblui.style import AppStyle, AppStyleBright, AppStyleDark
 cimport wobblui.texture
+from wobblui.texture cimport do_actual_texture_unload
 from wobblui.uiconf import config
 from wobblui.widget_base cimport WidgetBase
 from wobblui.widgetman import get_all_widgets, get_all_windows
@@ -256,6 +258,12 @@ cdef class Window(WidgetBase):
         self._renderer = old_renderer
         self.update()
 
+    def internal_get_renderer_address(self):
+        if self._renderer is None or not self._renderer:
+            # Is either None or a NULL ctypes pointer
+            return 0
+        return int(<uintptr_t>ctypes.addressof(self._renderer.contents))
+
     def on_renderer_to_be_destroyed(self):
         """ Called when a renderer will be destroyed. This will
             clear out all textures to avoid a crash. """
@@ -278,6 +286,9 @@ cdef class Window(WidgetBase):
         for child in self.children:
             recursive_renderer_update(child)
         clear_renderer_gfx(old_renderer)
+        do_actual_texture_unload(<uintptr_t>ctypes.addressof(
+            old_renderer.contents
+        ))
         self._renderer = old_renderer
         if self.internal_render_target != None:
             if config.get("debug_texture_references"):

@@ -29,6 +29,7 @@ import weakref
 
 from wobblui.color import Color
 from wobblui.perf cimport CPerf as Perf
+from wobblui.render_lock cimport can_renderer_safely_be_used
 from wobblui.uiconf import config
 from wobblui.woblog import logdebug, logerror, loginfo, logwarning
 
@@ -59,12 +60,67 @@ texture_render_rect_1_addr = 0
 texture_render_rect_2_addr = 0
 
 
+cdef dict to_be_destroyed_texture_addresses
+
+
+cdef void do_actual_texture_unload(uintptr_t renderer_address):
+    global to_be_destroyed_texture_addresses, _sdl_DestroyTexture
+
+    cdef int printed_debug_message
+
+    if to_be_destroyed_texture_addresses is None:
+        to_be_destroyed_texture_addresses = dict()
+        return
+    if renderer_address != 0 and \
+            int(renderer_address) not in to_be_destroyed_texture_addresses:
+        return
+    if not _sdl_DestroyTexture:
+        import sdl2 as sdl
+        _sdl_DestroyTexture = <_sdl_DestroyTextureType>(
+            cython.operator.dereference(<uintptr_t*>(
+            <uintptr_t>ctypes.addressof(sdl.SDL_DestroyTexture)
+            ))
+        )
+    printed_debug_message = False
+    if renderer_address == 0:
+        # Dump EVERYTHING.
+        try:
+            for r in to_be_destroyed_texture_addresses:
+                for texaddr in to_be_destroyed_texture_addresses[r]:
+                    if not printed_debug_message:
+                        printed_debug_message = True
+                        logdebug("Free'ing 1+ textures of ALL " +
+                                 "renderers")
+                    _sdl_DestroyTexture(<void*><uintptr_t>texaddr) 
+        finally:
+            to_be_destroyed_texture_addresses = dict()
+    else:
+        try:
+            # Dump just for this renderer.
+            for texaddr in to_be_destroyed_texture_addresses[
+                    int(renderer_address)
+                    ]:
+                if not printed_debug_message:
+                    printed_debug_message = True
+                    logdebug("Free'ing 1+ textures of renderer " +
+                             str(renderer_address))
+                _sdl_DestroyTexture(<void*><uintptr_t>texaddr)
+        finally:
+            to_be_destroyed_texture_addresses[
+                int(renderer_address)
+            ][:] = []
+
 cdef class Texture:
     def __init__(self, object renderer, int width, int height,
             int _dontcreate=False):
         if not renderer or renderer is None:
             raise ValueError("not a valid renderer, is None or " +
                 "null pointer")
+        if not can_renderer_safely_be_used(
+                <uintptr_t>ctypes.addressof(renderer.contents)
+                ):
+            raise RuntimeError("cannot create texture now, "
+                               "hardware context unavailable")
         global all_textures, sdl_tex_count
 
         # Make sure global functions are available:
@@ -181,6 +237,11 @@ cdef class Texture:
         if self.texture_address == 0 or self.renderer_address == 0:
             raise ValueError("invalid dumped texture. " +
                 "did you observe renderer_update()??")
+        if not can_renderer_safely_be_used(
+                <uintptr_t>self.renderer_address
+                ):
+            raise RuntimeError("cannot draw now, "
+                               "hardware context unavailable")
         if texture_render_rect_1_addr == 0:
             import sdl2 as sdl
             texture_render_rect_1 = sdl.SDL_Rect()
@@ -220,7 +281,7 @@ cdef class Texture:
             )
 
     def _force_unload(self):
-        global sdl_tex_count, _sdl_DestroyTexture
+        global sdl_tex_count, to_be_destroyed_texture_addresses
         if self._texture is not None:
             try:
                 if config.get("debug_texture_references"):
@@ -231,10 +292,21 @@ cdef class Texture:
                 if sdl_tex_count is not None:
                     sdl_tex_count -= 1
                 try:
-                    _sdl_DestroyTexture(<void*>self.texture_address)
-                except (NameError, TypeError, AttributeError):
-                    # Most likely, we're shutting down -> SDL already gone
-                    print("warning: texture unload failed. "
+                    if to_be_destroyed_texture_addresses is None:
+                        to_be_destroyed_texture_addresses = dict()
+                    if int(self.renderer_address) not in \
+                            to_be_destroyed_texture_addresses:
+                        to_be_destroyed_texture_addresses[
+                            int(self.renderer_address)
+                        ] = list()
+                    to_be_destroyed_texture_addresses[
+                        int(self.renderer_address)
+                    ].append(
+                        int(self.texture_address)
+                    )
+                except NameError:
+                    # Most likely, we're shutting down -> globals gone
+                    print("warning: texture unload scheduling failed. "
                           "are some modules already unloaded?",
                           file=sys.stderr)
                 self._texture = None
@@ -280,6 +352,11 @@ cdef class RenderTarget(Texture):
         import sdl2 as sdl
         global sdl_tex_count
         super().__init__(renderer, width, height, _dontcreate=True)
+        if not can_renderer_safely_be_used(
+                <uintptr_t>ctypes.addressof(renderer.contents)
+                ):
+            raise RuntimeError("cannot draw now, "
+                               "hardware context unavailable")
         self.set_as_target = False
         self.previous_target = None
         self.ever_rendered_to = False
@@ -324,9 +401,13 @@ cdef class RenderTarget(Texture):
                 "was cleaned up. did you observe renderer_update()??")
         if self.set_as_target:
             raise ValueError("this is already set as render target!")
-
+        if not can_renderer_safely_be_used(
+                <uintptr_t>self.renderer_address
+                ):
+            raise RuntimeError("cannot enable render target now, "
+                               "hardware context unavailable")
         cdef uintptr_t renderer_address = (<uintptr_t>(
-            ctypes.addressof(self.renderer.contents)
+            self.renderer_address
         ))
         cdef uintptr_t texture_address = (<uintptr_t>(
             ctypes.addressof(self._texture.contents)
@@ -359,9 +440,14 @@ cdef class RenderTarget(Texture):
                 "was cleaned up. did you observe renderer_update()??")
         if not self.set_as_target:
             raise ValueError("this is not set as render target yet!")
+        if not can_renderer_safely_be_used(
+                <uintptr_t>self.renderer_address
+                ):
+            raise RuntimeError("cannot enable render target now, "
+                               "hardware context unavailable")
         self.set_as_target = False
         cdef uintptr_t renderer_address = (<uintptr_t>(
-            ctypes.addressof(self.renderer.contents)
+            self.renderer_address
         ))
         cdef uintptr_t prevtarget_address = (<uintptr_t>(self.previous_target))
         _sdl_SetRenderTarget(<void*>renderer_address,

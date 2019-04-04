@@ -57,3 +57,4 @@ cdef class RenderTarget(Texture):
     cdef public int set_as_target, ever_rendered_to
     cdef object previous_target
 
+cdef void do_actual_texture_unload(uintptr_t renderer_address)

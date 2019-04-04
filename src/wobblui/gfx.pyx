@@ -29,6 +29,7 @@ import weakref
 from wobblui.color cimport Color
 from wobblui.font.manager cimport c_font_manager as font_manager
 from wobblui.perf cimport CPerf as Perf
+from wobblui.render_lock cimport can_renderer_safely_be_used
 from wobblui.uiconf import config
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
@@ -55,6 +56,11 @@ cpdef draw_rectangle(
         double unfilled_border_thickness=1.0,
         double alpha=1.0):
     global _rect
+    if not can_renderer_safely_be_used(
+            <uintptr_t>ctypes.addressof(renderer.contents)
+            ):
+        raise RuntimeError("cannot draw now, "
+                           "hardware context unavailable")
     import sdl2 as sdl
     if _rect is None:
         _rect = sdl.SDL_Rect()
@@ -99,6 +105,11 @@ dashed_texture_store = dict()
 cdef get_dashed_texture(renderer, int vertical=False):
     global dashed_texture_store
     _load_function_ptrs()
+    if not can_renderer_safely_be_used(
+            <uintptr_t>ctypes.addressof(renderer.contents)
+            ):
+        raise RuntimeError("cannot draw now, "
+                           "hardware context unavailable")
     import sdl2 as sdl
     renderer_key = str(ctypes.addressof(renderer.contents))
     if (vertical, renderer_key) in dashed_texture_store:
@@ -138,6 +149,11 @@ cdef get_dashed_texture(renderer, int vertical=False):
 
 cpdef clear_renderer_gfx(renderer):
     global dashed_texture_store
+    if not can_renderer_safely_be_used(
+            <uintptr_t>ctypes.addressof(renderer.contents)
+            ):
+        raise RuntimeError("cannot draw now, "
+                           "hardware context unavailable")
     _load_function_ptrs()
     renderer_key = str(ctypes.addressof(renderer.contents))
     new_dashed_store = dict()
@@ -157,6 +173,11 @@ cpdef draw_dashed_line(
         double dash_length=7.0,
         double thickness=3.0):
     _load_function_ptrs()
+    if not can_renderer_safely_be_used(
+            <uintptr_t>ctypes.addressof(renderer.contents)
+            ):
+        raise RuntimeError("cannot draw now, "
+                           "hardware context unavailable")
     import sdl2 as sdl
     if abs(y1 - y2) > 0.5 and abs(x1 - x2) > 0.5:
         raise NotImplementedError("lines that aren't straight vertical or " +
@@ -322,6 +343,11 @@ cdef int clipping_is_enabled(object renderer):
 previous_clip_stacks_by_renderer = dict()
 cpdef push_render_clip(renderer, _x, _y, _w, _h):
     global previous_clip_stacks_by_renderer
+    if not can_renderer_safely_be_used(
+            <uintptr_t>ctypes.addressof(renderer.contents)
+            ):
+        raise RuntimeError("cannot use drawing operation, "
+                           "hardware context unavailable")
     import sdl2 as sdl
 
     cdef int x, y, w, h
@@ -368,6 +394,11 @@ cpdef push_render_clip(renderer, _x, _y, _w, _h):
     _apply_clip_rect(renderer, x, y, w, h)
 
 cdef _apply_clip_rect(object renderer, int x, int y, int w, int h):
+    if not can_renderer_safely_be_used(
+            <uintptr_t>ctypes.addressof(renderer.contents)
+            ):
+        raise RuntimeError("cannot use drawing operation, "
+                           "hardware context unavailable")
     import sdl2 as sdl
     new_clip = sdl.SDL_Rect()
     new_clip.x = x
@@ -379,6 +410,11 @@ cdef _apply_clip_rect(object renderer, int x, int y, int w, int h):
 
 cpdef pop_render_clip(renderer):
     global previous_clip_stacks_by_renderer
+    if not can_renderer_safely_be_used(
+            <uintptr_t>ctypes.addressof(renderer.contents)
+            ):
+        raise RuntimeError("cannot use drawing operation, "
+                           "hardware context unavailable")
     import sdl2 as sdl
 
     renderer_key = str(ctypes.addressof(renderer.contents))
