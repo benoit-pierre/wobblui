@@ -50,23 +50,33 @@ cpdef void initialize_sdl():
     sdl.SDL_SetHintWithPriority(
         b"SDL_MOUSE_FOCUS_CLICKTHROUGH", b"1",
         sdl.SDL_HINT_OVERRIDE
-    )
+    )  # For proper multi window focus handling
     sdl.SDL_SetHintWithPriority(
         b"SDL_ANDROID_SEPARATE_MOUSE_AND_TOUCH", b"1",
         sdl.SDL_HINT_OVERRIDE,
-    )
+    )  # legacy hint, but just to ensure we can support mouse on android
+    sdl.SDL_SetHintWithPriority(
+        b"SDL_MOUSE_TOUCH_EVENTS", b"0",
+    )  # matches the default, but just to be sure (would cause duplicate
+       # taps with woblbui!)
+    sdl.SDL_SetHintWithPriority(
+        b"SDL_TOUCH_MOUSE_EVENTS", b"1",
+    )  # matches the default, but just to be sure (wobblui heavily relies on
+       # SDL_TOUCH_MOUSEID!)
     sdl.SDL_SetHintWithPriority(
         b"SDL_ANDROID_TRAP_BACK_BUTTON", b"1",
         sdl.SDL_HINT_OVERRIDE
-    )
+    )  # otherwise our app will just quit instead of allowing transitions
+       # via escape/back key
     sdl.SDL_SetHintWithPriority(
         b"SDL_TIMER_RESOLUTION", b"0",
         sdl.SDL_HINT_OVERRIDE
-    )
+    )  # Not really necessary even for games unless you're really adamant
+       # about possible micro stutters, and saves battery
     sdl.SDL_SetHintWithPriority(
         b"SDL_RENDER_BATCHING", b"1",
         sdl.SDL_HINT_OVERRIDE
-    )
+    )  # Should give us better perf
     sdl.SDL_SetHintWithPriority(
         b"SDL_RENDER_SCALE_QUALITY", b"1",
         sdl.SDL_HINT_OVERRIDE
