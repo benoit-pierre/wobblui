@@ -323,12 +323,28 @@ def sdl_event_name(event):
         return "mousemotion"
     elif ev_no == sdl.SDL_MOUSEWHEEL:
         return "mousewheel"
+    elif ev_no == sdl.SDL_FINGERUP:
+        return "fingerup"
+    elif ev_no == sdl.SDL_FINGERDOWN:
+        return "fingerdown"
+    elif ev_no == sdl.SDL_FINGERMOTION:
+        return "fingermotion"
     elif ev_no == sdl.SDL_KEYDOWN:
         return "keydown-" + str(sdl_vkey_map(event.key.keysym.sym))
     elif ev_no == sdl.SDL_KEYUP:
         return "keyup-" + str(sdl_vkey_map(event.key.keysym.sym))
     elif ev_no == sdl.SDL_TEXTINPUT:
         return "textinput"
+    elif ev_no == sdl.SDL_APP_WILLENTERBACKGROUND:
+        return "appwillenterbackground"
+    elif ev_no == sdl.SDL_APP_DIDENTERBACKGROUND:
+        return "appdidenterbackground"
+    elif ev_no == sdl.SDL_APP_WILLENTERFOREGROUND:
+        return "appwillenterforeground"
+    elif ev_no == sdl.SDL_APP_DIDENTERBACKGROUND:
+        return "appdidenterforeground"
+    elif ev_no == sdl.SDL_APP_LOWMEMORY:
+        return "applowmemory"
     elif ev_no == sdl.SDL_WINDOWEVENT:
         if event.window.event == sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
             return "windowfocusgained"
@@ -374,6 +390,12 @@ def debug_describe_event(event):
         t += "(which:" + str(event.wheel.which) +\
             ",x:" + str(event.wheel.x) +\
             ",y:" + str(event.wheel.y) + ")"
+    elif event.type == sdl.SDL_FINGERUP or \
+            event.type == sdl.SDL_FINGERDOWN or \
+            event.type == sdl.SDL_FINGERMOTION:
+        t += "(fingerId:" + str(event.tfinger.fingerId) +\
+            ",x:" + str(event.tfinger.x) +\
+            ",y: " + str(event.tfinger.y) + ")"
     return t
 
 
