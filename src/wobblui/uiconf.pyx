@@ -1,6 +1,7 @@
+#cython: language_level=3
 
 '''
-wobblui - Copyright 2018 wobblui team, see AUTHORS.md
+wobblui - Copyright 2018-2019 wobblui team, see AUTHORS.md
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -19,7 +20,8 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-class Conf(object):
+
+cdef class Conf:
     def __init__(self):
         self.data = dict()
 
@@ -60,6 +62,7 @@ class Conf(object):
             return False
         if value == "debug_texture_references":
             return False
+        if value == "debug_texture_collection_and_render_lock":
+            return False
 
 config = Conf()
-

@@ -20,27 +20,6 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
-from libc.stdint cimport uintptr_t
 
-from wobblui.uiconf import config
-from wobblui.woblog import logdebug, logerror, loginfo, logwarning
-
-cdef int renderer_lock = 0
-
-cdef _internal_set_global_renderer_lock(int locked):
-    global renderer_lock
-    if locked and not renderer_lock:
-        renderer_lock = True
-        if config.get("debug_texture_collection_and_render_lock"):
-            logdebug("render_lock: GLOBAL ENABLE")
-    elif not locked and renderer_lock:
-        renderer_lock = False
-        if config.get("debug_texture_collection_and_render_lock"):
-            logdebug("render_lock: GLOBAL DISABLE")
-
-
-cpdef can_window_safely_use_its_renderer(window):
-    return (not renderer_lock)
-
-cpdef can_renderer_safely_be_used(uintptr_t renderer_addr):
-    return (not renderer_lock)
+cdef class Conf:
+    cdef dict data

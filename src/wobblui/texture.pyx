@@ -89,8 +89,10 @@ cdef void do_actual_texture_unload(uintptr_t renderer_address):
                 for texaddr in to_be_destroyed_texture_addresses[r]:
                     if not printed_debug_message:
                         printed_debug_message = True
-                        logdebug("Free'ing 1+ textures of ALL " +
-                                 "renderers")
+                        if config.get("debug_texture_collection_and"
+                                      "_render_lock"):
+                            logdebug("Free'ing 1+ textures of ALL " +
+                                     "renderers")
                     _sdl_DestroyTexture(<void*><uintptr_t>texaddr) 
         finally:
             to_be_destroyed_texture_addresses = dict()
@@ -102,8 +104,10 @@ cdef void do_actual_texture_unload(uintptr_t renderer_address):
                     ]:
                 if not printed_debug_message:
                     printed_debug_message = True
-                    logdebug("Free'ing 1+ textures of renderer " +
-                             str(renderer_address))
+                    if config.get("debug_texture_collection_and"
+                                      "_render_lock"):
+                        logdebug("Free'ing 1+ textures of renderer " +
+                                 str(renderer_address))
                 _sdl_DestroyTexture(<void*><uintptr_t>texaddr)
         finally:
             to_be_destroyed_texture_addresses[
