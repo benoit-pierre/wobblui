@@ -50,7 +50,7 @@ from wobblui.perf cimport CPerf as Perf
 from wobblui.render_lock cimport can_renderer_safely_be_used,\
     can_window_safely_use_its_renderer,\
     _internal_set_global_renderer_lock
-from wobblui.sdlinit cimport sdl_version
+from wobblui.sdlinit cimport initialize_sdl, sdl_version
 from wobblui.texture cimport do_actual_texture_unload
 from wobblui.timer cimport internal_trigger_check,\
     maximum_sleep_time
@@ -428,6 +428,7 @@ def do_event_processing(int ui_active=True):
     if config.get("debug_core_event_loop") is True:
         logdebug("do_event_processing(): fetching SDL " +
             "events at " + str(time.monotonic()))
+    initialize_sdl()
     events = []
     while True:
         ev = sdl.SDL_Event()

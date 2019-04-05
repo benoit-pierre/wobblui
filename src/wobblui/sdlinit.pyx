@@ -56,6 +56,10 @@ cpdef void initialize_sdl():
         sdl.SDL_HINT_OVERRIDE,
     )  # legacy hint, but just to ensure we can support mouse on android
     sdl.SDL_SetHintWithPriority(
+        b"SDL_ANDROID_BLOCK_ON_PAUSE", b"0",
+        sdl.SDL_HINT_OVERRIDE,
+    )
+    sdl.SDL_SetHintWithPriority(
         b"SDL_MOUSE_TOUCH_EVENTS", b"0",
         sdl.SDL_HINT_OVERRIDE,
     )  # matches the default, but just to be sure (would cause duplicate
