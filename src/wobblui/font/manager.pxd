@@ -31,4 +31,3 @@ cdef class FontManager:
         mutex
 
 cdef FontManager c_font_manager()
-
