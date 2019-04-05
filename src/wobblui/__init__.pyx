@@ -1069,7 +1069,7 @@ def _handle_event(event):
             w = w_ref()
             if w != None and not w.is_closed:
                 w.internal_app_reopen()
-                renderer_address = w.internal_renderer_address()
+                renderer_address = w.internal_get_renderer_address()
                 if renderer_address != 0:
                     do_actual_texture_unload(renderer_address)
         # Make sure loading screen is gone:
