@@ -48,6 +48,36 @@ class Topbar(Widget):
         self.topbar_box = HBox(default_expand_on_secondary_axis=True)
         self.topbar_box.internal_override_parent(self)
 
+    def get_natural_height(self, given_width=None):
+        # Get topbar height at given width:
+        had_needed_relayout = self.needs_relayout
+        old_needs_redraw = self.needs_redraw
+        old_width = self.width
+        if given_width is not None and self.width != given_width:
+            self.width = given_width
+            self.needs_relayout = True
+        if self.needs_relayout:
+            self.on_relayout()
+        topbar_height = round(self.topbar_box.height) +\
+            round(self.padding_vertical * self.dpi_scale) * 2 +\
+            self.border_size
+        if given_width is not None and self.width != old_width:
+            self.width = old_width
+            self.needs_relayout = True
+        if self.needs_relayout and not had_needed_relayout:
+            # Relayout it back so it's as it was before:
+            self.on_relayout()
+            self.needs_relayout = False
+        self.needs_redraw = old_needs_redraw
+
+        # Get children maximum height:
+        children_height = 0
+        for child in self._children:
+            children_height = max(child.get_desired_height(
+                given_width=given_width
+            ), children_height)
+        return topbar_height + children_height
+
     def widget_is_in_upper_half(self, widget):
         p = widget.parent
         while p != None:
@@ -99,7 +129,7 @@ class Topbar(Widget):
 
         # Draw topbar background:
         topbar_actual_height = max(
-            round(self.padding_vertical * 2),
+            round(self.padding_vertical * self.dpi_scale) * 2,
             self.topbar_height)
         draw_rectangle(self.renderer, 0, 0,
             self._width,
@@ -143,12 +173,13 @@ class Topbar(Widget):
         self.topbar_box.relayout_if_necessary()
         self.topbar_box.x = current_x
         self.topbar_box.y = current_y
-        self.topbar_box.width = self.width - round(
-            self.padding * self.dpi_scale * 2.0)
+        self.topbar_box.width = self.width -\
+            round(self.padding * self.dpi_scale) * 2
         self.topbar_box.height = self.topbar_box.get_desired_height(
-            given_width=self.topbar_box.width)
-        topbar_height = round(self.topbar_box.height + (
-            self.padding_vertical * 2) * self.dpi_scale)
+            given_width=self.topbar_box.width
+        )
+        topbar_height = round(self.topbar_box.height) +\
+            round(self.padding_vertical * self.dpi_scale) * 2
         for child in self._children:
             child.x = 0
             child.y = topbar_height + self.border_size

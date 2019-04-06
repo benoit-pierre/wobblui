@@ -1707,6 +1707,10 @@ cdef class WidgetBase:
     def size_change(self, int w, int h):
         self._width = w
         self._height = h
+        if self._max_width >= 0:
+            return min(self._max_width, self._width)
+        if self._max_height >= 0:
+            return min(self._max_height, self._height)
         self.needs_relayout = True
         self.needs_redraw = True
         self.resized()

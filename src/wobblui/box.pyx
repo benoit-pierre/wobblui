@@ -527,11 +527,13 @@ cdef class Box(ScrollbarDrawingWidget):
         )
         self.shrink_info[len(self._children) - 1] = shrink
         if self.horizontal:
-            item.width = item.get_desired_width()
-            item.height = item.get_desired_height()
+            item.size_change(item.get_desired_width(),
+                             item.get_desired_height())
         else:
-            item.width = self.width
-            item.height = item.get_desired_height(given_width=self.width)
+            item.size_change(
+                self.width,
+                item.get_desired_height(given_width=self.width),
+            )
 
     def add_spacer(self):
         self.add(BoxSpacer(), expand=True, shrink=True)
