@@ -683,6 +683,14 @@ cdef class Window(WidgetBase):
         w.internal_override_parent(self)
         self.focus_update()
 
+    def remove(self, item, error_if_not_present=True):
+        if item in self._floating_children:
+            if item.parent == self:
+                item.internal_override_parent(None)
+            self._floating_children.remove(item)
+            return
+        return super().remove(item)
+
     def do_redraw(self):
         if not self.ensure_renderer():
             return
