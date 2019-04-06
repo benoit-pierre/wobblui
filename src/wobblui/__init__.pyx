@@ -412,6 +412,10 @@ def debug_describe_event(event):
             event.type == sdl.SDL_FINGERDOWN or \
             event.type == sdl.SDL_FINGERMOTION:
         t += "(fingerId:" + str(event.tfinger.fingerId) +\
+            ",touchId: " + str(event.tfinger.touchId) +\
+            ",numFingers:" + str(sdl.SDL_GetNumTouchFingers(
+                event.tfinger.touchId
+            )) +\
             ",x:" + str(event.tfinger.x) +\
             ",y: " + str(event.tfinger.y) + ")"
     return t
