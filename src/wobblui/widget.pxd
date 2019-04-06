@@ -26,5 +26,6 @@ cdef class Widget(WidgetBase):
     """ SEE widget.pyx FOR MAIN CLASS DEFINITION """
 
     cdef public object parentwindowresized
-    cdef object _temp_style
-
+    cdef object _temp_default_style
+    cdef object _style_parent_derived_style
+    cdef object _style_parent_window_ref

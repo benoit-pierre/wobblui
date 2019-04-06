@@ -51,14 +51,13 @@ cpdef get_focused_window():
     return None
 
 cpdef apply_style_to_all_windows(object style):
-    style = style.copy()
     new_w_refs = []
     for w_ref in get_all_windows():
         w = w_ref()
         if w is None:
             continue
         new_w_refs.append(w_ref)
-        w.style = style
+        w.style = style.clone_for_widget(w)
     get_all_windows()[:] = new_w_refs
     trigger_global_style_changed()
 
@@ -135,7 +134,7 @@ cdef class Window(WidgetBase):
         self.type = "window"
         initialize_sdl()
         if style is None:
-            style = AppStyleBright()
+            style = AppStyleBright(self)
         self.mouse_position_cache = dict()
         self._sdl_window = None
         self._style = style

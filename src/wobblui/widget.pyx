@@ -20,6 +20,8 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 '''
 
+import weakref
+
 from wobblui.event cimport Event
 from wobblui.style import AppStyleBright
 from wobblui.widget_base cimport WidgetBase
@@ -42,15 +44,20 @@ cdef class Widget(WidgetBase):
                 fake_mouse_even_with_native_touch_support)
         self.parentwindowresized = Event("parentwindowresized",
             owner=self)
-        self._temp_style = AppStyleBright()
+        self._temp_default_style = AppStyleBright(self)
 
     def update_window(self):
         self.needs_redraw = True
 
     def get_style(self):
         if self.parent_window == None:
-            return self._temp_style
-        return self.parent_window.style
+            return self._temp_default_style
+        if self._style_parent_window_ref is None or \
+                self._style_parent_window_ref() != self.parent_window:
+            self._style_parent_window_ref = weakref.ref(self.parent_window)
+            self._style_parent_derived_style =\
+                self.parent_window.style.clone_for_widget(self)
+        return self._style_parent_derived_style
 
     @property
     def parent_window(self):

@@ -22,8 +22,17 @@ freely, subject to the following restrictions:
 
 cdef int is_android = -1
 
-class AppStyle:
-    def __init__(self):
+cdef class AppStyle:
+    cdef public double _dpi_scale_base, _dpi_scale
+    cdef int is_android
+    cdef public dict values
+    cdef object _widget
+
+    @property
+    def widget(self):
+        return self._widget
+
+    def __init__(self, widget):
         global is_android
         if is_android == -1:
             import sdl2 as sdl
@@ -32,19 +41,28 @@ class AppStyle:
                     "utf-8", "replace"
                 ).lower() == "android"
             )
+        self._widget = widget
         self._dpi_scale_base = 1.0
         self._dpi_scale = 1.0
         self.is_android = is_android
-        #if self.is_android:
-        #    self._dpi_scale_base = 1.2
         self.values = dict()
 
     def __repr__(self):
         return "AppStyle<" + str(self.values) + ">"
 
     def copy(self):
-        copied_style = AppStyle()
+        return self._do_copy()
+
+    def clone_for_widget(self, widget):
+        return self._do_copy(copy_for_widget=widget)
+
+    def _do_copy(self, copy_for_widget=None):
+        if copy_for_widget is None:
+            copied_style = AppStyle(self.widget)
+        else:
+            copied_style = AppStyle(copy_for_widget)
         copied_style._dpi_scale = self._dpi_scale
+        copied_style._dpi_scale_base = self._dpi_scale_base
         copied_style.is_android = self.is_android
         for k in self.values:
             copied_style.values[k] = self.values[k]
@@ -121,8 +139,8 @@ class AppStyle:
         app.set_css_style(template_text)
 
 class AppStyleBright(AppStyle):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, widget):
+        super().__init__(widget)
         self.set("window_bg", "#efeeed")
         self.set("button_bg", "#e3e2e2")
         self.set("button_bg_hover", "#dad9d9")
@@ -151,8 +169,8 @@ class AppStyleBright(AppStyle):
         self.set("modal_dialog_bg", "#ccc")
 
 class AppStyleDark(AppStyle):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, widget):
+        super().__init__(widget)
         self.set("window_bg", "#222")
         self.set("button_bg", "#444")
         self.set("button_bg_hover", "#353535")
