@@ -1740,6 +1740,8 @@ cdef class WidgetBase:
     def _internal_on_stylechanged(self, internal_data=None):
         self.needs_redraw = True
         self.needs_relayout = True
+        if hasattr(self, "_style_parent_window_ref"):
+            self._style_parent_window_ref = None
 
     @property
     def effectively_invisible(self):

@@ -354,12 +354,20 @@ def sdl_event_name(event):
     elif ev_no == sdl.SDL_WINDOWEVENT:
         if event.window.event == sdl.SDL_WINDOWEVENT_FOCUS_GAINED:
             return "windowfocusgained"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_FOCUS_LOST:
+            return "windowfocuslost"
         elif event.window.event == sdl.SDL_WINDOWEVENT_RESIZED:
             return "windowresized"
         elif event.window.event == sdl.SDL_WINDOWEVENT_SIZE_CHANGED:
             return "windowsizechanged"
         elif event.window.event == sdl.SDL_WINDOWEVENT_CLOSE:
             return "windowclose"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_MOVED:
+            return "windowmoved"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_SHOWN:
+            return "windowshown"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_HIDDEN:
+            return "windowhidden"
         elif event.window.event == sdl.SDL_WINDOWEVENT_HIDDEN:
             return "windowhidden"
         elif event.window.event == sdl.SDL_WINDOWEVENT_MINIMIZED:
@@ -370,6 +378,10 @@ def sdl_event_name(event):
             return "windowexposed"
         elif event.window.event == sdl.SDL_WINDOWEVENT_MAXIMIZED:
             return "windowmaximized"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_ENTER:
+            return "windowmouseentered"
+        elif event.window.event == sdl.SDL_WINDOWEVENT_LEAVE:
+            return "windowmouseleft"
         elif hasattr(sdl, "SDL_WINDOWEVENT_TAKE_FOCUS") and \
                 event.window.event == sdl.SDL_WINDOWEVENT_TAKE_FOCUS:
             return "windowtakefocus"
@@ -400,6 +412,10 @@ def debug_describe_event(event):
             event.type == sdl.SDL_FINGERDOWN or \
             event.type == sdl.SDL_FINGERMOTION:
         t += "(fingerId:" + str(event.tfinger.fingerId) +\
+            ",touchId: " + str(event.tfinger.touchId) +\
+            ",numFingers:" + str(sdl.SDL_GetNumTouchFingers(
+                event.tfinger.touchId
+            )) +\
             ",x:" + str(event.tfinger.x) +\
             ",y: " + str(event.tfinger.y) + ")"
     return t

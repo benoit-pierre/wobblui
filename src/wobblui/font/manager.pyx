@@ -234,7 +234,7 @@ cdef class Font:
         return result
 
 
-cdef class FontManager(object):
+cdef class FontManager:
     """ MEMBERS ARE IN font/manager.pxd """
 
     def __init__(self):
