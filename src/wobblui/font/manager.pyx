@@ -42,7 +42,7 @@ rendered_words_cache = KeyValueCache(size=50,
     destroy_func=lambda x: x._force_unload())
 
 
-cdef class Font(object):
+cdef class Font:
     cdef public int italic, bold
     cdef public double px_size
     cdef public str font_family
