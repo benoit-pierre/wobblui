@@ -35,6 +35,8 @@ cdef class Window(WidgetBase):
     cdef str _title
     cdef int next_reopen_width, next_reopen_height
     cdef object last_known_dpi_scale, schedule_global_dpi_scale_update
+    cdef list _floating_children
+
 
 cpdef apply_style_to_all_windows(object style)
 

@@ -130,6 +130,8 @@ cdef class Window(WidgetBase):
             keep_application_running_while_open=True,
             ):
         self._renderer = None
+        if self._floating_children is None:
+            self._floating_children = []
         self.type = "window"
         initialize_sdl()
         if style is None:
@@ -253,6 +255,15 @@ cdef class Window(WidgetBase):
             if child.parent == self:
                 child.internal_override_parent(None)
         self._children = []
+        for child in self._floating_children:
+            child.renderer_update()
+            if child.parent == self:
+                child.internal_override_parent(None)
+        self._floating_children = []
+        if self._context_menu is not None:
+            self._context_menu.renderer_update()
+            if self._context_menu.parent == self:
+                self._context_menu.internal_override_parent(None)
         self._context_menu = None
         assert(len(self.children) == 0)
         self._renderer = old_renderer
@@ -467,7 +478,7 @@ cdef class Window(WidgetBase):
                     sdl.SDL_DestroyWindow(self._sdl_window)
                 self._sdl_window = None
                 self.is_closed = True
-                self._children = []
+                self.clear()
                 self.destroyed()
             else:
                 # Keep it around to be reopened.
@@ -663,13 +674,20 @@ cdef class Window(WidgetBase):
 
     def add(self, *args, **kwargs):
         return_value = super().add(*args, **kwargs)
-        if len(self._children) > 0:
+        if len(self.get_children()) > 0:
             self.focus_update()
         return return_value
+
+    def add_floating(self, w):
+        self._floating_children.append(w)
+        w.internal_override_parent(self)
+        self.focus_update()
 
     def do_redraw(self):
         if not self.ensure_renderer():
             return
+
+        import sdl2 as sdl
 
         # Work around potential SDL bug / race condition
         # (flickering window background)
@@ -684,6 +702,8 @@ cdef class Window(WidgetBase):
 
     def _internal_on_resized(self, internal_data=None):
         self.needs_relayout = True
+        for child in self.children:
+            child.needs_relayout = True
         for w_ref in get_all_widgets():
             w = w_ref()
             if w is None or not hasattr(w, "parent_window") or \
@@ -691,39 +711,55 @@ cdef class Window(WidgetBase):
                 continue
             if hasattr(w, "parentwindowresized"):
                 w.parentwindowresized()
-        for child in self._children:
-            child.needs_relayout = True
 
     def on_relayout(self):
+        cdef int ypos, i
         changed = False
         if len(self._children) > 0:
-            # Make first child fill out the window:
-            self._children[0].x = 0
-            self._children[0].y = 0
-            if self.width != self._children[0].width:
-                self._children[0].width = self.width
+            # Put regular children vertically, make last one
+            # fill out the window:
+            ypos = 0
+            i = 0
+            while i < len(self._children) - 1:
+                self._children[i].x = 0
+                self._children[i].y = ypos
+                h = \
+                    min(max(1, self.height - ypos),
+                        self._children[i].get_desired_height(
+                        given_width=self.width))
+                w = self.width
+                if self._children[i].width != w or \
+                        self._children[i].height != h:
+                    changed = True
+                    self._children[i].size_change(w, h)
+                i += 1
+            # (last one that fills out follows)
+            w = self.width
+            h = max(1, self.height - ypos)
+            if self._children[-1].width != w or \
+                    self._children[-1].height != h:
                 changed = True
-            if self.height != self._children[0].height:
-                self._children[0].height = self.height
-                changed = True
+                self._children[-1].size_change(w, h)
 
-            # Let the others float about, but shrink them to
-            # window size:
-            for child in self._children[1:]:
-                child.x = max(0, min(math.floor(self.width) - 1,
-                    child.x))
-                child.y = max(0, min(math.floor(self.height) - 1,
-                    child.y))
-                intended_w = min(child.width,
-                    max(1, math.floor(self.width) - child.x))
-                if child.width != intended_w:
-                    changed = True
-                    child.width = intended_w
-                intended_h = min(child.height,
-                    max(1, math.floor(self.height) - child.y))
-                if child.height != intended_h:
-                    changed = True
-                    child.height = intended_h
+        # Let all these float about, but shrink them to
+        # window size:
+        for child in self._floating_children:
+            child.x = max(0, min(math.floor(self.width) - 1,
+                child.x))
+            child.y = max(0, min(math.floor(self.height) - 1,
+                child.y))
+            intended_w = min(child.width,
+                max(1, math.floor(self.width) - child.x)
+            )
+            if child.width != intended_w:
+                changed = True
+                child.width = intended_w
+            intended_h = min(child.height,
+                max(1, math.floor(self.height) - child.y)
+            )
+            if child.height != intended_h:
+                changed = True
+                child.height = intended_h
         if changed:
             self.needs_redraw = True
 
@@ -733,6 +769,7 @@ cdef class Window(WidgetBase):
 
     def get_children(self):
         r = list(self._children)
+        r += self._floating_children
         if self.context_menu is not None:
             r += [self.context_menu]
         return list(r)

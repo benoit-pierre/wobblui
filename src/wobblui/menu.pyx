@@ -228,6 +228,22 @@ class ContainerWithSlidingMenu(Widget):
             lambda: self.menu_focus_check()
         super().add(self.menu)
 
+    def get_natural_width(self):
+        w = max(1, int(
+            self.menu.get_desired_width() * 1.5
+        ))
+        for child in self._children:
+            w = max(w, child.get_desired_width())
+        return w
+
+    def get_natural_height(self, given_width=None):
+        h = max(1, int(self.menu.get_desired_height(
+            given_width=given_width
+        )))
+        for child in self._children:
+            h = max(h, child.get_desired_height(given_width=given_width))
+        return h
+
     def menu_focus_check(self):
         return (self.menu_slid_out_x > 0)
 
@@ -260,15 +276,19 @@ class ContainerWithSlidingMenu(Widget):
         self.needs_relayout = True
 
     def get_children_in_strict_mouse_event_order(self):
-        return self._children
+        return [self.menu] + self._children
+
+    def get_children(self):
+        return self._children + [self.menu]
 
     def open_menu(self, focus=True):
         if self.slide_animation_target == "open":
             return
         self.menu.selected_index = -1
         self.slide_animation_target = "open"
-        self.menu_slid_out_x = max(1,
-            self.menu_slid_out_x)
+        self.menu_slid_out_x = max(
+            1, self.menu_slid_out_x
+        )
         if focus and not self.menu.focused:
             self.menu.focus()
         self.schedule_animation()
