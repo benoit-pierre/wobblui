@@ -1972,8 +1972,14 @@ cdef class WidgetBase:
         old_parent = self._parent
         self._parent = parent
         parent_window_changed = False
-        if hasattr(self, "parent_window"):
+        parent_window_resized = False
+        if hasattr(self, "parent_window") and \
+                self.parent_window is not old_parent_window:
             parent_window_changed = True
+            if old_parent_window is None or self.parent_window is None or (
+                    old_parent_window.width != self.parent_window.width or
+                    old_parent_window.height != self.parent_window.height):
+                parent_window_resized = True
 
         self.needs_redraw = True
         # Make sure mouse is treated as outside by widget:
@@ -1999,6 +2005,18 @@ cdef class WidgetBase:
                 )
             )
             logerror(str(traceback.format_exc()))
+        # Fire parent resized on ourselves if parent window changed:
+        if parent_window_resized and hasattr(self, "parentwindowresized"):
+            try:
+                self.parentwindowresized()
+            except Exception:
+                logerror(
+                    "error in {} internal_override_parent() "
+                    "in direct parentwindowresized() callback!".format(
+                    str(self)
+                    )
+                )
+                logerror(str(traceback.format_exc()))
         # Fire necessary events if renderer changes (e.g. on window change):
         if self.get_renderer() != old_renderer:
             if config.get("debug_texture_references"):
@@ -2011,7 +2029,8 @@ cdef class WidgetBase:
                 for child in item.children:
                     recursive_update_event(child)
             recursive_update_event(self)
-        # Fire descending parentchanged() if parent window changed:
+        # Fire descending parentchanged() if parent window changed, in
+        # addition to also parentwindowresized():
         if parent_window_changed:
             def recursive_trigger_pchanged(item):
                 try:
@@ -2022,6 +2041,15 @@ cdef class WidgetBase:
                         "in recursive parentchanged() callback!"
                     )
                     logerror(str(traceback.format_exc()))
+                if parent_window_resized:
+                    try:
+                        item.parentwindowresized()
+                    except Exception:
+                        logerror(
+                            "error in internal_override_parent() "
+                            "in recursive parentwindowresized() callback!"
+                        )
+                        logerror(str(traceback.format_exc()))
                 for child in item.children:
                     recursive_trigger_pchanged(child)
             for child in self.children:
