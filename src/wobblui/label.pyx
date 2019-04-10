@@ -25,6 +25,7 @@ import time
 
 from wobblui.button import Button
 from wobblui.color cimport Color
+from wobblui.font.manager cimport c_font_manager
 from wobblui.image import stock_image
 from wobblui.richtext cimport RichText
 from wobblui.scrollbarwidget cimport ScrollbarDrawingWidget
@@ -38,6 +39,7 @@ cdef class Label(ScrollbarDrawingWidget):
     cdef int px_size, _layout_height, _layout_width, _layouted_for_width
     cdef object natural_size_cache, text_obj, _user_set_color
 
+    cdef int line_height
     cdef public int scroll_y_offset
 
     def __init__(self,
@@ -76,6 +78,11 @@ cdef class Label(ScrollbarDrawingWidget):
             self.text = text
         self._user_set_color = color
 
+        self.line_height = c_font_manager().get_font(
+            font_family or "Sans Serif",
+            px_size=self.px_size
+        ).render_size(" ")[1]
+
     def set_font(self, font):
         self.font_px_size_override = (
             font.px_size if font is not None else -1
@@ -90,7 +97,8 @@ cdef class Label(ScrollbarDrawingWidget):
         if len(t) > 20:
             t = t + "..."
         t = t.replace("'", "'\"'\"'")
-        return "<wobblui.Label at " + str(id(self)) + " text='" + t + "'>"
+        return ("<wobblui.Label at " + str(id(self)) +
+                " text='" + t + "'>")
 
     def on_stylechanged(self):
         self.font_size_refresh()
@@ -150,6 +158,30 @@ cdef class Label(ScrollbarDrawingWidget):
         self._layouted_for_width = -1
         self._layout_width = -1
         self._layout_height = -1
+
+    def scroll_down(self):
+        if self.needs_relayout:
+            self.on_relayout()
+            self.needs_relayout = False
+            if self.parent is not None:
+                self.parent.needs_relayout = True
+        self.scroll_y_offset = max(max(
+            self._layout_height - self.height, 0
+        ), self.scroll_y_offset)
+        self.needs_redraw = True
+
+    def output_is_scrolled_down(self):
+        if self.needs_relayout:
+            self.on_relayout()
+            self.needs_relayout = False
+            if self.parent is not None:
+                self.parent.needs_relayout = True
+        offset_bottom = self.scroll_y_offset +\
+                   self.height
+        if (offset_bottom + self.line_height * self.dpi_scale >=
+                self._layout_height):
+            return True
+        return False
 
     def do_redraw(self):
         # Calculate content height:

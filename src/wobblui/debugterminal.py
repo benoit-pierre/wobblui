@@ -85,6 +85,12 @@ class DebugTerminal(VBox):
                             if not handle_special_command(text):
                                 self.interactive_console.push(text)
                     f.flush()
+
+                    # See if output label was scrolled down:
+                    was_scrolled_down = self.output_label.\
+                        output_is_scrolled_down()
+
+                    # Add output:
                     s = bytesobj.getvalue()
                     try:
                         s = s.decode("utf-8", "replace")
@@ -104,6 +110,10 @@ class DebugTerminal(VBox):
                             self.output_label.get_text() + "\n> " +
                             text
                             )
+
+                    # Scroll down if we were scrolled down:
+                    if was_scrolled_down:
+                        self.output_label.scroll_down()
                 except Exception as e:
                     logerror("interactive console error: " +
                         str(e))
