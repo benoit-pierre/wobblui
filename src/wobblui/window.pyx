@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 '''
 
 import ctypes
+import cython
 from libc.stdint cimport uintptr_t
 import math
 import os
@@ -42,6 +43,7 @@ from wobblui.widget_base cimport WidgetBase
 from wobblui.widgetman import get_all_widgets, get_all_windows
 from wobblui.woblog cimport logdebug, logerror, loginfo, logwarning
 
+
 cpdef get_focused_window():
     for w_ref in get_all_windows():
         w = w_ref()
@@ -49,6 +51,7 @@ cpdef get_focused_window():
             continue
         return w
     return None
+
 
 cpdef apply_style_to_all_windows(object style):
     new_w_refs = []
@@ -60,6 +63,7 @@ cpdef apply_style_to_all_windows(object style):
         w.style = style.clone_for_widget(w)
     get_all_windows()[:] = new_w_refs
     trigger_global_style_changed()
+
 
 cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
     logdebug("manual DPI change triggered on all windows by " +
@@ -80,6 +84,7 @@ cpdef change_dpi_scale_on_all_windows(new_dpi_scale):
         w.style = styles_seen[w.style]
     get_all_windows()[:] = new_w_refs
     trigger_global_style_changed()
+
 
 cpdef get_window_by_sdl_id(sdl_id):
     result = None
@@ -104,6 +109,7 @@ cpdef get_window_by_sdl_id(sdl_id):
     get_all_windows()[:] = new_refs
     return result
 
+
 cpdef trigger_global_style_changed():
     new_refs = []
     collected_widgets = []
@@ -117,7 +123,21 @@ cpdef trigger_global_style_changed():
     for w in collected_widgets:
         w.stylechanged()
 
+
 keep_alive_window_refs = []
+
+
+ctypedef int (*_sdl_DestroyRendererType)(
+    void *renderer
+) nogil
+ctypedef int (*_sdl_DestroyWindowType)(
+    void *renderer
+) nogil
+
+
+cdef _sdl_DestroyRendererType _sdl_DestroyRenderer = NULL
+cdef _sdl_DestroyWindowType _sdl_DestroyWindow = NULL
+
 
 cdef class Window(WidgetBase):
     def __init__(self,
@@ -128,6 +148,7 @@ cdef class Window(WidgetBase):
             stay_alive_without_ref=False,
             keep_application_running_while_open=True,
             ):
+        global _sdl_DestroyRenderer, _sdl_DestroyWindow
         self._renderer = None
         if self._floating_children is None:
             self._floating_children = []
@@ -154,7 +175,25 @@ cdef class Window(WidgetBase):
         self.next_reopen_width = width
         self.next_reopen_height = height
         self.internal_app_reopen()
-        
+
+        # Set some function pointers if not done yet:
+        if not _sdl_DestroyRenderer:
+            import sdl2 as sdl
+            _sdl_DestroyRenderer = <_sdl_DestroyRendererType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_DestroyRenderer)
+                ))
+            )
+
+        if not _sdl_DestroyWindow:
+            import sdl2 as sdl
+            _sdl_DestroyWindow = <_sdl_DestroyWindowType>(
+                cython.operator.dereference(<uintptr_t*>(
+                <uintptr_t>ctypes.addressof(sdl.SDL_DestroyWindow)
+                ))
+            )
+
+
         # Now that SDL window is open, we can access screen geometry:
         if self._sdl_window != None:
             import sdl2 as sdl
@@ -245,6 +284,11 @@ cdef class Window(WidgetBase):
         # Update window layout and style of all widgets
         self.needs_relayout = True
         trigger_global_style_changed()
+
+    def is_child_floating(self, child):
+        if child not in self.children:
+            raise ValueError("given widget is not a child")
+        return child in self._floating_children
 
     def clear(self):
         old_renderer = self._renderer
@@ -403,7 +447,9 @@ cdef class Window(WidgetBase):
             unhide = True
             if self._renderer != None:
                 self.on_renderer_to_be_destroyed()
-                sdl.SDL_DestroyRenderer(self._renderer)
+                _sdl_DestroyRenderer(
+                    <void*><uintptr_t>ctypes.addressof(self._renderer.contents)
+                )
                 self._renderer = None
         if not self.ensure_renderer():
             # Ooops. well, nothing we can do.
@@ -446,8 +492,7 @@ cdef class Window(WidgetBase):
         self.next_reopen_height = self._height
 
         close_window = False
-        if sdl.SDL_GetPlatform().decode("utf-8",
-                "replace").lower() != "android":
+        if not is_android():
             if self.closing() or forced:
                 logdebug("Window: regular close on " + str(self))
                 close_window = True
@@ -461,11 +506,14 @@ cdef class Window(WidgetBase):
                 self.unfocus()
             self.set_hidden(True)
 
-        if close_window or sdl.SDL_GetPlatform().decode("utf-8",
-                "replace").lower() == "android":
+        if close_window or is_android():
             if self._renderer != None:
                 self.on_renderer_to_be_destroyed()
-                sdl.SDL_DestroyRenderer(self._renderer)
+                _sdl_DestroyRenderer(
+                    <void*><uintptr_t>ctypes.addressof(
+                        self._renderer.contents
+                    )
+                )
                 self._renderer = None
                 for child in self.children:
                     if close_window:
@@ -474,7 +522,9 @@ cdef class Window(WidgetBase):
             self._renderer = None
             if close_window:
                 if self._sdl_window != None:
-                    sdl.SDL_DestroyWindow(self._sdl_window)
+                    _sdl_DestroyWindow(<void*><uintptr_t>ctypes.addressof(
+                        self._sdl_window.contents
+                    ))
                 self._sdl_window = None
                 self.is_closed = True
                 self.clear()

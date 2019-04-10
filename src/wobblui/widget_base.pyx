@@ -752,6 +752,13 @@ cdef class WidgetBase:
                 return 0.1
         return None
 
+    def _internal_on_moved(self, internal_data=None):
+        if hasattr(self, "parent") and \
+                self.parent is not None and \
+                hasattr(self.parent, "is_child_floating"):
+            if self.parent.is_child_floating(self):
+                self.parent.needs_redraw = True
+
     def _post_mouse_event_handling(self, str event_name,
             event_args, internal_data=None):
         return self._pre_or_post_mouse_event_handling(event_name,
