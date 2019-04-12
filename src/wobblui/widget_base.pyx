@@ -37,6 +37,7 @@ from wobblui.gfx cimport draw_dashed_line, draw_rectangle
 from wobblui.mouse import cursor_seen_during_mousemove
 from wobblui.keyboard import enable_text_events
 from wobblui.perf cimport CPerf as Perf
+from wobblui.render_lock cimport can_window_safely_use_its_renderer
 from wobblui.texture cimport RenderTarget
 from wobblui.timer import schedule
 from wobblui.uiconf import config
@@ -331,7 +332,8 @@ cdef class WidgetBase:
                 break
             i += 1
         w.needs_redraw = True
-        w.redraw_if_necessary()
+        if can_window_safely_use_its_renderer(w):
+            w.redraw_if_necessary()
         time.sleep(0.1)
 
     @property
