@@ -54,6 +54,8 @@ cdef class Conf:
             return 0.4
         if value == "mouse_wheel_speed_modifier":
             return 1.2
+        if value == "disable_key_repeat":
+            return False
         if value == "touch_shortclick_time":
             return 0.2
         if value == "touch_longclick_time":
