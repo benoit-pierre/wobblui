@@ -1,3 +1,2 @@
 include *.md
-include pyproject.toml
 recursive-include src *.otf *.ttf *.py *.pyx *.pxd *.md *.png
