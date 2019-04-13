@@ -49,31 +49,9 @@ with open("requirements.txt") as fh:
     dependencies = [l.strip() for l in fh.read().replace("\r\n", "\n").\
         split("\n") if len(l.strip()) > 0]
 
-class cythonize_build_ext_hook(build_ext):
-    def run(self):
-        from Cython.Build import cythonize
-        for root, dirs, files in os.walk(os.path.abspath(
-                os.path.join(
-                os.path.dirname(__file__), "src"))):
-            for f in files:
-                if not f.endswith(".pyx"):
-                    continue
-                full_path = os.path.join(root, f)
-                c_path = full_path.rpartition(".")[0] + ".c"
-                if os.path.exists(c_path):
-                    os.remove(c_path)
-                cythonize(full_path,
-                    include_path=[os.path.join(os.path.dirname(
-                    os.path.abspath(__file__)), "src")],
-                    compiler_directives={
-                        'always_allow_keywords': True,
-                        'boundscheck': True,
-                        'language_level': 3,
-                    }
-                )
-        super().run()
 
 def extensions():
+    from Cython.Build import cythonize
     base = os.path.normpath(os.path.abspath(
             os.path.join(
             os.path.dirname(__file__), "src")))
@@ -85,19 +63,19 @@ def extensions():
             full_path = os.path.normpath(os.path.abspath(
                 os.path.join(root, f)))
             assert(full_path.startswith(base))
-            module = full_path[len(base):].\
-                replace(os.path.sep, ".").replace("/", ".")
-            if module.endswith(".pyx"):
-                module = module[:-len(".pyx")]
-            if module.startswith("."):
-                module = module[1:]
-            if module.endswith("."):
-                module = module[:1]
-            c_relpath = full_path[len(base):].rpartition(".")[0] + ".c"
-            if c_relpath.startswith(os.path.sep):
-                c_relpath = c_relpath[1:]
-            c_relpath = os.path.join('src', c_relpath)
-            result.append(Extension(module, [c_relpath]))
+            pyx_relpath = full_path[len(base):].rpartition(".")[0] + ".pyx"
+            if pyx_relpath.startswith(os.path.sep):
+                pyx_relpath = pyx_relpath[1:]
+            result += cythonize(
+                full_path,
+                include_path=[os.path.join(os.path.dirname(
+                os.path.abspath(__file__)), "src")],
+                compiler_directives={
+                    'always_allow_keywords': True,
+                    'boundscheck': True,
+                    'language_level': 3,
+                }
+            )
     return result
 
 
@@ -217,7 +195,6 @@ if __name__ == "__main__":
         name="wobblui",
         version=package_version,
         cmdclass={
-            "build_ext": cythonize_build_ext_hook,
             "build_py": BuildPyCommand, 
         },
         author="Jonas Thiem",
