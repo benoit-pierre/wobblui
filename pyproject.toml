@@ -1,4 +1,4 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython", "https://github.com/JonasT/nettools/archive/master.zip#egg=nettools-master"]
+requires = ["setuptools", "wheel", "Cython", "nettools @ https://github.com/JonasT/nettools/archive/master.zip#"]
 build-backend = "setuptools.build_meta"
 
